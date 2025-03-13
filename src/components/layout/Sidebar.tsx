@@ -1,32 +1,39 @@
 
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
+import { useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, CreditCard, FileStack, Home, MessageSquare, PhoneCall, Phone, Settings, UserCog } from "lucide-react";
-import { useIsMobile } from '@/hooks/use-mobile';
 import NogalLogo from '../branding/NogalLogo';
+import { Button } from "@/components/ui/button";
+import { 
+  BarChart3, 
+  ChevronLeft, 
+  ChevronRight, 
+  CreditCard, 
+  FileText, 
+  FolderClosed, 
+  Home, 
+  Phone, 
+  PhoneCall, 
+  Search, 
+  Settings 
+} from "lucide-react";
 
-const Sidebar = () => {
+interface SidebarProps {
+  collapsed: boolean;
+  toggleSidebar: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
   const location = useLocation();
-  const isMobile = useIsMobile();
-  const [collapsed, setCollapsed] = useState(false);
   
-  // Auto-collapse on mobile
-  useEffect(() => {
-    if (isMobile) {
-      setCollapsed(true);
-    }
-  }, [isMobile]);
-
   const navItems = [
-    { name: 'Panel Principal', icon: Home, path: '/' },
     { name: 'Llamadas', icon: PhoneCall, path: '/calls' },
-    { name: 'Transcripciones', icon: FileStack, path: '/transcriptions' },
-    { name: 'Analytics', icon: BarChart3, path: '/analytics' },
-    { name: 'Números', icon: Phone, path: '/phones' },
+    { name: 'Buscar', icon: Search, path: '/search' },
+    { name: 'Transcripciones', icon: FileText, path: '/transcriptions' },
+    { name: 'Analítica', icon: BarChart3, path: '/analytics' },
+    { name: 'Acciones posteriores', icon: FolderClosed, path: '/actions' },
+    { name: 'Números de teléfono', icon: Phone, path: '/phones' },
+    { name: 'Ajustes', icon: Settings, path: '/settings' },
     { name: 'Facturación', icon: CreditCard, path: '/invoicing' },
-    { name: 'Configuración', icon: Settings, path: '/settings' },
   ];
 
   return (
@@ -45,7 +52,7 @@ const Sidebar = () => {
           variant="ghost" 
           size="icon" 
           className={cn("h-8 w-8", collapsed && "absolute -right-4 top-4 bg-background border border-border rounded-full")}
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={toggleSidebar}
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>

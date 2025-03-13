@@ -15,7 +15,7 @@ const PageContainer: React.FC<PageContainerProps> = ({
 }) => {
   return (
     <main className={cn(
-      "pt-16 min-h-screen page-transition transition-all duration-300",
+      "pt-16 min-h-screen transition-all duration-300",
       sidebarCollapsed ? "ml-[70px]" : "ml-[240px]",
       className
     )}>
