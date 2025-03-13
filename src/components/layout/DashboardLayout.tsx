@@ -1,25 +1,17 @@
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import PageContainer from "./PageContainer";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar/sidebar-context";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const isMobile = useIsMobile();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  
-  // Toggle sidebar function to be passed to Header and Sidebar
-  const toggleSidebar = () => setSidebarCollapsed(!sidebarCollapsed);
-
-  useEffect(() => {
-    // Auto-collapse on mobile
-    setSidebarCollapsed(isMobile);
-  }, [isMobile]);
+const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
+  const { state, toggleSidebar } = useSidebar();
+  const sidebarCollapsed = state === "collapsed";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -29,6 +21,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         {children}
       </PageContainer>
     </div>
+  );
+};
+
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+  return (
+    <SidebarProvider>
+      <DashboardContent>{children}</DashboardContent>
+    </SidebarProvider>
   );
 };
 

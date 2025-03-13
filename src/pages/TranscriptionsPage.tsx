@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 
 // Sample data for transcriptions
 const transcriptionsData = [
@@ -100,16 +101,66 @@ const formatDate = (dateString: string) => {
 };
 
 const TranscriptionsPage = () => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTranscription, setSelectedTranscription] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeTimeFrame, setActiveTimeFrame] = useState('7days');
 
+  // Filter transcriptions by search term and category
   const filteredTranscriptions = transcriptionsData.filter(
-    transcription => 
-      transcription.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transcription.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transcription.phone.includes(searchTerm)
+    transcription => {
+      const matchesSearch = searchTerm === '' || 
+        transcription.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transcription.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transcription.phone.includes(searchTerm);
+      
+      const matchesCategory = activeCategory === 'all' || 
+        transcription.category.toLowerCase() === activeCategory.toLowerCase();
+      
+      return matchesSearch && matchesCategory;
+    }
   );
+
+  const handleCategoryChange = (value: string) => {
+    setActiveCategory(value);
+    toast({
+      title: "Filtro aplicado",
+      description: `Mostrando transcripciones de: ${value === 'all' ? 'Todas las categorías' : value}`
+    });
+  };
+
+  const handleTimeFrameChange = (value: string) => {
+    setActiveTimeFrame(value);
+    toast({
+      title: "Período seleccionado",
+      description: `Mostrando datos de: ${
+        value === 'today' ? 'Hoy' : 
+        value === 'yesterday' ? 'Ayer' : 
+        value === '7days' ? 'Últimos 7 días' : 
+        value === '30days' ? 'Últimos 30 días' : 
+        'Período personalizado'
+      }`
+    });
+  };
+
+  const handleCopyText = () => {
+    if (selectedTranscription) {
+      navigator.clipboard.writeText(selectedTranscription.content);
+      toast({
+        title: "Contenido copiado",
+        description: "La transcripción ha sido copiada al portapapeles"
+      });
+    }
+  };
+
+  const handleExport = () => {
+    toast({
+      title: "Exportación iniciada",
+      description: "Las transcripciones seleccionadas se están exportando"
+    });
+  };
 
   const openTranscription = (transcription: any) => {
     setSelectedTranscription(transcription);
@@ -135,11 +186,14 @@ const TranscriptionsPage = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => toast({
+            title: "Filtros", 
+            description: "Panel de filtros avanzados abierto"
+          })}>
             <Filter className="h-4 w-4 mr-2" />
             Filtros
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Exportar
           </Button>
@@ -147,7 +201,7 @@ const TranscriptionsPage = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <Tabs defaultValue="all" className="w-full md:w-auto">
+        <Tabs defaultValue="all" className="w-full md:w-auto" value={activeCategory} onValueChange={handleCategoryChange}>
           <TabsList className="w-full">
             <TabsTrigger value="all" className="flex-1">Todas</TabsTrigger>
             <TabsTrigger value="consulta" className="flex-1">Consultas</TabsTrigger>
@@ -157,7 +211,7 @@ const TranscriptionsPage = () => {
         </Tabs>
 
         <div className="flex items-center gap-2">
-          <Select defaultValue="7days">
+          <Select value={activeTimeFrame} onValueChange={handleTimeFrameChange}>
             <SelectTrigger className="w-[180px]">
               <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Período" />
@@ -171,49 +225,59 @@ const TranscriptionsPage = () => {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" onClick={() => toast({
+            title: "Opciones avanzadas", 
+            description: "Panel de configuración abierto"
+          })}>
             <SlidersHorizontal className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredTranscriptions.map((transcription) => (
-          <Card 
-            key={transcription.id} 
-            className="overflow-hidden hover:border-primary/50 transition-colors cursor-pointer group"
-            onClick={() => openTranscription(transcription)}
-          >
-            <CardHeader className="p-4 pb-2 space-y-0">
-              <div className="flex justify-between items-start">
-                <Badge variant="outline" className="mb-1">
-                  {transcription.category}
-                </Badge>
-                <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <CardTitle className="text-base">{transcription.summary}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-2">
-              <div className="flex items-center text-sm mb-3 text-muted-foreground">
-                <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                <span className="mr-3">{transcription.id}</span>
-                <Phone className="h-3.5 w-3.5 mr-1" />
-                <span>{transcription.callId}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5 mr-1" />
-                  <span>{transcription.duration}</span>
+        {filteredTranscriptions.length > 0 ? (
+          filteredTranscriptions.map((transcription) => (
+            <Card 
+              key={transcription.id} 
+              className="overflow-hidden hover:border-primary/50 transition-colors cursor-pointer group"
+              onClick={() => openTranscription(transcription)}
+            >
+              <CardHeader className="p-4 pb-2 space-y-0">
+                <div className="flex justify-between items-start">
+                  <Badge variant="outline" className="mb-1">
+                    {transcription.category}
+                  </Badge>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="text-muted-foreground text-xs">
-                  {formatDate(transcription.date)}
+                <CardTitle className="text-base">{transcription.summary}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-2">
+                <div className="flex items-center text-sm mb-3 text-muted-foreground">
+                  <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                  <span className="mr-3">{transcription.id}</span>
+                  <Phone className="h-3.5 w-3.5 mr-1" />
+                  <span>{transcription.callId}</span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5 mr-1" />
+                    <span>{transcription.duration}</span>
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {formatDate(transcription.date)}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <div className="col-span-full text-center py-10 bg-card rounded-lg border">
+            <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="text-muted-foreground">No se encontraron transcripciones con los filtros actuales</p>
+          </div>
+        )}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -249,7 +313,7 @@ const TranscriptionsPage = () => {
           <div className="mt-4">
             <div className="flex justify-between mb-2">
               <h3 className="font-medium">Transcripción Completa</h3>
-              <Button variant="outline" size="sm" className="h-8">
+              <Button variant="outline" size="sm" className="h-8" onClick={handleCopyText}>
                 <Copy className="h-3.5 w-3.5 mr-2" />
                 Copiar
               </Button>
