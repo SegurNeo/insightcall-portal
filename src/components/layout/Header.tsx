@@ -7,9 +7,10 @@ import { useState } from "react";
 
 interface HeaderProps {
   sidebarCollapsed: boolean;
+  toggleSidebar?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ sidebarCollapsed }) => {
+const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, toggleSidebar }) => {
   const [searchFocused, setSearchFocused] = useState(false);
 
   return (
