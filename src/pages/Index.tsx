@@ -1,4 +1,3 @@
-
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import RecentCallsList from "@/components/calls/RecentCallsList";
 import { useState } from "react";
+import ElevenLabsWidget from "@/components/calls/ElevenLabsWidget";
 
-// Sample data for charts
 const callVolumeData = [
   { day: 'Lun', calls: 34 },
   { day: 'Mar', calls: 42 },
@@ -60,7 +59,6 @@ const Index = () => {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     
-    // Example of using toast for UI feedback
     if (value === "calls") {
       toast({
         title: "Vista actualizada",
@@ -119,6 +117,7 @@ const Index = () => {
           <TabsTrigger value="overview">Visión General</TabsTrigger>
           <TabsTrigger value="calls">Llamadas</TabsTrigger>
           <TabsTrigger value="metrics">Métricas</TabsTrigger>
+          <TabsTrigger value="assistant">Asistente IA</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="space-y-4">
@@ -351,6 +350,57 @@ const Index = () => {
             </CardContent>
           </Card>
         </TabsContent>
+        
+        <TabsContent value="assistant">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <ElevenLabsWidget />
+            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Integración con ElevenLabs</CardTitle>
+                <CardDescription>
+                  Configura tu asistente virtual con Conversational AI
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <h3 className="font-medium">¿Cómo funciona?</h3>
+                <p className="text-sm text-muted-foreground">
+                  La integración con ElevenLabs Conversational AI te permite crear un asistente virtual 
+                  que puede atender llamadas, responder preguntas de los clientes y realizar tareas básicas 
+                  automáticamente.
+                </p>
+                
+                <h3 className="font-medium mt-4">Pasos para la configuración:</h3>
+                <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                  <li>Obtén una API Key de ElevenLabs</li>
+                  <li>Crea un agente conversacional en el panel de ElevenLabs</li>
+                  <li>Configura las respuestas y comportamientos del agente</li>
+                  <li>Copia el ID del agente y pegalo en el formulario</li>
+                  <li>Selecciona la voz que más se adapte a tus necesidades</li>
+                </ol>
+                
+                <div className="bg-primary/5 p-4 rounded-md mt-4">
+                  <h3 className="font-medium text-primary">Beneficios</h3>
+                  <ul className="text-sm space-y-2 mt-2">
+                    <li className="flex items-start">
+                      <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-2 mt-0.5">✓</span>
+                      Atiende llamadas 24/7 sin intervención humana
+                    </li>
+                    <li className="flex items-start">
+                      <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-2 mt-0.5">✓</span>
+                      Reduce tiempos de espera y mejora la satisfacción
+                    </li>
+                    <li className="flex items-start">
+                      <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-2 mt-0.5">✓</span>
+                      Redirige casos complejos a agentes humanos cuando sea necesario
+                    </li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
 
       <div className="mt-6">
@@ -369,3 +419,4 @@ const Index = () => {
 };
 
 export default Index;
+

@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardFooter } from "@/components/ui/card";
@@ -35,6 +34,7 @@ import {
 } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import CallHistoryDrawer from "./CallHistoryDrawer";
+import { useNavigate } from "react-router-dom";
 
 interface RecentCallsListProps {
   limit?: number;
@@ -162,6 +162,8 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
     setSelectedCall(call);
     setHistoryOpen(true);
   };
+
+  const navigate = useNavigate();
   
   const applyFilters = () => {
     let result = [...recentCallsData];
@@ -391,7 +393,7 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
                       variant={statusBadgeVariant(call.status)}
                       className={cn(
                         "inline-flex items-center",
-                        call.status === "Incidencia" ? "bg-destructive/10 hover:bg-destructive/20 text-destructive border-destructive/20" : null,
+                        call.status === "Incidencia" ? "bg-destructive/10 hover:bg-destructive/20 border-destructive/20" : null,
                         call.status === "Completada" ? "text-primary" : null
                       )}
                     >
@@ -425,13 +427,13 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-primary"
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 mr-1 text-primary"
                         onClick={() => openHistory(call)}
-                        title="Ver historial"
                       >
-                        <History className="h-4 w-4" />
+                        <History className="h-4 w-4 mr-1" /> 
+                        Ver historial
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
                         <ChevronRight className="h-4 w-4" />

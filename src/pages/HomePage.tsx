@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, Calendar, CalendarDays, ChevronRight, Clock, Download, FileText, Phone, Settings, Users } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import RecentCallsList from "@/components/calls/RecentCallsList";
 import QuickAccessCard from "@/components/dashboard/QuickAccessCard";
 import { Link } from "react-router-dom";
+import AlertsCard from "@/components/dashboard/AlertsCard";
 
 interface KpiCardProps {
   title: string;
@@ -18,16 +19,6 @@ interface KpiCardProps {
     positive: boolean;
   };
   indicator?: React.ReactNode;
-}
-
-export interface Alert {
-  id: string;
-  type: "ticket" | "repeat_call" | "error";
-  title: string;
-  description: string;
-  time: string;
-  severity: "high" | "medium" | "low";
-  route: string;
 }
 
 // Datos de ejemplo para el gráfico
@@ -83,7 +74,7 @@ const kpiData = [
 ];
 
 // Datos para las alertas
-const alertsData: Alert[] = [
+const alertsData = [
   {
     id: "alert-1",
     type: "ticket",
@@ -173,7 +164,7 @@ const HomePage = () => {
       </div>
 
       <div className="grid gap-6 md:grid-cols-12 mb-6">
-        {/* Call Volume Chart */}
+        {/* Call Volume Chart - Restaurando el gráfico de área original */}
         <Card className="md:col-span-8">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base">Volumen de llamadas</CardTitle>
@@ -186,66 +177,33 @@ const HomePage = () => {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={callVolumeData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <AreaChart data={callVolumeData}>
+                <defs>
+                  <linearGradient id="colorCalls" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsla(var(--muted-foreground) / 0.1)" />
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="calls" fill="#3f8ff7" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Area 
+                  type="monotone" 
+                  dataKey="calls" 
+                  stroke="hsl(var(--primary))" 
+                  fillOpacity={1} 
+                  fill="url(#colorCalls)" 
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
         {/* Alerts Card */}
-        <Card className="md:col-span-4">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base">Alertas pendientes</CardTitle>
-            <Button variant="ghost" size="sm" className="h-8" asChild>
-              <Link to="/actions">
-                Ver todas
-                <ChevronRight className="h-3.5 w-3.5 ml-1" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {alertsData.map((alert) => (
-                <div key={alert.id} className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-medium">{alert.title}</div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        {alert.description}
-                      </div>
-                    </div>
-                    <Badge
-                      variant={
-                        alert.severity === "high"
-                          ? "destructive"
-                          : alert.severity === "medium"
-                          ? "default"
-                          : "outline"
-                      }
-                    >
-                      {alert.severity}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between mt-3">
-                    <div className="text-xs text-muted-foreground">
-                      {alert.time}
-                    </div>
-                    <Button variant="outline" size="sm" className="h-7" asChild>
-                      <Link to={alert.route}>
-                        Ver detalle
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="md:col-span-4">
+          <AlertsCard alerts={alertsData} />
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-12 mb-6">
@@ -263,7 +221,7 @@ const HomePage = () => {
           <RecentCallsList limit={5} />
         </Card>
 
-        {/* Quick Access */}
+        {/* Quick Access y Agent Activity */}
         <div className="md:col-span-4 space-y-6">
           <QuickAccessCard />
           

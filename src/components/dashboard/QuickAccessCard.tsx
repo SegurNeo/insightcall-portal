@@ -50,7 +50,7 @@ const QuickAccessCard = () => {
         <CardTitle>Accesos rápidos</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {quickLinks.map((link, index) => (
             <Link to={link.to} key={index} className="block w-full">
               <Button 
@@ -60,7 +60,7 @@ const QuickAccessCard = () => {
                 <div className={`p-2.5 rounded-full mr-3 ${link.color}`}>
                   <link.icon className="h-5 w-5" />
                 </div>
-                <div className="text-left w-[calc(100%-4rem)] overflow-hidden">
+                <div className="text-left flex-1 overflow-hidden">
                   <div className="font-medium truncate">{link.title}</div>
                   <div className="text-xs text-muted-foreground mt-0.5 truncate">{link.description}</div>
                 </div>

@@ -44,6 +44,16 @@ const AlertsCard = ({ alerts }: AlertsCardProps) => {
     navigate(alert.route);
   };
 
+  // Traduce la severidad a español
+  const getSeverityLabel = (severity: Alert["severity"]) => {
+    switch(severity) {
+      case "high": return "Alta";
+      case "medium": return "Media";
+      case "low": return "Baja";
+      default: return severity;
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -78,7 +88,7 @@ const AlertsCard = ({ alerts }: AlertsCardProps) => {
                           ? "secondary" 
                           : "outline"
                     }>
-                      {alert.severity === "high" ? "Urgente" : alert.severity === "medium" ? "Media" : "Baja"}
+                      {getSeverityLabel(alert.severity)}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
