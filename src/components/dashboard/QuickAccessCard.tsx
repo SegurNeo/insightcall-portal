@@ -60,9 +60,9 @@ const QuickAccessCard = () => {
                 <div className={`p-2.5 rounded-full mr-3 ${link.color}`}>
                   <link.icon className="h-5 w-5" />
                 </div>
-                <div className="text-left">
-                  <div className="font-medium">{link.title}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{link.description}</div>
+                <div className="text-left w-[calc(100%-4rem)] overflow-hidden">
+                  <div className="font-medium truncate">{link.title}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{link.description}</div>
                 </div>
               </Button>
             </Link>

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ArrowUpRight, PhoneCall, TicketX, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface Alert {
   id: string;
@@ -11,6 +12,7 @@ interface Alert {
   description: string;
   time: string;
   severity: "low" | "medium" | "high";
+  route: string;
 }
 
 interface AlertsCardProps {
@@ -18,6 +20,8 @@ interface AlertsCardProps {
 }
 
 const AlertsCard = ({ alerts }: AlertsCardProps) => {
+  const navigate = useNavigate();
+  
   const getSeverityColor = (severity: Alert["severity"]) => {
     switch(severity) {
       case "high": return "text-destructive bg-destructive/10";
@@ -34,6 +38,10 @@ const AlertsCard = ({ alerts }: AlertsCardProps) => {
       case "line_issue": return <UserX className="h-4 w-4" />;
       default: return <AlertTriangle className="h-4 w-4" />;
     }
+  };
+  
+  const handleViewDetails = (alert: Alert) => {
+    navigate(alert.route);
   };
 
   return (
@@ -76,7 +84,12 @@ const AlertsCard = ({ alerts }: AlertsCardProps) => {
                   <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-xs text-muted-foreground">{alert.time}</span>
-                    <Button variant="link" size="sm" className="h-auto p-0">
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      className="h-auto p-0"
+                      onClick={() => handleViewDetails(alert)}
+                    >
                       Ver detalles
                     </Button>
                   </div>

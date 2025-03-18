@@ -21,6 +21,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
+import { useToast } from "@/hooks/use-toast";
 
 interface RecentCallsListProps {
   limit?: number;
@@ -132,6 +145,50 @@ const formatDate = (dateString: string) => {
 
 const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [filters, setFilters] = useState({
+    status: [] as string[],
+    category: [] as string[],
+    agent: [] as string[],
+  });
+  const [filteredData, setFilteredData] = useState(recentCallsData);
+  const { toast } = useToast();
+  
+  const applyFilters = () => {
+    let result = [...recentCallsData];
+    
+    if (filters.status.length > 0) {
+      result = result.filter(call => filters.status.includes(call.status));
+    }
+    
+    if (filters.category.length > 0) {
+      result = result.filter(call => filters.category.includes(call.category));
+    }
+    
+    if (filters.agent.length > 0) {
+      result = result.filter(call => filters.agent.includes(call.agent));
+    }
+    
+    setFilteredData(result);
+    
+    toast({
+      title: "Filtros aplicados",
+      description: `Mostrando ${result.length} de ${recentCallsData.length} llamadas`,
+    });
+  };
+  
+  const resetFilters = () => {
+    setFilters({
+      status: [],
+      category: [],
+      agent: [],
+    });
+    setFilteredData(recentCallsData);
+    
+    toast({
+      title: "Filtros reiniciados",
+      description: "Mostrando todas las llamadas",
+    });
+  };
   
   const statusBadgeVariant = (status: string) => {
     switch (status) {
@@ -163,17 +220,116 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
     }
   };
 
-  const displayData = limit ? recentCallsData.slice(0, limit) : recentCallsData;
+  const displayData = limit ? filteredData.slice(0, limit) : filteredData;
+  
+  // Get unique values for filters
+  const uniqueStatuses = [...new Set(recentCallsData.map(call => call.status))];
+  const uniqueCategories = [...new Set(recentCallsData.map(call => call.category))];
+  const uniqueAgents = [...new Set(recentCallsData.map(call => call.agent))];
 
   return (
     <>
       <CardContent className="p-0">
         <div className="flex justify-between items-center p-4 border-b">
           <h3 className="text-sm font-medium">Mostrando {displayData.length} llamadas recientes</h3>
-          <Button variant="outline" size="sm" className="h-8">
-            <Filter className="h-3.5 w-3.5 mr-2" />
-            Filtrar
-          </Button>
+          
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8">
+                <Filter className="h-3.5 w-3.5 mr-2" />
+                Filtrar
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Filtrar llamadas</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <h4 className="mb-2 text-sm font-medium">Estado</h4>
+                  <ToggleGroup type="multiple" variant="outline" className="flex flex-wrap gap-2">
+                    {uniqueStatuses.map(status => (
+                      <ToggleGroupItem 
+                        key={status} 
+                        value={status}
+                        aria-label={`Filtrar por ${status}`}
+                        data-state={filters.status.includes(status) ? "on" : "off"}
+                        onClick={() => {
+                          setFilters(prev => {
+                            if (prev.status.includes(status)) {
+                              return {...prev, status: prev.status.filter(s => s !== status)};
+                            } else {
+                              return {...prev, status: [...prev.status, status]};
+                            }
+                          });
+                        }}
+                      >
+                        {status}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+                
+                <div>
+                  <h4 className="mb-2 text-sm font-medium">Categoría</h4>
+                  <ToggleGroup type="multiple" variant="outline" className="flex flex-wrap gap-2">
+                    {uniqueCategories.map(category => (
+                      <ToggleGroupItem 
+                        key={category} 
+                        value={category}
+                        aria-label={`Filtrar por ${category}`}
+                        data-state={filters.category.includes(category) ? "on" : "off"}
+                        onClick={() => {
+                          setFilters(prev => {
+                            if (prev.category.includes(category)) {
+                              return {...prev, category: prev.category.filter(c => c !== category)};
+                            } else {
+                              return {...prev, category: [...prev.category, category]};
+                            }
+                          });
+                        }}
+                      >
+                        {category}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+                
+                <div>
+                  <h4 className="mb-2 text-sm font-medium">Agente</h4>
+                  <ToggleGroup type="multiple" variant="outline" className="flex flex-wrap gap-2">
+                    {uniqueAgents.map(agent => (
+                      <ToggleGroupItem 
+                        key={agent} 
+                        value={agent}
+                        aria-label={`Filtrar por ${agent}`}
+                        data-state={filters.agent.includes(agent) ? "on" : "off"}
+                        onClick={() => {
+                          setFilters(prev => {
+                            if (prev.agent.includes(agent)) {
+                              return {...prev, agent: prev.agent.filter(a => a !== agent)};
+                            } else {
+                              return {...prev, agent: [...prev.agent, agent]};
+                            }
+                          });
+                        }}
+                      >
+                        {agent.split(' ')[0]}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+              </div>
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={resetFilters}>
+                  Reiniciar
+                </Button>
+                <DialogClose asChild>
+                  <Button onClick={applyFilters}>Aplicar filtros</Button>
+                </DialogClose>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
         <div className="relative overflow-auto">
           <Table>
@@ -225,7 +381,7 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
                       variant={statusBadgeVariant(call.status)}
                       className={cn(
                         "inline-flex items-center",
-                        call.status === "Incidencia" ? "text-destructive" : null,
+                        call.status === "Incidencia" ? "bg-destructive/10 hover:bg-destructive/20 text-destructive border-destructive/20" : null,
                         call.status === "Completada" ? "text-primary" : null
                       )}
                     >
@@ -288,7 +444,7 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
       {!limit && (
         <CardFooter className="flex items-center justify-between border-t p-4">
           <div className="text-sm text-muted-foreground">
-            Mostrando 7 de 124 llamadas
+            Mostrando {displayData.length} de {recentCallsData.length} llamadas
           </div>
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm" disabled>
