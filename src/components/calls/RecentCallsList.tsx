@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { Check, ChevronRight, Clock, Download, ExternalLink, Filter, MoreHorizontal, PhoneIncoming, PhoneMissed, UserCheck, X } from "lucide-react";
+import { Check, ChevronRight, Clock, Download, ExternalLink, Filter, MoreHorizontal, PhoneIncoming, PhoneMissed, UserCheck, X, History } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +34,7 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
+import CallHistoryDrawer from "./CallHistoryDrawer";
 
 interface RecentCallsListProps {
   limit?: number;
@@ -152,6 +153,15 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
   });
   const [filteredData, setFilteredData] = useState(recentCallsData);
   const { toast } = useToast();
+  
+  // Estado para controlar la apertura del historial
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [selectedCall, setSelectedCall] = useState<any>(null);
+  
+  const openHistory = (call: any) => {
+    setSelectedCall(call);
+    setHistoryOpen(true);
+  };
   
   const applyFilters = () => {
     let result = [...recentCallsData];
@@ -414,6 +424,15 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-primary"
+                        onClick={() => openHistory(call)}
+                        title="Ver historial"
+                      >
+                        <History className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -429,6 +448,10 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
                           <DropdownMenuItem>Ver detalles</DropdownMenuItem>
                           <DropdownMenuItem>Escuchar grabación</DropdownMenuItem>
                           <DropdownMenuItem>Ver transcripción</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openHistory(call)}>
+                            <History className="h-4 w-4 mr-2" />
+                            Ver historial
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive">Marcar incidencia</DropdownMenuItem>
                         </DropdownMenuContent>
@@ -455,6 +478,16 @@ const RecentCallsList: React.FC<RecentCallsListProps> = ({ limit }) => {
             </Button>
           </div>
         </CardFooter>
+      )}
+      
+      {/* Drawer para mostrar el historial de la llamada */}
+      {selectedCall && (
+        <CallHistoryDrawer
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          phoneNumber={selectedCall.phone}
+          callId={selectedCall.id}
+        />
       )}
     </>
   );

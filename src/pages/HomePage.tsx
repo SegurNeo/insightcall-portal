@@ -1,184 +1,246 @@
 
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ArrowUpRight, CalendarDays, Clock, Headphones, MessageSquare, Phone, PhoneCall, UserCheck } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import StatCard from "@/components/dashboard/StatCard";
-import AlertsCard from "@/components/dashboard/AlertsCard";
-import QuickAccessCard from "@/components/dashboard/QuickAccessCard";
+import { Badge } from "@/components/ui/badge";
+import { ArrowUpRight, Calendar, CalendarDays, ChevronRight, Clock, Download, FileText, Phone, Settings, Users } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import RecentCallsList from "@/components/calls/RecentCallsList";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import QuickAccessCard from "@/components/dashboard/QuickAccessCard";
+import { Link } from "react-router-dom";
 
-// Sample data for stats
-const stats = [
-  { title: "Llamadas Hoy", value: "48", icon: PhoneCall, change: "+12%", changeType: "positive" as const },
-  { title: "Tiempo Medio", value: "2:38", icon: Clock, change: "-8%", changeType: "positive" as const },
-  { title: "Tasa Resolución", value: "83%", icon: UserCheck, change: "+2%", changeType: "positive" as const },
-  { title: "Transcripciones", value: "35", icon: MessageSquare, change: "=", changeType: "neutral" as const },
-];
+interface KpiCardProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  change?: {
+    value: string;
+    positive: boolean;
+  };
+  indicator?: React.ReactNode;
+}
 
-// Sample data for the chart
+export interface Alert {
+  id: string;
+  type: "ticket" | "repeat_call" | "error";
+  title: string;
+  description: string;
+  time: string;
+  severity: "high" | "medium" | "low";
+  route: string;
+}
+
+// Datos de ejemplo para el gráfico
 const callVolumeData = [
-  { day: 'Lun', calls: 34 },
-  { day: 'Mar', calls: 42 },
-  { day: 'Mié', calls: 53 },
-  { day: 'Jue', calls: 48 },
-  { day: 'Vie', calls: 62 },
-  { day: 'Sáb', calls: 23 },
-  { day: 'Dom', calls: 12 },
+  { name: "Lun", calls: 42 },
+  { name: "Mar", calls: 38 },
+  { name: "Mié", calls: 45 },
+  { name: "Jue", calls: 39 },
+  { name: "Vie", calls: 53 },
+  { name: "Sáb", calls: 18 },
+  { name: "Dom", calls: 12 },
 ];
 
-// Sample alerts data
-const alertsData = [
+// Datos para las tarjetas KPI
+const kpiData = [
+  {
+    title: "Llamadas hoy",
+    value: "48",
+    icon: <Phone className="h-4 w-4" />,
+    change: {
+      value: "+12%",
+      positive: true,
+    },
+  },
+  {
+    title: "Duración media",
+    value: "2m 38s",
+    icon: <Clock className="h-4 w-4" />,
+    change: {
+      value: "-8%",
+      positive: true,
+    },
+  },
+  {
+    title: "Incidencias",
+    value: "17%",
+    icon: <Phone className="h-4 w-4" />,
+    indicator: (
+      <Badge variant="destructive" className="ml-2">
+        +5%
+      </Badge>
+    ),
+  },
+  {
+    title: "Transcripciones",
+    value: "35",
+    icon: <FileText className="h-4 w-4" />,
+    change: {
+      value: "92%",
+      positive: true,
+    },
+  },
+];
+
+// Datos para las alertas
+const alertsData: Alert[] = [
   {
     id: "alert-1",
-    type: "ticket" as const,
-    title: "5 tickets sin resolver",
-    description: "Tickets de clientes esperando resolución desde hace más de 24h",
-    time: "Hace 2 horas",
-    severity: "high" as const
+    type: "ticket",
+    title: "Ticket #12345 sin resolver",
+    description: "Cliente solicitó información sobre su póliza",
+    time: "hace 2 horas",
+    severity: "high",
+    route: "/actions"
   },
   {
     id: "alert-2",
-    type: "repeat_call" as const,
-    title: "Cliente con llamadas repetidas",
-    description: "El cliente +34 612 345 678 ha llamado 3 veces hoy",
-    time: "Hace 45 minutos",
-    severity: "medium" as const
+    type: "repeat_call",
+    title: "3 llamadas del mismo cliente",
+    description: "+34 922 456 789 ha llamado 3 veces hoy",
+    time: "hoy",
+    severity: "medium",
+    route: "/calls"
   },
   {
     id: "alert-3",
-    type: "line_issue" as const,
-    title: "Línea con problemas",
-    description: "El número 'Soporte Madrid' tiene problemas de conexión",
-    time: "Hace 3 horas",
-    severity: "low" as const
-  }
+    type: "error",
+    title: "Error en número virtual",
+    description: "El número #12 no está recibiendo llamadas",
+    time: "hace 30 minutos",
+    severity: "high",
+    route: "/phones"
+  },
 ];
+
+const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon, change, indicator }) => {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="text-sm font-medium text-muted-foreground">{title}</div>
+            <div className="flex items-baseline">
+              <div className="text-3xl font-bold">{value}</div>
+              {indicator}
+            </div>
+          </div>
+          <div className="p-2 bg-primary/10 rounded-full">
+            <div className="text-primary">{icon}</div>
+          </div>
+        </div>
+        {change && (
+          <div className="flex items-center mt-4 text-xs">
+            <span
+              className={
+                change.positive ? "text-green-600" : "text-red-600"
+              }
+            >
+              {change.value}
+            </span>
+            <span className="text-muted-foreground ml-1">
+              vs ayer
+            </span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const HomePage = () => {
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Bienvenido al panel de control de Nogal Seguros
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Select defaultValue="7days">
-            <SelectTrigger className="w-[180px]">
-              <CalendarDays className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Hoy</SelectItem>
-              <SelectItem value="yesterday">Ayer</SelectItem>
-              <SelectItem value="7days">Últimos 7 días</SelectItem>
-              <SelectItem value="30days">Últimos 30 días</SelectItem>
-              <SelectItem value="custom">Personalizado</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="default">
-            <Headphones className="h-4 w-4 mr-2" />
-            Nueva Llamada
-          </Button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-semibold tracking-tight">Panel de control</h1>
+        <p className="text-muted-foreground">
+          Resumen de la actividad y analíticas principales
+        </p>
       </div>
 
+      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        {stats.map((stat, index) => (
-          <StatCard 
+        {kpiData.map((kpi, index) => (
+          <KpiCard
             key={index}
-            title={stat.title}
-            value={stat.value}
-            icon={stat.icon}
-            change={stat.change}
-            changeType={stat.changeType}
+            title={kpi.title}
+            value={kpi.value}
+            icon={kpi.icon}
+            change={kpi.change}
+            indicator={kpi.indicator}
           />
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
-        <Card className="md:col-span-2">
+      <div className="grid gap-6 md:grid-cols-12 mb-6">
+        {/* Call Volume Chart */}
+        <Card className="md:col-span-8">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle>Volumen de Llamadas</CardTitle>
-              <CardDescription>Llamadas por día en la última semana</CardDescription>
+            <CardTitle className="text-base">Volumen de llamadas</CardTitle>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" className="h-8">
+                <CalendarDays className="h-3.5 w-3.5 mr-2" />
+                Últimos 7 días
+              </Button>
             </div>
-            <Button variant="ghost" size="icon" className="text-muted-foreground">
-              <ArrowUpRight className="h-4 w-4" />
-            </Button>
           </CardHeader>
-          <CardContent className="px-2">
-            <div className="h-[250px] mt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={callVolumeData}>
-                  <defs>
-                    <linearGradient id="colorCalls" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="day" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsla(var(--muted-foreground) / 0.1)" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--background))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '0.5rem',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="calls" 
-                    stroke="hsl(var(--primary))" 
-                    fillOpacity={1} 
-                    fill="url(#colorCalls)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={callVolumeData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="calls" fill="#3f8ff7" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <AlertsCard alerts={alertsData} />
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 mb-6">
-        <QuickAccessCard />
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Actividad Agentes</CardTitle>
-            <CardDescription>Top por volumen de llamadas</CardDescription>
+        {/* Alerts Card */}
+        <Card className="md:col-span-4">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-base">Alertas pendientes</CardTitle>
+            <Button variant="ghost" size="sm" className="h-8" asChild>
+              <Link to="/actions">
+                Ver todas
+                <ChevronRight className="h-3.5 w-3.5 ml-1" />
+              </Link>
+            </Button>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { name: "María García", calls: 38, avatar: "MG" },
-                { name: "Luis Martínez", calls: 31, avatar: "LM" },
-                { name: "Ana Rodríguez", calls: 28, avatar: "AR" },
-                { name: "Carlos López", calls: 24, avatar: "CL" }
-              ].map((agent, i) => (
-                <div key={i} className="flex items-center">
-                  <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-sm font-medium text-secondary-foreground mr-3">
-                    {agent.avatar}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{agent.name}</p>
-                    <div className="w-full h-2 bg-secondary rounded-full mt-1.5 overflow-hidden">
-                      <div 
-                        className="h-full bg-primary rounded-full" 
-                        style={{ width: `${(agent.calls / 40) * 100}%` }} 
-                      />
+          <CardContent className="p-0">
+            <div className="divide-y">
+              {alertsData.map((alert) => (
+                <div key={alert.id} className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-medium">{alert.title}</div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        {alert.description}
+                      </div>
                     </div>
+                    <Badge
+                      variant={
+                        alert.severity === "high"
+                          ? "destructive"
+                          : alert.severity === "medium"
+                          ? "default"
+                          : "outline"
+                      }
+                    >
+                      {alert.severity}
+                    </Badge>
                   </div>
-                  <div className="ml-2 text-sm font-medium">{agent.calls}</div>
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="text-xs text-muted-foreground">
+                      {alert.time}
+                    </div>
+                    <Button variant="outline" size="sm" className="h-7" asChild>
+                      <Link to={alert.route}>
+                        Ver detalle
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -186,16 +248,54 @@ const HomePage = () => {
         </Card>
       </div>
 
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Llamadas Recientes</h2>
-          <Button variant="link" className="text-sm">
-            Ver todas <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
-        </div>
-        <Card>
+      <div className="grid gap-6 md:grid-cols-12 mb-6">
+        {/* Recent Calls */}
+        <Card className="md:col-span-8">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-base">Llamadas recientes</CardTitle>
+            <Button variant="ghost" size="sm" className="h-8" asChild>
+              <Link to="/calls">
+                Ver todas
+                <ChevronRight className="h-3.5 w-3.5 ml-1" />
+              </Link>
+            </Button>
+          </CardHeader>
           <RecentCallsList limit={5} />
         </Card>
+
+        {/* Quick Access */}
+        <div className="md:col-span-4 space-y-6">
+          <QuickAccessCard />
+          
+          {/* Agent Activity Card */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Actividad de agentes</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {["María García", "Luis Martínez", "Ana Rodríguez"].map((agent, index) => (
+                  <div key={index} className="p-4 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-sm font-medium text-secondary-foreground mr-3">
+                        {agent.split(' ').map(name => name[0]).join('')}
+                      </div>
+                      <div>
+                        <div className="font-medium">{agent}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {["12 llamadas", "8 llamadas", "10 llamadas"][index]} hoy
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </DashboardLayout>
   );
