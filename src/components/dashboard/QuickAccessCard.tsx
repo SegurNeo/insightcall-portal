@@ -26,21 +26,21 @@ const QuickAccessCard = () => {
       description: "Busca transcripciones por contenido",
       icon: Search,
       to: "/transcriptions",
-      color: "bg-amber-500/10 text-amber-600",
+      color: "bg-blue-400/10 text-blue-500",
     },
     {
       title: "Revisar acciones",
       description: "Gestiona tickets y tareas pendientes",
       icon: FileText,
       to: "/actions",
-      color: "bg-green-500/10 text-green-600",
+      color: "bg-blue-300/10 text-blue-400",
     },
     {
       title: "Configuración",
       description: "Ajusta parámetros del sistema",
       icon: Settings,
       to: "/settings",
-      color: "bg-purple-500/10 text-purple-600",
+      color: "bg-blue-200/10 text-blue-300",
     },
   ];
 
