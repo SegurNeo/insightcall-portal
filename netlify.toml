@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Necesario para Single Page Applications (SPAs) como las creadas con Vite/React
+# para que el enrutamiento del lado del cliente funcione correctamente.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
