@@ -1,4 +1,3 @@
-
 import { useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
 import NogalLogo from '../branding/NogalLogo';
@@ -20,7 +19,9 @@ import {
   Search, 
   Settings,
   ShoppingCart,
-  Workflow
+  FlaskConical,
+  Workflow,
+  Ticket
 } from "lucide-react";
 import { useState } from "react";
 
@@ -66,6 +67,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
         { name: 'Analítica', icon: BarChart3, path: '/analytics' },
         { name: 'Acciones posteriores', icon: FolderClosed, path: '/actions' },
         { name: 'Números de teléfono', icon: Phone, path: '/phones' },
+        { name: 'Tickets', icon: Ticket, path: '/tickets' },
+        { name: 'Lab', icon: FlaskConical, path: '/lab' },
       ] 
     },
     { 
@@ -91,8 +94,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
     >
       <div className="p-4 flex items-center justify-between border-b">
         <div className={cn("overflow-hidden flex items-center", collapsed ? "justify-center w-full" : "")}>
-          <NogalLogo className={cn("h-8 w-8 text-nogal-500", collapsed ? "mx-auto" : "mr-2")} />
-          {!collapsed && <span className="font-semibold text-lg whitespace-nowrap">Nogal Seguros</span>}
+          {!collapsed && <span className="font-semibold text-xl whitespace-nowrap">Insurcall<span className="text-blue-500">.</span></span>}
+          {collapsed && <div className="h-8 w-8"></div>}
         </div>
         <Button 
           variant="ghost" 
@@ -252,8 +255,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
-              <p className="text-sm font-medium truncate">Nogal Admin</p>
-              <p className="text-xs text-muted-foreground truncate">admin@nogalseguros.es</p>
+              <p className="text-sm font-medium truncate">Insurcall Admin</p>
+              <p className="text-xs text-muted-foreground truncate">admin@insurcall.es</p>
             </div>
           )}
         </div>

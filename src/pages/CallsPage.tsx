@@ -1,19 +1,10 @@
-
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Calendar, 
-  CalendarDays, 
-  Download, 
-  Filter, 
-  Headphones, 
-  PhoneCall, 
-  Search, 
-  SlidersHorizontal 
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import RecentCallsList from "@/components/calls/RecentCallsList";
+import { CalendarDays, Search } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { CallsTable } from "@/components/calls/CallsTable";
+import { CallDetailsDialog } from "@/components/calls/CallDetailsDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -22,8 +13,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useState } from "react";
+import { Call, CallStatus, CallListResponse } from "@/types/api";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { callService } from "@/services/callService";
 
 const CallsPage = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<CallStatus>("all");
+  const [selectedCall, setSelectedCall] = useState<Call>();
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const { toast } = useToast();
+
+  const { data, isLoading } = useQuery<CallListResponse, Error>({
+    queryKey: ['calls', currentPage, selectedStatus, searchQuery],
+    queryFn: () => callService.getCalls(currentPage, 10, {
+      status: selectedStatus,
+      searchQuery: searchQuery || undefined
+    }),
+    refetchInterval: 30000, // Refrescar cada 30 segundos
+  });
+
+  const handleViewDetails = (callId: string) => {
+    const call = data?.calls?.find(c => c.call_id === callId);
+    if (call) {
+      setSelectedCall(call);
+      setIsDetailsOpen(true);
+    }
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1); // Reset página al buscar
+  };
+
+  const handleStatusChange = (status: CallStatus) => {
+    setSelectedStatus(status);
+    setCurrentPage(1); // Reset página al cambiar filtros
+  };
+
+  const filteredCalls = (data?.calls || []).filter((call) => {
+    if (!call?.call_id || !call?.status) return false;
+    const matchesSearch = searchQuery ? call.call_id.toLowerCase().includes(searchQuery.toLowerCase()) : true;
+    const matchesStatus = selectedStatus === "all" || call.status.toLowerCase() === selectedStatus;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <DashboardLayout>
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
@@ -33,32 +69,18 @@ const CallsPage = () => {
             Gestiona y consulta todas las llamadas del asistente virtual
           </p>
         </div>
-        <div className="flex items-center space-x-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-60">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-10" placeholder="Buscar por teléfono o ID..." />
-          </div>
-          <Button variant="outline" className="hidden md:flex">
-            <CalendarDays className="h-4 w-4 mr-2" />
-            Filtrar por fecha
-          </Button>
-          <Button variant="default">
-            <Headphones className="h-4 w-4 mr-2" />
-            Nueva Llamada
-          </Button>
-        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <Tabs defaultValue="all" className="w-full md:w-auto">
-          <TabsList className="w-full">
-            <TabsTrigger value="all" className="flex-1">Todas</TabsTrigger>
-            <TabsTrigger value="completed" className="flex-1">Completadas</TabsTrigger>
-            <TabsTrigger value="forwarded" className="flex-1">Derivadas</TabsTrigger>
-            <TabsTrigger value="issues" className="flex-1">Incidencias</TabsTrigger>
-            <TabsTrigger value="missed" className="flex-1">Perdidas</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="relative flex-1 md:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            className="pl-10" 
+            placeholder="Buscar por ID..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
 
         <div className="flex items-center gap-2">
           <Select defaultValue="7days">
@@ -74,37 +96,37 @@ const CallsPage = () => {
               <SelectItem value="custom">Personalizado</SelectItem>
             </SelectContent>
           </Select>
-
-          <Select defaultValue="all">
-            <SelectTrigger className="w-[160px]">
-              <PhoneCall className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Categoría" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="consulta">Consultas</SelectItem>
-              <SelectItem value="siniestro">Siniestros</SelectItem>
-              <SelectItem value="venta">Ventas</SelectItem>
-              <SelectItem value="otros">Otros</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button variant="outline" size="icon">
-            <SlidersHorizontal className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
+      <Tabs defaultValue="all" className="w-full mb-6" onValueChange={(value) => setSelectedStatus(value as CallStatus)}>
+        <TabsList>
+          <TabsTrigger value="all">Todas</TabsTrigger>
+          <TabsTrigger value="completed">Completadas</TabsTrigger>
+          <TabsTrigger value="processing">En Proceso</TabsTrigger>
+          <TabsTrigger value="failed">Fallidas</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <Card className="mb-6">
-        <RecentCallsList />
+        {isLoading ? (
+          <div className="p-8 text-center text-muted-foreground">
+            Cargando llamadas...
+          </div>
+        ) : (
+          <CallsTable 
+            initialPage={currentPage}
+            onViewDetails={handleViewDetails}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </Card>
 
-      <div className="flex justify-end">
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Exportar Datos
-        </Button>
-      </div>
+      <CallDetailsDialog
+        call={selectedCall}
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+      />
     </DashboardLayout>
   );
 };
