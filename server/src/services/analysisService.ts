@@ -22,21 +22,43 @@ class AnalysisService {
   }
 
   private validateAnalysisResponse(response: any): AnalysisResult {
-    // Basic validation of required fields
-    if (!response.ActionID || !response.Details || !response.Context || !response.Priority) {
-      throw new Error('Invalid analysis response format');
+    // Helper para obtener la clave sin importar el formato
+    const findProp = (obj: any, variants: string[]): any => {
+      for (const key of variants) {
+        if (key in obj) return obj[key];
+      }
+      return undefined;
+    };
+
+    const actionId = findProp(response, ['ActionID', 'action_id', 'actionId']);
+    const details = findProp(response, ['Details', 'details']);
+    const context = findProp(response, ['Context', 'context']);
+    const priorityRaw = findProp(response, ['Priority', 'priority']);
+
+    if (!actionId || !details || !context || !priorityRaw) {
+      console.error('validateAnalysisResponse: formato inválido o claves faltantes', {
+        expected: ['ActionID/action_id/actionId', 'Details/details', 'Context/context', 'Priority/priority'],
+        receivedKeys: Object.keys(response)
+      });
+      throw new Error('Invalid analysis response format – missing required fields');
     }
+
+    const priority = ((): 'low' | 'medium' | 'high' => {
+      const val = String(priorityRaw).toLowerCase();
+      if (val === 'low' || val === 'medium' || val === 'high') return val;
+      return 'medium';
+    })();
 
     return {
       status: 'success',
-      action_id: response.ActionID,
-      details: response.Details,
+      action_id: actionId,
+      details: details,
       metadata: {
-        context: response.Context,
-        priority: response.Priority.toLowerCase(),
-        customerSentiment: response.CustomerSentiment,
-        keyTopics: response.KeyTopics,
-        requiredActions: response.RequiredActions,
+        context: context,
+        priority,
+        customerSentiment: findProp(response, ['CustomerSentiment', 'customer_sentiment', 'customerSentiment']),
+        keyTopics: findProp(response, ['KeyTopics', 'key_topics', 'keyTopics']),
+        requiredActions: findProp(response, ['RequiredActions', 'required_actions', 'requiredActions']),
       }
     };
   }
