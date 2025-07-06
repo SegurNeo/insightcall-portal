@@ -1,3 +1,3 @@
-import { TranscriptMessage } from '@shared/types/common.types';
+import { TranscriptMessage } from '@/types/common.types';
 
 export type { TranscriptMessage }; 

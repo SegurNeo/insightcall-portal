@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import config from '../../../../config';
-import { VoiceCallPayload } from '@shared/types/voiceCalls.types';
+import { VoiceCallPayload } from '@/types/voiceCalls.types';
 import { Tables } from '../../../../types/supabase.types';
 
 // Create Supabase client

@@ -1,3 +1,3 @@
-import { CallAnalysis } from '@shared/types/common.types';
+import { CallAnalysis } from '@/types/common.types';
 
 export type { CallAnalysis }; 

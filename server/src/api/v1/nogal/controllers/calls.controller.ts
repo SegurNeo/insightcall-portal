@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { validationService } from '../services/validation.service';
 import { authService } from '../services/auth.service';
 import { databaseService } from '../services/database.service';
-import { VoiceCallPayload, VoiceCallResponse } from '@shared/types/voiceCalls.types';
+import { VoiceCallPayload, VoiceCallResponse } from '@/types/voiceCalls.types';
 
 export class CallsController {
   
@@ -95,7 +95,7 @@ export class CallsController {
         nogal_internal_id: saveResult.nogalInternalId
       } as VoiceCallResponse);
       
-    } catch (error) {
+    } catch (error: any) {
       const processingTime = Date.now() - startTime;
       console.error(`[CallsController] Unexpected error after ${processingTime}ms:`, error);
       
