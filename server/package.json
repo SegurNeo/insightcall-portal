@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "ts-node-dev -r tsconfig-paths/register src/index.ts",
-    "build": "tsc",
+    "build": "npm run validate-env && tsc",
+    "validate-env": "node scripts/validate-env.js",
     "lint": "eslint . --ext .ts",
     "test": "jest"
   },
