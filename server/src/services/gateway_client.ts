@@ -7,7 +7,7 @@ import {
   SegurneoGetTranscriptsResponse,
   StoredCall
 } from '../types/segurneo_voice.types'; // Using path alias
-import config from '../config'; // Import config
+import config from '../config/index'; // Import config
 
 const SEGURNEO_API_BASE_URL = config.segurneoVoiceBaseUrl;
 const SEGURNEO_API_KEY = config.segurneoVoiceApiKey;

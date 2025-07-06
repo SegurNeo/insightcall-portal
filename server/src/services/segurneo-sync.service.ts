@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import config from '../config';
+import config from '../config/index';
 import { StoredCall, TranscriptEntry, SegurneoApiResponse } from '../types/segurneo_voice.types';
 
 export class SegurneoSyncService {

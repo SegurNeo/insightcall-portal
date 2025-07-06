@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import config from '../config';
+import config from '../config/index';
 
 if (!config.nogalSupabaseUrl || !config.nogalSupabaseServiceKey) {
   throw new Error('Missing Supabase configuration');

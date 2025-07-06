@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase.types';
-import config from '../config'; // Import config
+import config from '../config/index'; // Import config
 
 // It's crucial to have these in your .env file
 const supabaseUrl = config.nogalSupabaseUrl;

@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { callProcessingService } from './services/call_processing_service';
 import { ticketService } from './services/ticketService';
-import config from './config';
+import config from './config/index';
 import { supabase } from './lib/supabase';
 import apiV1Routes from './api/v1';
 
@@ -133,5 +133,11 @@ app.use(errorHandler);
 const server = app.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`);
   console.log('Environment:', config.nodeEnv);
-  console.log('API base URL:', `http://localhost:${config.port}/api/v1`);
+  
+  // Dynamic API base URL based on environment
+  const apiBaseUrl = config.nodeEnv === 'production' 
+    ? `https://insightcall-portal.onrender.com/api/v1`
+    : `http://localhost:${config.port}/api/v1`;
+  
+  console.log('API base URL:', apiBaseUrl);
 }); 
