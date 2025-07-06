@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { generateStructuredResponse } from '@/lib/gemini';
-import { TranscriptMessage } from '@/types/transcript.types';
-import { getPromptTemplate } from '@/config/prompts';
+import { generateStructuredResponse } from '../../../lib/gemini';
+import { TranscriptMessage } from '../../../types/transcript.types';
+import { getPromptTemplate } from '../../../config/prompts';
 
 interface AnalysisResult {
   status: 'completed' | 'failed';

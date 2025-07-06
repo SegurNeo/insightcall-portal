@@ -1,5 +1,5 @@
-import { supabase } from '@/supabase/client';
-import { ProcessedCall, ProcessedCallInsert } from '@/types/supabase.types';
+import { supabase } from '../../../lib/supabase';
+import { ProcessedCall, ProcessedCallInsert } from '../../../types/supabase.types';
 
 export class ProcessedCallsRepository {
   private static readonly TABLE_NAME = 'processed_calls';

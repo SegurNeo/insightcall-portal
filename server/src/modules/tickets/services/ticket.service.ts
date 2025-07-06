@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Ticket, TicketInsert, TicketUpdate, Json } from '@/types/supabase.types';
+import { Ticket, TicketInsert, TicketUpdate, Json } from '../../../types/supabase.types';
 import { TicketsRepository } from '../repositories/tickets.repository';
-import { nogalApiClient } from '@/modules/shared/infra';
+import { nogalApiClient } from '../../shared/infra';
 
 export interface CreateTicketDTO {
   conversation_id: string;

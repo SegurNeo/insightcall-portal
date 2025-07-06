@@ -1,5 +1,5 @@
-import { supabase } from '@/supabase/client';
-import { Ticket, TicketInsert, TicketUpdate } from '@/types/supabase.types';
+import { supabase } from '../../../lib/supabase';
+import { Ticket, TicketInsert, TicketUpdate } from '../../../types/supabase.types';
 
 export class TicketsRepository {
   private static readonly TABLE_NAME = 'tickets';

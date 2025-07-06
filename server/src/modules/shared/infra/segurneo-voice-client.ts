@@ -1,5 +1,5 @@
 import { HttpClient, HttpClientConfig } from './http-client';
-import { StoredCall, StoredTranscript } from '@/types/segurneo_voice.types';
+import { StoredCall, StoredTranscript } from '../../../types/segurneo_voice.types';
 
 export class SegurneoVoiceClient extends HttpClient {
   constructor(config: Omit<HttpClientConfig, 'baseURL'>) {

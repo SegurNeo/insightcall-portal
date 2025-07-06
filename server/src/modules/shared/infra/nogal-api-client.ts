@@ -1,5 +1,5 @@
 import { HttpClient, HttpClientConfig } from './http-client';
-import { NogalTicketPayload } from '@/types/nogal_tickets.types';
+import { NogalTicketPayload } from '../../../types/nogal_tickets.types';
 
 export class NogalApiClient extends HttpClient {
   constructor(config: Omit<HttpClientConfig, 'baseURL'>) {

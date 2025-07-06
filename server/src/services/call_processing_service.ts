@@ -1,11 +1,11 @@
 // @ts-nocheck
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '@/supabase/client';
+import { supabase } from '../lib/supabase';
 import { segurneoGatewayClient } from './gateway_client';
 import { analysisService } from '@modules/analysis';
 import { ticketService } from './ticketService';
-import { ProcessedCall, ProcessedCallInsert, TicketInsert, Json } from '@/types/supabase.types';
-import { StoredCall, StoredTranscript } from '@/types/segurneo_voice.types';
+import { ProcessedCall, ProcessedCallInsert, TicketInsert, Json } from '../types/supabase.types';
+import { StoredCall, StoredTranscript } from '../types/segurneo_voice.types';
 import { ticketClassifierService } from './ticketClassifierService';
 import { ticketDefinitions } from '../utils/ticketDefinitions';
 import { nogalApiService } from './nogalApiService';

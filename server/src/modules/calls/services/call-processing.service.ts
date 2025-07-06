@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
-import { ProcessedCall, ProcessedCallInsert, Json } from '@/types/supabase.types';
-import { StoredTranscript } from '@/types/segurneo_voice.types';
+import { ProcessedCall, ProcessedCallInsert, Json } from '../../../types/supabase.types';
+import { StoredTranscript } from '../../../types/segurneo_voice.types';
 import { ProcessedCallsRepository } from '../repositories/processed-calls.repository';
-import { segurneoVoiceClient, nogalApiClient } from '@/modules/shared/infra';
-import { analysisService } from '@/modules/analysis/services/analysis.service';
-import { ticketClassifierService } from '@/services/ticketClassifierService';
-import { ticketService } from '@/services/ticketService';
-import { ticketDefinitions } from '@/utils/ticketDefinitions';
-import type { NogalTicketPayload } from '@/types/nogal_tickets.types';
+import { segurneoVoiceClient, nogalApiClient } from '../../shared/infra';
+import { analysisService } from '../../analysis/services/analysis.service';
+import { ticketClassifierService } from '../../../services/ticketClassifierService';
+import { ticketService } from '../../../services/ticketService';
+import { ticketDefinitions } from '../../../utils/ticketDefinitions';
+import type { NogalTicketPayload } from '../../../types/nogal_tickets.types';
 
 interface TranscriptMessage {
   role: string;

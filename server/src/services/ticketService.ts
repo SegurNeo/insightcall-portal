@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '@/supabase/client';
-import { Ticket, TicketInsert, TicketUpdate } from '@/types/supabase.types';
+import { supabase } from '../lib/supabase';
+import { Ticket, TicketInsert, TicketUpdate } from '../types/supabase.types';
 
 const TICKETS_TABLE = 'tickets';
 
