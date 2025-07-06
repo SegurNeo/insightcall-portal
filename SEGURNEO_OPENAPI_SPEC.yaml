@@ -1,0 +1,506 @@
+openapi: 3.0.3
+info:
+  title: InsightCall Portal API - Segurneo Voice Integration
+  description: |
+    API para recibir y procesar llamadas de voz desde Segurneo Voice.
+    
+    ## Autenticación
+    Todas las requests requieren API key en el header Authorization:
+    ```
+    Authorization: Bearer segurneo
+    ```
+    
+    ## Base URL
+    - Producción: `https://insightcall-portal.onrender.com`
+    
+  version: 1.0.0
+  contact:
+    name: Pablo Senabre
+    email: support@insightcall.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://insightcall-portal.onrender.com
+    description: Servidor de Producción
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /api/v1/nogal/calls:
+    post:
+      summary: Enviar Llamada de Voz
+      description: |
+        Endpoint principal para recibir llamadas de voz desde Segurneo.
+        
+        **Características:**
+        - Validación automática de payload
+        - Detección de duplicados por call_id
+        - Almacenamiento en base de datos
+        - Respuesta inmediata con ID interno
+        
+      operationId: createVoiceCall
+      tags:
+        - Voice Calls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoiceCallPayload'
+            examples:
+              successful_call:
+                summary: Llamada Exitosa
+                value:
+                  call_id: "550e8400-e29b-41d4-a716-446655440000"
+                  conversation_id: "conv_abc123xyz789"
+                  agent_id: "agent_001"
+                  start_time: "2024-01-15T10:30:00.000Z"
+                  end_time: "2024-01-15T10:35:00.000Z"
+                  duration_seconds: 300
+                  status: "completed"
+                  cost: 2.50
+                  termination_reason: "call_completed"
+                  transcript_summary: "Cliente consultó sobre póliza de auto"
+                  call_successful: true
+                  participant_count:
+                    agent_messages: 12
+                    user_messages: 15
+                    total_messages: 27
+                  audio_available: true
+                  created_at: "2024-01-15T10:30:00.000Z"
+              failed_call:
+                summary: Llamada Fallida
+                value:
+                  call_id: "550e8400-e29b-41d4-a716-446655440001"
+                  conversation_id: "conv_failed_001"
+                  agent_id: "agent_002"
+                  start_time: "2024-01-15T11:00:00.000Z"
+                  end_time: "2024-01-15T11:02:00.000Z"
+                  duration_seconds: 120
+                  status: "failed"
+                  cost: 0.75
+                  termination_reason: "technical_error"
+                  call_successful: false
+                  participant_count:
+                    agent_messages: 3
+                    user_messages: 2
+                    total_messages: 5
+                  audio_available: false
+                  created_at: "2024-01-15T11:00:00.000Z"
+      responses:
+        '201':
+          description: Llamada creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCallSuccessResponse'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCallErrorResponse'
+              examples:
+                validation_error:
+                  summary: Error de Validación
+                  value:
+                    success: false
+                    message: "Validation failed"
+                    errors:
+                      - "call_id: Must be a valid UUID"
+                      - "duration_seconds: Must be a positive number"
+        '401':
+          description: No autorizado - API key inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCallErrorResponse'
+        '409':
+          description: Llamada duplicada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCallConflictResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCallErrorResponse'
+
+    get:
+      summary: Listar Llamadas Recientes
+      description: Obtiene las llamadas más recientes para monitoreo
+      operationId: getVoiceCalls
+      tags:
+        - Voice Calls
+      parameters:
+        - name: limit
+          in: query
+          description: Número máximo de llamadas a retornar (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Lista de llamadas obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCallListResponse'
+
+  /api/v1/nogal/calls/{callId}:
+    get:
+      summary: Obtener Llamada por ID
+      description: Obtiene los detalles de una llamada específica usando su call_id
+      operationId: getVoiceCallById
+      tags:
+        - Voice Calls
+      parameters:
+        - name: callId
+          in: path
+          description: ID único de la llamada (UUID)
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Llamada encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCallDetailResponse'
+        '404':
+          description: Llamada no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCallErrorResponse'
+
+  /api/v1/nogal/calls/stats:
+    get:
+      summary: Estadísticas de Llamadas
+      description: Obtiene estadísticas básicas de las llamadas procesadas
+      operationId: getVoiceCallStats
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Estadísticas obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceCallStatsResponse'
+
+  /api/v1/nogal/calls/health:
+    get:
+      summary: Health Check
+      description: Verifica el estado del servicio y conectividad con la base de datos
+      operationId: healthCheck
+      tags:
+        - Monitoring
+      security: []  # No requiere autenticación
+      responses:
+        '200':
+          description: Servicio saludable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+        '503':
+          description: Servicio no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: string
+      description: |
+        API Key de autenticación. 
+        
+        **Valor actual:** `segurneo`
+        
+        Ejemplo: `Authorization: Bearer segurneo`
+
+  schemas:
+    VoiceCallPayload:
+      type: object
+      required:
+        - call_id
+        - conversation_id
+        - agent_id
+        - start_time
+        - end_time
+        - duration_seconds
+        - status
+        - cost
+        - call_successful
+        - participant_count
+        - audio_available
+        - created_at
+      properties:
+        call_id:
+          type: string
+          format: uuid
+          description: ID único de la llamada (debe ser UUID válido)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        conversation_id:
+          type: string
+          minLength: 1
+          description: ID de la conversación
+          example: "conv_abc123xyz789"
+        agent_id:
+          type: string
+          minLength: 1
+          description: ID del agente que manejó la llamada
+          example: "agent_001"
+        start_time:
+          type: string
+          format: date-time
+          description: Hora de inicio de la llamada (ISO 8601)
+          example: "2024-01-15T10:30:00.000Z"
+        end_time:
+          type: string
+          format: date-time
+          description: Hora de finalización de la llamada (ISO 8601)
+          example: "2024-01-15T10:35:00.000Z"
+        duration_seconds:
+          type: number
+          minimum: 0
+          description: Duración de la llamada en segundos
+          example: 300
+        status:
+          type: string
+          enum: [completed, failed, abandoned]
+          description: Estado final de la llamada
+          example: "completed"
+        cost:
+          type: number
+          minimum: 0
+          description: Costo de la llamada en la moneda configurada
+          example: 2.50
+        termination_reason:
+          type: string
+          description: Razón de terminación de la llamada (opcional)
+          example: "call_completed"
+        transcript_summary:
+          type: string
+          description: Resumen de la transcripción (opcional)
+          example: "Cliente consultó sobre póliza de auto"
+        call_successful:
+          type: boolean
+          description: Indica si la llamada fue exitosa
+          example: true
+        participant_count:
+          $ref: '#/components/schemas/ParticipantCount'
+        audio_available:
+          type: boolean
+          description: Indica si hay audio disponible para esta llamada
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp de creación (ISO 8601)
+          example: "2024-01-15T10:30:00.000Z"
+
+    ParticipantCount:
+      type: object
+      required:
+        - agent_messages
+        - user_messages
+        - total_messages
+      properties:
+        agent_messages:
+          type: integer
+          minimum: 0
+          description: Número de mensajes del agente
+          example: 12
+        user_messages:
+          type: integer
+          minimum: 0
+          description: Número de mensajes del usuario
+          example: 15
+        total_messages:
+          type: integer
+          minimum: 0
+          description: Total de mensajes en la conversación
+          example: 27
+
+    VoiceCallSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Voice call saved successfully"
+        call_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        nogal_internal_id:
+          type: string
+          description: ID interno asignado por el sistema
+          example: "internal_id_abc123"
+
+    VoiceCallErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Validation failed"
+        call_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        errors:
+          type: array
+          items:
+            type: string
+          example:
+            - "call_id: Must be a valid UUID"
+            - "duration_seconds: Must be a positive number"
+
+    VoiceCallConflictResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Voice call already exists"
+        call_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        errors:
+          type: array
+          items:
+            type: string
+          example:
+            - "A voice call with this call_id already exists"
+
+    VoiceCallDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Voice call retrieved successfully"
+        call_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        data:
+          type: object
+          description: Datos completos de la llamada almacenada
+
+    VoiceCallListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Retrieved 10 voice calls"
+        data:
+          type: array
+          items:
+            type: object
+            description: Datos básicos de cada llamada
+
+    VoiceCallStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Stats retrieved successfully"
+        data:
+          type: object
+          properties:
+            total_calls:
+              type: integer
+              example: 1250
+            calls_today:
+              type: integer
+              example: 45
+            successful_calls:
+              type: integer
+              example: 1180
+            failed_calls:
+              type: integer
+              example: 70
+
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+        database:
+          type: string
+          example: "connected"
+        auth:
+          type: string
+          example: "required"
+        version:
+          type: string
+          example: "1.0.0"
+
+    HealthCheckErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Service unhealthy"
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "unhealthy"
+            database:
+              type: string
+              example: "disconnected"
+        errors:
+          type: array
+          items:
+            type: string
+          example:
+            - "Database connection failed"
+
+tags:
+  - name: Voice Calls
+    description: Operaciones relacionadas con llamadas de voz
+  - name: Monitoring
+    description: Endpoints de monitoreo y estadísticas 
