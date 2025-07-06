@@ -5,6 +5,9 @@
  * Validates that all required environment variables are set before deployment
  */
 
+// Load environment variables from .env file
+require('dotenv').config();
+
 const requiredVars = [
   'NOGAL_SUPABASE_URL',
   'NOGAL_SUPABASE_SERVICE_KEY',
