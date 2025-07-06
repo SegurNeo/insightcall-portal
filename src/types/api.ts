@@ -1,4 +1,9 @@
 // Tipos para la API de llamadas
+import { CallStatus as SharedCallStatus, TranscriptMessage, CallAnalysis } from '@shared/types/common.types';
+
+// Expandimos el CallStatus para incluir la opción 'all' usada sólo en UI
+export type CallStatus = SharedCallStatus | 'all';
+
 export interface CallMetadata {
   start_time_unix_secs: number;
   call_duration_secs: number;
@@ -27,41 +32,11 @@ export interface Call {
   transcript?: TranscriptMessage[];
 }
 
-export interface TranscriptMessage {
-  role: 'agent' | 'user';
-  message: string;
-  time_in_call_secs: number;
-  metadata: {
-    is_agent: boolean;
-    confidence?: number;
-    language?: string;
-    [key: string]: any;
-  };
-}
-
 export interface CallListResponse {
   calls: Call[];
   total: number;
   page: number;
   per_page: number;
-}
-
-// Status types for our UI
-export type CallStatus = 'completed' | 'processing' | 'failed' | 'all';
-
-// Analysis types
-export interface CallAnalysis {
-  analysis_id: string;
-  conversation_id: string;
-  action_id: string;
-  status: 'success' | 'error' | 'pending';
-  details: string;
-  metadata?: {
-    confidence: number;
-    priority: 'low' | 'medium' | 'high';
-    context: string;
-    requiredData: string[];
-  } | null;
 }
 
 // Error types
@@ -71,4 +46,7 @@ export interface ApiError {
   details?: any;
 }
 
-export type Conversation = Call; 
+export type Conversation = Call;
+
+// Reexportamos para mantener compatibilidad con importaciones existentes
+export type { TranscriptMessage, CallAnalysis }; 

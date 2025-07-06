@@ -1,0 +1,377 @@
+{
+  "payload": {
+    "event_type": "call.completed",
+    "call_data": {
+      "externalCallId": "d938d7fadc384835bed1",
+      "conversationId": "conv_171e6228-fee3-48f2-8018-69ead642b7de",
+      "status": "completed",
+      "startTime": 1750035462,
+      "duration": 235,
+      "clientData": {
+        "phone": "+34600123456",
+        "name": "Cliente de Prueba",
+        "dni": "12345678A",
+        "polizas": [
+          {
+            "numero": "123456789",
+            "compania": "REALE",
+            "estado": "Contratada",
+            "ramo": "auto"
+          }
+        ]
+      },
+      "transcripts": [
+        {
+          "speaker": "agent",
+          "text": "Ha contactado usted con la Correduría de Seguros Nogal. Para la mejora de la calidad",
+          "segment_start_time": 0,
+          "segment_end_time": 4.239999771118164,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "del servicio, esta conversación podría ser grabada. A continuación, escuchará la información",
+          "segment_start_time": 4.239999771118164,
+          "segment_end_time": 8.640000343322754,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "de protección de datos. Si ya es cliente o colaborador y no desea escucharla, pulse",
+          "segment_start_time": 8.640000343322754,
+          "segment_end_time": 12.4399995803833,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "cero. En cumplimiento de la normativa de protección",
+          "segment_start_time": 12.4399995803833,
+          "segment_end_time": 15.020000457763672,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "de datos, le informamos que el responsable del tratamiento de sus datos es Gran Nogal",
+          "segment_start_time": 15.020000457763672,
+          "segment_end_time": 18.719999313354492,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Correduría de Seguros S.L. con CIF B86540945 e inscrita con la clave J2988 en la DGS-FP.",
+          "segment_start_time": 18.719999313354492,
+          "segment_end_time": 27.040000915527344,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Los datos facilitados, así como los de terceros con su consentimiento, serán tratados con",
+          "segment_start_time": 27.760000228881836,
+          "segment_end_time": 31.440000534057617,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "la finalidad de cumplir con nuestras obligaciones como corredor de seguros. Los datos podrán",
+          "segment_start_time": 31.440000534057617,
+          "segment_end_time": 35.52000045776367,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "ser comunicados a las compañías aseguradoras para gestionar sus servicios. Asimismo, usted",
+          "segment_start_time": 35.52000045776367,
+          "segment_end_time": 40.119998931884766,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "podrá acceder, rectificar y suprimir dichos datos, así como otros derechos específicos",
+          "segment_start_time": 40.119998931884766,
+          "segment_end_time": 44.040000915527344,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "e información detallada en www.segurosnogal.es. Si tiene usted un siniestro, marque 1. Si",
+          "segment_start_time": 44.040000915527344,
+          "segment_end_time": 52,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "desea contratar una nueva póliza, marque 2. Si lo que desea es realizar alguna gestión",
+          "segment_start_time": 52,
+          "segment_end_time": 56.2400016784668,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "sobre una póliza ya contratada, marque 3. Si desea hablar con la operadora, marque 4.",
+          "segment_start_time": 56.2400016784668,
+          "segment_end_time": 61.040000915527344,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Nuestros operadores están ocupados. Por favor, manténgase a la espera. O si lo desea, puede",
+          "segment_start_time": 73.04000091552734,
+          "segment_end_time": 77.44000244140625,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "contactar con nosotros a través del servicio de WhatsApp habilitado en el número 686257565",
+          "segment_start_time": 77.44000244140625,
+          "segment_end_time": 84.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "o a través del código QR disponible en nuestra sección de contacto de www.segurosnogal.es.",
+          "segment_start_time": 84.55999755859375,
+          "segment_end_time": 90.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Gracias.",
+          "segment_start_time": 90.55999755859375,
+          "segment_end_time": 91.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Nuestros operadores están ocupados. Por favor, manténgase a la espera. O si lo desea, puede",
+          "segment_start_time": 91.55999755859375,
+          "segment_end_time": 115.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "contactar con nosotros a través del servicio de WhatsApp habilitado en el número 686257565",
+          "segment_start_time": 115.55999755859375,
+          "segment_end_time": 122.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "o a través del código QR disponible en nuestra sección de contacto de www.segurosnogal.es.",
+          "segment_start_time": 122.55999755859375,
+          "segment_end_time": 128.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Gracias.",
+          "segment_start_time": 128.55999755859375,
+          "segment_end_time": 129.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Nuestros operadores están ocupados. Por favor, manténgase a la espera. O si lo desea, puede",
+          "segment_start_time": 129.55999755859375,
+          "segment_end_time": 149.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "contactar con nosotros a través del servicio de WhatsApp habilitado en el número 686257565",
+          "segment_start_time": 149.55999755859375,
+          "segment_end_time": 173.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "o a través del código QR disponible en nuestra sección de contacto de www.segurosnogal.es.",
+          "segment_start_time": 173.55999755859375,
+          "segment_end_time": 202.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Gracias.",
+          "segment_start_time": 203.55999755859375,
+          "segment_end_time": 204.55999755859375,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "¡Gracias!",
+          "segment_start_time": 233.55999755859375,
+          "segment_end_time": 235.55999755859375,
+          "confidence": 0.95
+        }
+      ],
+      "metadata": {
+        "source": "mp3-test",
+        "originalFile": "NG3253904.mp3",
+        "testRun": true,
+        "processedAt": "2025-06-16T01:01:37.491Z"
+      }
+    }
+  },
+  "transcription": {
+    "segments": [
+      {
+        "text": "Ha contactado usted con la Correduría de Seguros Nogal. Para la mejora de la calidad",
+        "start": 0,
+        "end": 4.239999771118164,
+        "speaker": "agent"
+      },
+      {
+        "text": "del servicio, esta conversación podría ser grabada. A continuación, escuchará la información",
+        "start": 4.239999771118164,
+        "end": 8.640000343322754,
+        "speaker": "user"
+      },
+      {
+        "text": "de protección de datos. Si ya es cliente o colaborador y no desea escucharla, pulse",
+        "start": 8.640000343322754,
+        "end": 12.4399995803833,
+        "speaker": "agent"
+      },
+      {
+        "text": "cero. En cumplimiento de la normativa de protección",
+        "start": 12.4399995803833,
+        "end": 15.020000457763672,
+        "speaker": "user"
+      },
+      {
+        "text": "de datos, le informamos que el responsable del tratamiento de sus datos es Gran Nogal",
+        "start": 15.020000457763672,
+        "end": 18.719999313354492,
+        "speaker": "agent"
+      },
+      {
+        "text": "Correduría de Seguros S.L. con CIF B86540945 e inscrita con la clave J2988 en la DGS-FP.",
+        "start": 18.719999313354492,
+        "end": 27.040000915527344,
+        "speaker": "user"
+      },
+      {
+        "text": "Los datos facilitados, así como los de terceros con su consentimiento, serán tratados con",
+        "start": 27.760000228881836,
+        "end": 31.440000534057617,
+        "speaker": "agent"
+      },
+      {
+        "text": "la finalidad de cumplir con nuestras obligaciones como corredor de seguros. Los datos podrán",
+        "start": 31.440000534057617,
+        "end": 35.52000045776367,
+        "speaker": "user"
+      },
+      {
+        "text": "ser comunicados a las compañías aseguradoras para gestionar sus servicios. Asimismo, usted",
+        "start": 35.52000045776367,
+        "end": 40.119998931884766,
+        "speaker": "agent"
+      },
+      {
+        "text": "podrá acceder, rectificar y suprimir dichos datos, así como otros derechos específicos",
+        "start": 40.119998931884766,
+        "end": 44.040000915527344,
+        "speaker": "user"
+      },
+      {
+        "text": "e información detallada en www.segurosnogal.es. Si tiene usted un siniestro, marque 1. Si",
+        "start": 44.040000915527344,
+        "end": 52,
+        "speaker": "agent"
+      },
+      {
+        "text": "desea contratar una nueva póliza, marque 2. Si lo que desea es realizar alguna gestión",
+        "start": 52,
+        "end": 56.2400016784668,
+        "speaker": "user"
+      },
+      {
+        "text": "sobre una póliza ya contratada, marque 3. Si desea hablar con la operadora, marque 4.",
+        "start": 56.2400016784668,
+        "end": 61.040000915527344,
+        "speaker": "agent"
+      },
+      {
+        "text": "Nuestros operadores están ocupados. Por favor, manténgase a la espera. O si lo desea, puede",
+        "start": 73.04000091552734,
+        "end": 77.44000244140625,
+        "speaker": "user"
+      },
+      {
+        "text": "contactar con nosotros a través del servicio de WhatsApp habilitado en el número 686257565",
+        "start": 77.44000244140625,
+        "end": 84.55999755859375,
+        "speaker": "agent"
+      },
+      {
+        "text": "o a través del código QR disponible en nuestra sección de contacto de www.segurosnogal.es.",
+        "start": 84.55999755859375,
+        "end": 90.55999755859375,
+        "speaker": "user"
+      },
+      {
+        "text": "Gracias.",
+        "start": 90.55999755859375,
+        "end": 91.55999755859375,
+        "speaker": "agent"
+      },
+      {
+        "text": "Nuestros operadores están ocupados. Por favor, manténgase a la espera. O si lo desea, puede",
+        "start": 91.55999755859375,
+        "end": 115.55999755859375,
+        "speaker": "user"
+      },
+      {
+        "text": "contactar con nosotros a través del servicio de WhatsApp habilitado en el número 686257565",
+        "start": 115.55999755859375,
+        "end": 122.55999755859375,
+        "speaker": "agent"
+      },
+      {
+        "text": "o a través del código QR disponible en nuestra sección de contacto de www.segurosnogal.es.",
+        "start": 122.55999755859375,
+        "end": 128.55999755859375,
+        "speaker": "user"
+      },
+      {
+        "text": "Gracias.",
+        "start": 128.55999755859375,
+        "end": 129.55999755859375,
+        "speaker": "agent"
+      },
+      {
+        "text": "Nuestros operadores están ocupados. Por favor, manténgase a la espera. O si lo desea, puede",
+        "start": 129.55999755859375,
+        "end": 149.55999755859375,
+        "speaker": "user"
+      },
+      {
+        "text": "contactar con nosotros a través del servicio de WhatsApp habilitado en el número 686257565",
+        "start": 149.55999755859375,
+        "end": 173.55999755859375,
+        "speaker": "agent"
+      },
+      {
+        "text": "o a través del código QR disponible en nuestra sección de contacto de www.segurosnogal.es.",
+        "start": 173.55999755859375,
+        "end": 202.55999755859375,
+        "speaker": "user"
+      },
+      {
+        "text": "Gracias.",
+        "start": 203.55999755859375,
+        "end": 204.55999755859375,
+        "speaker": "agent"
+      },
+      {
+        "text": "¡Gracias!",
+        "start": 233.55999755859375,
+        "end": 235.55999755859375,
+        "speaker": "user"
+      }
+    ],
+    "fullText": "Ha contactado usted con la Correduría de Seguros Nogal. Para la mejora de la calidad del servicio, esta conversación podría ser grabada. A continuación, escuchará la información de protección de datos. Si ya es cliente o colaborador y no desea escucharla, pulse cero. En cumplimiento de la normativa de protección de datos, le informamos que el responsable del tratamiento de sus datos es Gran Nogal Correduría de Seguros S.L. con CIF B86540945 e inscrita con la clave J2988 en la DGS-FP. Los datos facilitados, así como los de terceros con su consentimiento, serán tratados con la finalidad de cumplir con nuestras obligaciones como corredor de seguros. Los datos podrán ser comunicados a las compañías aseguradoras para gestionar sus servicios. Asimismo, usted podrá acceder, rectificar y suprimir dichos datos, así como otros derechos específicos e información detallada en www.segurosnogal.es. Si tiene usted un siniestro, marque 1. Si desea contratar una nueva póliza, marque 2. Si lo que desea es realizar alguna gestión sobre una póliza ya contratada, marque 3. Si desea hablar con la operadora, marque 4. Nuestros operadores están ocupados. Por favor, manténgase a la espera. O si lo desea, puede contactar con nosotros a través del servicio de WhatsApp habilitado en el número 686257565 o a través del código QR disponible en nuestra sección de contacto de www.segurosnogal.es. Gracias. Nuestros operadores están ocupados. Por favor, manténgase a la espera. O si lo desea, puede contactar con nosotros a través del servicio de WhatsApp habilitado en el número 686257565 o a través del código QR disponible en nuestra sección de contacto de www.segurosnogal.es. Gracias. Nuestros operadores están ocupados. Por favor, manténgase a la espera. O si lo desea, puede contactar con nosotros a través del servicio de WhatsApp habilitado en el número 686257565 o a través del código QR disponible en nuestra sección de contacto de www.segurosnogal.es. Gracias. ¡Gracias!",
+    "duration": 235.22000122070312
+  }
+}

@@ -12,6 +12,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
           status: string;
+          ticket_ids: string[];
           ticket?: {
             id: string;
             type: string;

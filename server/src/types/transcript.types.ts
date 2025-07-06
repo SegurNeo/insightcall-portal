@@ -1,5 +1,3 @@
-export interface TranscriptMessage {
-  role: 'user' | 'agent' | string;
-  message: string;
-  timestamp?: number;
-} 
+import { TranscriptMessage } from '@shared/types/common.types';
+
+export type { TranscriptMessage }; 

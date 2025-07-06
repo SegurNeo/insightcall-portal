@@ -11,6 +11,9 @@ interface Config {
   segurneoVoiceApiKey: string;
   segurneoVoiceBaseUrl: string;
   geminiApiKey: string;
+  nogalApiBaseUrl: string;
+  nogalApiTimeout: number;
+  nogalApiKey?: string;
 }
 
 // Helper function to get required environment variables
@@ -42,6 +45,11 @@ const config: Config = {
 
   // Gemini Configuration
   geminiApiKey: getRequiredEnvVar('GEMINI_API_KEY'),
+
+  // Nogal API Configuration
+  nogalApiBaseUrl: getOptionalEnvVar('NOGAL_API_BASE_URL', 'https://api.nogal.app/v1'),
+  nogalApiTimeout: parseInt(getOptionalEnvVar('NOGAL_API_TIMEOUT', '30000')),
+  nogalApiKey: getOptionalEnvVar('NOGAL_API_KEY'),
 };
 
 export default config; 

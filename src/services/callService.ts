@@ -38,9 +38,9 @@ class CallService {
         query = query.lte('start_time', filters.endDate.toISOString());
       }
 
-      // Ordenar por fecha de inicio descendente (más recientes primero)
+      // Ordenar por fecha de creación descendente (más recientes primero)
       query = query
-        .order('start_time', { ascending: false })
+        .order('created_at', { ascending: false })
         .range(start, end);
 
       const { data: calls, count, error } = await query;
@@ -55,8 +55,8 @@ class CallService {
         page,
         per_page,
         callsCount: calls?.length,
-        firstCall: calls?.[0]?.start_time,
-        lastCall: calls?.[calls.length - 1]?.start_time
+        firstCall: calls?.[0]?.created_at,
+        lastCall: calls?.[calls.length - 1]?.created_at
       });
 
       return {
@@ -72,24 +72,31 @@ class CallService {
   }
 
   private formatCallResponse(call: any): Call {
-    const startTime = call.start_time || call.created_at;
-    const startTimeUnix = Math.floor(new Date(startTime).getTime() / 1000);
+    // Detalles anidados provenientes del Gateway
+    const details = call.segurneo_call_details ?? {};
+    const transcriptMeta = details.transcript_metadata ?? call.transcript_metadata ?? {};
+
+    const startTime = details.start_time ?? call.start_time ?? call.created_at;
+    const startTimeUnix = startTime ? Math.floor(new Date(startTime).getTime() / 1000) : 0;
+
+    const durationSecs = details.duration_seconds ?? call.duration_seconds ?? 0;
+    const agentId = details.agent_id ?? call.agent_id;
 
     // Formatear transcripción si existe
     const transcripts = Array.isArray(call.segurneo_transcripts) ? call.segurneo_transcripts
-      .filter(msg => msg && msg.text && msg.speaker) // Filtrar entradas inválidas
-      .map(msg => ({
+      .filter((msg: any) => msg && msg.text && msg.speaker)
+      .map((msg: any) => ({
         role: msg.speaker === 'agent' ? 'agent' : 'user',
-        message: msg.text.trim(),
-        time_in_call_secs: msg.timestamp || 0,
+        message: (msg.text || '').trim(),
+        time_in_call_secs: msg.segment_start_time ?? msg.timestamp ?? 0,
         metadata: {
           is_agent: msg.speaker === 'agent',
-          confidence: msg.confidence || 1.0,
-          language: call.transcript_metadata?.language,
+          confidence: msg.confidence ?? 1.0,
+          language: transcriptMeta?.language,
           ...(msg.metadata || {})
         }
       }))
-      .sort((a, b) => a.time_in_call_secs - b.time_in_call_secs) : [];
+      .sort((a: any, b: any) => a.time_in_call_secs - b.time_in_call_secs) : [];
 
     console.log('Transcripción formateada:', {
       count: transcripts.length,
@@ -97,23 +104,27 @@ class CallService {
       originalTranscripts: call.segurneo_transcripts?.slice(0, 2)
     });
 
+    // Alinear los estados con el backend
+    const normalizedStatus: CallStatus = call.status === 'error' ? 'failed' : call.status;
+    const callSuccessful = normalizedStatus === 'completed' ? 'success' : 'failed';
+
     return {
       call_id: call.id,
       conversation_id: call.segurneo_external_call_id,
-      status: call.status === 'done' ? 'completed' : call.status,
-      call_successful: (call.status === 'done' ? 'success' : 'failed') as 'success' | 'failed',
-      call_duration_secs: call.duration_seconds || 0,
+      status: normalizedStatus,
+      call_successful: callSuccessful as 'success' | 'failed',
+      call_duration_secs: durationSecs,
       start_time_unix_secs: startTimeUnix,
       metadata: {
         start_time_unix_secs: startTimeUnix,
-        call_duration_secs: call.duration_seconds || 0,
-        agent_name: call.agent_id ? `Agente ${call.agent_id}` : 'Asistente Virtual',
-        agent_id: call.agent_id,
-        audio_quality: call.transcript_metadata?.audio_quality,
-        background_noise_level: call.transcript_metadata?.background_noise_level,
-        language: call.transcript_metadata?.language,
-        total_segments: call.transcript_metadata?.total_segments || transcripts.length,
-        is_transcript_complete: call.transcript_metadata?.is_complete || false
+        call_duration_secs: durationSecs,
+        agent_name: agentId ? `Agente ${agentId}` : 'Asistente Virtual',
+        agent_id: agentId,
+        audio_quality: transcriptMeta?.audio_quality,
+        background_noise_level: transcriptMeta?.background_noise_level,
+        language: transcriptMeta?.language,
+        total_segments: transcriptMeta?.total_segments ?? transcripts.length,
+        is_transcript_complete: transcriptMeta?.is_complete ?? false
       },
       ticket: call.tickets ? {
         id: call.tickets.id,

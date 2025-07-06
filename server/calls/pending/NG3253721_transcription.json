@@ -1,0 +1,390 @@
+{
+  "payload": {
+    "event_type": "call.completed",
+    "call_data": {
+      "externalCallId": "f2ad417a335d4b4c8f6b",
+      "conversationId": "conv_3ef9e6d5-7403-4a50-8ca6-6c0609065eb9",
+      "status": "completed",
+      "startTime": 1750035566,
+      "duration": 120,
+      "clientData": {
+        "phone": "+34600123456",
+        "name": "Cliente de Prueba",
+        "dni": "12345678A",
+        "polizas": [
+          {
+            "numero": "123456789",
+            "compania": "REALE",
+            "estado": "Contratada",
+            "ramo": "auto"
+          }
+        ]
+      },
+      "transcripts": [
+        {
+          "speaker": "agent",
+          "text": "Ha contactado usted con la Correduría de Seguros Nogal. Para la mejora de la calidad",
+          "segment_start_time": 0,
+          "segment_end_time": 4.119999885559082,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "del servicio, esta conversación podría ser grabada. A continuación, escuchará la información",
+          "segment_start_time": 4.119999885559082,
+          "segment_end_time": 8.520000457763672,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "de protección de datos. Si ya es cliente o colaborador y no desea escucharla, pulse",
+          "segment_start_time": 8.520000457763672,
+          "segment_end_time": 12.319999694824219,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "cero.",
+          "segment_start_time": 12.319999694824219,
+          "segment_end_time": 13.319999694824219,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "En cumplimiento de la normativa de protección de datos, le informamos que el responsable",
+          "segment_start_time": 13.319999694824219,
+          "segment_end_time": 16.959999084472656,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "del tratamiento de sus datos es Grant Nogal, Correduría de Seguros S.L. con CIF B86 540945",
+          "segment_start_time": 16.959999084472656,
+          "segment_end_time": 23.65999984741211,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "e inscrita con la clave J2988 en la DGS-FP. Los datos facilitados, así como los de terceros",
+          "segment_start_time": 23.65999984741211,
+          "segment_end_time": 29.360000610351562,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "con su consentimiento, serán tratados con la finalidad de cumplir con nuestras obligaciones",
+          "segment_start_time": 29.360000610351562,
+          "segment_end_time": 33.2400016784668,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "como corredor de seguros. Los datos podrán ser comunicados a las compañías aseguradoras",
+          "segment_start_time": 33.2400016784668,
+          "segment_end_time": 37.29999923706055,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "para gestionar sus servicios. Asimismo, usted podrá acceder, rectificar y suprimir dichos",
+          "segment_start_time": 37.29999923706055,
+          "segment_end_time": 41.79999923706055,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "datos, así como otros derechos específicos e información detallada en www.segurosnogal.es",
+          "segment_start_time": 41.79999923706055,
+          "segment_end_time": 47.7599983215332,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "barra protección datos.",
+          "segment_start_time": 47.7599983215332,
+          "segment_end_time": 49.560001373291016,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Si tiene usted un siniestro, marque 1. Si desea contratar una nueva póliza, marque 2.",
+          "segment_start_time": 49.560001373291016,
+          "segment_end_time": 54.52000045776367,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Si lo que desea es realizar alguna gestión sobre una póliza ya contratada, marque 3.",
+          "segment_start_time": 54.52000045776367,
+          "segment_end_time": 58.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Si desea hablar con la operadora, marque 4.",
+          "segment_start_time": 58.68000030517578,
+          "segment_end_time": 60.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Si tiene usted un siniestro, marque 1. Si desea contratar una nueva póliza, marque 2.",
+          "segment_start_time": 60.68000030517578,
+          "segment_end_time": 69.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Corredor Nogal, buenos días. Le atiende Carmen, dígame.",
+          "segment_start_time": 70.68000030517578,
+          "segment_end_time": 76.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Le llamo a la pérdida suya y no sé cuál es el motivo.",
+          "segment_start_time": 76.68000030517578,
+          "segment_end_time": 82.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Ah, pues dígame a qué teléfono le hemos llamado, que lo miro yo mejor.",
+          "segment_start_time": 82.68000030517578,
+          "segment_end_time": 86.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Es 3600818.",
+          "segment_start_time": 86.68000030517578,
+          "segment_end_time": 89.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Vale, un momento.",
+          "segment_start_time": 89.68000030517578,
+          "segment_end_time": 91.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Vale, ya lo tengo aquí.",
+          "segment_start_time": 92.68000030517578,
+          "segment_end_time": 95.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Pedro, solo me han dejado el nombre de Pedro y un correo. Entiendo que no es usted.",
+          "segment_start_time": 95.68000030517578,
+          "segment_end_time": 105.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "No, no lo he hecho.",
+          "segment_start_time": 105.68000030517578,
+          "segment_end_time": 107.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Es una solicitud que se ha hecho a través de la web. Lo voy a dar de baja, no se preocupe. A veces nos pasa.",
+          "segment_start_time": 107.68000030517578,
+          "segment_end_time": 113.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "user",
+          "text": "Muy bien, vale. Venga, gracias.",
+          "segment_start_time": 113.68000030517578,
+          "segment_end_time": 117.68000030517578,
+          "confidence": 0.95
+        },
+        {
+          "speaker": "agent",
+          "text": "Hasta luego, adiós.",
+          "segment_start_time": 117.68000030517578,
+          "segment_end_time": 119.68000030517578,
+          "confidence": 0.95
+        }
+      ],
+      "metadata": {
+        "source": "mp3-test",
+        "originalFile": "NG3253721.mp3",
+        "testRun": true,
+        "processedAt": "2025-06-16T01:01:26.705Z"
+      }
+    }
+  },
+  "transcription": {
+    "segments": [
+      {
+        "text": "Ha contactado usted con la Correduría de Seguros Nogal. Para la mejora de la calidad",
+        "start": 0,
+        "end": 4.119999885559082,
+        "speaker": "agent"
+      },
+      {
+        "text": "del servicio, esta conversación podría ser grabada. A continuación, escuchará la información",
+        "start": 4.119999885559082,
+        "end": 8.520000457763672,
+        "speaker": "user"
+      },
+      {
+        "text": "de protección de datos. Si ya es cliente o colaborador y no desea escucharla, pulse",
+        "start": 8.520000457763672,
+        "end": 12.319999694824219,
+        "speaker": "agent"
+      },
+      {
+        "text": "cero.",
+        "start": 12.319999694824219,
+        "end": 13.319999694824219,
+        "speaker": "user"
+      },
+      {
+        "text": "En cumplimiento de la normativa de protección de datos, le informamos que el responsable",
+        "start": 13.319999694824219,
+        "end": 16.959999084472656,
+        "speaker": "agent"
+      },
+      {
+        "text": "del tratamiento de sus datos es Grant Nogal, Correduría de Seguros S.L. con CIF B86 540945",
+        "start": 16.959999084472656,
+        "end": 23.65999984741211,
+        "speaker": "user"
+      },
+      {
+        "text": "e inscrita con la clave J2988 en la DGS-FP. Los datos facilitados, así como los de terceros",
+        "start": 23.65999984741211,
+        "end": 29.360000610351562,
+        "speaker": "agent"
+      },
+      {
+        "text": "con su consentimiento, serán tratados con la finalidad de cumplir con nuestras obligaciones",
+        "start": 29.360000610351562,
+        "end": 33.2400016784668,
+        "speaker": "user"
+      },
+      {
+        "text": "como corredor de seguros. Los datos podrán ser comunicados a las compañías aseguradoras",
+        "start": 33.2400016784668,
+        "end": 37.29999923706055,
+        "speaker": "agent"
+      },
+      {
+        "text": "para gestionar sus servicios. Asimismo, usted podrá acceder, rectificar y suprimir dichos",
+        "start": 37.29999923706055,
+        "end": 41.79999923706055,
+        "speaker": "user"
+      },
+      {
+        "text": "datos, así como otros derechos específicos e información detallada en www.segurosnogal.es",
+        "start": 41.79999923706055,
+        "end": 47.7599983215332,
+        "speaker": "agent"
+      },
+      {
+        "text": "barra protección datos.",
+        "start": 47.7599983215332,
+        "end": 49.560001373291016,
+        "speaker": "user"
+      },
+      {
+        "text": "Si tiene usted un siniestro, marque 1. Si desea contratar una nueva póliza, marque 2.",
+        "start": 49.560001373291016,
+        "end": 54.52000045776367,
+        "speaker": "agent"
+      },
+      {
+        "text": "Si lo que desea es realizar alguna gestión sobre una póliza ya contratada, marque 3.",
+        "start": 54.52000045776367,
+        "end": 58.68000030517578,
+        "speaker": "user"
+      },
+      {
+        "text": "Si desea hablar con la operadora, marque 4.",
+        "start": 58.68000030517578,
+        "end": 60.68000030517578,
+        "speaker": "agent"
+      },
+      {
+        "text": "Si tiene usted un siniestro, marque 1. Si desea contratar una nueva póliza, marque 2.",
+        "start": 60.68000030517578,
+        "end": 69.68000030517578,
+        "speaker": "user"
+      },
+      {
+        "text": "Corredor Nogal, buenos días. Le atiende Carmen, dígame.",
+        "start": 70.68000030517578,
+        "end": 76.68000030517578,
+        "speaker": "agent"
+      },
+      {
+        "text": "Le llamo a la pérdida suya y no sé cuál es el motivo.",
+        "start": 76.68000030517578,
+        "end": 82.68000030517578,
+        "speaker": "user"
+      },
+      {
+        "text": "Ah, pues dígame a qué teléfono le hemos llamado, que lo miro yo mejor.",
+        "start": 82.68000030517578,
+        "end": 86.68000030517578,
+        "speaker": "agent"
+      },
+      {
+        "text": "Es 3600818.",
+        "start": 86.68000030517578,
+        "end": 89.68000030517578,
+        "speaker": "user"
+      },
+      {
+        "text": "Vale, un momento.",
+        "start": 89.68000030517578,
+        "end": 91.68000030517578,
+        "speaker": "agent"
+      },
+      {
+        "text": "Vale, ya lo tengo aquí.",
+        "start": 92.68000030517578,
+        "end": 95.68000030517578,
+        "speaker": "user"
+      },
+      {
+        "text": "Pedro, solo me han dejado el nombre de Pedro y un correo. Entiendo que no es usted.",
+        "start": 95.68000030517578,
+        "end": 105.68000030517578,
+        "speaker": "agent"
+      },
+      {
+        "text": "No, no lo he hecho.",
+        "start": 105.68000030517578,
+        "end": 107.68000030517578,
+        "speaker": "user"
+      },
+      {
+        "text": "Es una solicitud que se ha hecho a través de la web. Lo voy a dar de baja, no se preocupe. A veces nos pasa.",
+        "start": 107.68000030517578,
+        "end": 113.68000030517578,
+        "speaker": "agent"
+      },
+      {
+        "text": "Muy bien, vale. Venga, gracias.",
+        "start": 113.68000030517578,
+        "end": 117.68000030517578,
+        "speaker": "user"
+      },
+      {
+        "text": "Hasta luego, adiós.",
+        "start": 117.68000030517578,
+        "end": 119.68000030517578,
+        "speaker": "agent"
+      }
+    ],
+    "fullText": "Ha contactado usted con la Correduría de Seguros Nogal. Para la mejora de la calidad del servicio, esta conversación podría ser grabada. A continuación, escuchará la información de protección de datos. Si ya es cliente o colaborador y no desea escucharla, pulse cero. En cumplimiento de la normativa de protección de datos, le informamos que el responsable del tratamiento de sus datos es Grant Nogal, Correduría de Seguros S.L. con CIF B86 540945 e inscrita con la clave J2988 en la DGS-FP. Los datos facilitados, así como los de terceros con su consentimiento, serán tratados con la finalidad de cumplir con nuestras obligaciones como corredor de seguros. Los datos podrán ser comunicados a las compañías aseguradoras para gestionar sus servicios. Asimismo, usted podrá acceder, rectificar y suprimir dichos datos, así como otros derechos específicos e información detallada en www.segurosnogal.es barra protección datos. Si tiene usted un siniestro, marque 1. Si desea contratar una nueva póliza, marque 2. Si lo que desea es realizar alguna gestión sobre una póliza ya contratada, marque 3. Si desea hablar con la operadora, marque 4. Si tiene usted un siniestro, marque 1. Si desea contratar una nueva póliza, marque 2. Corredor Nogal, buenos días. Le atiende Carmen, dígame. Le llamo a la pérdida suya y no sé cuál es el motivo. Ah, pues dígame a qué teléfono le hemos llamado, que lo miro yo mejor. Es 3600818. Vale, un momento. Vale, ya lo tengo aquí. Pedro, solo me han dejado el nombre de Pedro y un correo. Entiendo que no es usted. No, no lo he hecho. Es una solicitud que se ha hecho a través de la web. Lo voy a dar de baja, no se preocupe. A veces nos pasa. Muy bien, vale. Venga, gracias. Hasta luego, adiós.",
+    "duration": 120.16000366210938
+  }
+}

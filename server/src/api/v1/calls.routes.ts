@@ -16,6 +16,9 @@ router.get('/:id/audio', controller.getCallAudio.bind(controller));
 // POST /api/v1/calls/sync - Sync calls from Segurneo
 router.post('/sync', controller.syncCalls.bind(controller));
 
+// POST /api/v1/calls/sync/elevenlabs - Sync all Eleven Labs calls
+router.post('/sync/elevenlabs', controller.syncElevenLabsCalls.bind(controller));
+
 // POST /api/v1/calls/webhook - Webhook endpoint for Segurneo Voice
 router.post('/webhook', controller.webhookHandler.bind(controller));
 

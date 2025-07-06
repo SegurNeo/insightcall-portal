@@ -4,7 +4,7 @@ import { callProcessingService } from './services/call_processing_service';
 import { ticketService } from './services/ticketService';
 import config from './config';
 import { supabase } from './lib/supabase';
-import callsRoutes from './api/v1/calls.routes';
+import apiV1Routes from './api/v1';
 
 const app = express();
 
@@ -98,8 +98,13 @@ const getCallTickets: express.RequestHandler<CallParams> = async (req, res, next
 };
 
 // API v1 Routes
-app.use('/api/v1/calls', callsRoutes);
-console.log('Rutas montadas en /api/v1/calls');
+app.use('/api/v1', apiV1Routes);
+console.log('API v1 montada en /api/v1');
+console.log('Rutas disponibles:');
+console.log('  - /api/v1/calls (análisis IA)');
+console.log('  - /api/v1/test-analysis (testing)');
+console.log('  - /api/v1/nogal/calls (endpoint Nogal)');
+console.log('  - /api/v1/health (health check)');
 
 // Legacy Routes
 app.get('/health', healthCheck);

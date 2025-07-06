@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS processed_calls (
   segurneo_call_details JSONB,
   segurneo_transcripts JSONB,
   analysis_results JSONB,
+  ticket_ids TEXT[],
   ticket_id UUID,
   processing_error TEXT,
   processing_log TEXT[],

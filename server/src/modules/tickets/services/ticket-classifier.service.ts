@@ -1,0 +1,1 @@
+export { ticketClassifierService as ticketClassifier } from '../../../services/ticketClassifierService'; 

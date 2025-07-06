@@ -1,10 +1,15 @@
+// @ts-nocheck
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/supabase/client';
 import { segurneoGatewayClient } from './gateway_client';
-import { analysisService } from './analysisService';
+import { analysisService } from '@modules/analysis';
 import { ticketService } from './ticketService';
 import { ProcessedCall, ProcessedCallInsert, TicketInsert, Json } from '@/types/supabase.types';
 import { StoredCall, StoredTranscript } from '@/types/segurneo_voice.types';
+import { ticketClassifierService } from './ticketClassifierService';
+import { ticketDefinitions } from '../utils/ticketDefinitions';
+import { nogalApiService } from './nogalApiService';
+import type { NogalTicketPayload } from '../types/nogal_tickets.types';
 
 // Placeholder for TranscriptMessage type expected by AnalysisService
 // TODO: Centralize this type definition (e.g., in src/types/index.ts or src/types/analysis.types.ts)
@@ -116,27 +121,73 @@ class CallProcessingService {
       nogalCall.analysis_results = analysisResult as unknown as Json;
       processingLog.push(`[${new Date().toISOString()}] Analysis completed with status: ${analysisResult.status}.`);
 
-      nogalCall.status = 'processing'; // Or directly to completed if ticket creation is fast
-      nogalCall.updated_at = new Date().toISOString();
-      await supabase.from(PROCESSED_CALLS_TABLE).update({ analysis_results: nogalCall.analysis_results, status: nogalCall.status, updated_at: nogalCall.updated_at, processing_log: nogalCall.processing_log }).eq('id', nogalCall.id);
+      // 4b. Clasificación de la llamada para generar tickets (IA)
+      processingLog.push(`[${new Date().toISOString()}] Clasificando transcripción para detección de incidencias.`);
+      const classification = await ticketClassifierService.classifyTranscript(messagesToAnalyze);
+      nogalCall.ai_intent = classification.rawResponse as unknown as Json;
+      nogalCall.ticket_suggestions = classification.suggestions as unknown as Json;
+      processingLog.push(`[${new Date().toISOString()}] Se detectaron ${classification.suggestions.length} posibles incidencias.`);
 
-      // 5. Create Ticket (example: if analysis was successful and suggests an action)
-      if (analysisResult.status === 'success' && analysisResult.action_id) {
-        processingLog.push(`[${new Date().toISOString()}] Creating ticket based on analysis.`);
-        const ticketPayload: TicketInsert = {
-          conversation_id: nogalCall.id, // Link ticket to Nogal's processed call ID
-          type: analysisResult.metadata?.context || 'general_inquiry',
-          status: 'pending',
-          description: analysisResult.details || 'Ticket created from call analysis',
-          priority: (analysisResult.metadata?.priority as 'low' | 'medium' | 'high') || 'medium',
-          // metadata: analysisResult.metadata // You might want to store parts of analysis metadata in the ticket
+      // Filtrar sugerencias con score >= 0.5
+      const suggestionsToCreate = classification.suggestions.filter(s => s.score >= 0.5);
+      processingLog.push(`[${new Date().toISOString()}] ${suggestionsToCreate.length} incidencias cumplen el umbral de 0.5 de confianza.`);
+
+      const createdTicketIds: string[] = []; // Array para almacenar todos los ticket IDs creados
+
+      for (const suggestion of suggestionsToCreate) {
+        const def = ticketDefinitions.find(d => d.id === suggestion.id_definicion);
+        if (!def) {
+          processingLog.push(`[${new Date().toISOString()}] Advertencia: definición ${suggestion.id_definicion} no encontrada en memoria.`);
+          continue;
+        }
+
+        // Construir payload para Nogal
+        const now = new Date();
+        const idTicket = uuidv4();
+        const payload: NogalTicketPayload = {
+          "Fecha envío": now.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+          "Hora envío": now.toLocaleTimeString('es-ES'),
+          "IdCliente": (nogalCall.segurneo_call_details as any)?.customerId || 'UNKNOWN', // TODO: mapear cliente real
+          "IdTicket": idTicket,
+          "TipoIncidencia": def.tipoIncidencia,
+          "MotivoIncidencia": def.motivoIncidencia,
+          "Notas": `IA (${(suggestion.score*100).toFixed(0)}%): ${suggestion.justification}.`,
         };
-        const createdTicket = await ticketService.createTicket(ticketPayload);
-        nogalCall.ticket_id = createdTicket.id;
-        processingLog.push(`[${new Date().toISOString()}] Ticket created with ID: ${createdTicket.id}.`);
-      } else {
-        processingLog.push(`[${new Date().toISOString()}] No ticket created (analysis status: ${analysisResult.status}, action_id: ${analysisResult.action_id}).`);
+
+        try {
+          await nogalApiService.crearTicket(payload);
+          processingLog.push(`[${new Date().toISOString()}] Ticket Nogal creado (${idTicket}) para definición ${def.id}.`);
+
+          // Crear ticket interno para dashboard
+          const internalTicket = await ticketService.createTicket({
+            conversation_id: nogalCall.id,
+            description: payload.Notas,
+            type: `${def.tipoIncidencia} / ${def.motivoIncidencia}`,
+            priority: 'medium',
+            status: 'created',
+            metadata: { externalTicketId: idTicket, score: suggestion.score }
+          });
+          processingLog.push(`[${new Date().toISOString()}] Ticket interno creado con ID: ${internalTicket.id}.`);
+
+          // Agregar el ID del ticket creado al array
+          createdTicketIds.push(internalTicket.id);
+        } catch (err:any) {
+          console.error(`[${new Date().toISOString()}] Error creando ticket:`, err);
+          processingLog.push(`[${new Date().toISOString()}] Error creando ticket: ${err.message}`);
+        }
       }
+
+      // Asignar el array de tickets creados
+      nogalCall.ticket_ids = createdTicketIds;
+
+      // Guardar resultados intermedios en DB tras clasificación
+      await supabase.from(PROCESSED_CALLS_TABLE).update({
+        ai_intent: nogalCall.ai_intent,
+        ticket_suggestions: nogalCall.ticket_suggestions,
+        ticket_ids: nogalCall.ticket_ids, // Usar ticket_ids en lugar de ticket_id
+        processing_log: processingLog,
+        updated_at: new Date().toISOString(),
+      }).eq('id', nogalCall.id);
 
       nogalCall.status = 'completed';
       nogalCall.processed_at = new Date().toISOString();
@@ -149,7 +200,7 @@ class CallProcessingService {
           status: nogalCall.status,
           processed_at: nogalCall.processed_at,
           updated_at: nogalCall.updated_at,
-          ticket_id: nogalCall.ticket_id,
+          ticket_ids: nogalCall.ticket_ids, // Usar ticket_ids en lugar de ticket_id
           processing_log: nogalCall.processing_log,
           processing_error: null,
         })

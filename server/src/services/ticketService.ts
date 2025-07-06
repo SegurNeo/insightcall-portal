@@ -53,14 +53,14 @@ class TicketService {
     return (data as Ticket[]) || [];
   }
 
-  async listTickets(filters?: Partial<Pick<Ticket, 'status' | 'priority' | 'assignee_id' | 'type'>>): Promise<Ticket[]> {
+  async listTickets(filters?: Partial<Pick<Ticket, 'status' | 'priority' | 'assignee_id' | 'tipo_incidencia'>>): Promise<Ticket[]> {
     let query = supabase.from(TICKETS_TABLE).select('*');
 
     if (filters) {
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.priority) query = query.eq('priority', filters.priority);
       if (filters.assignee_id) query = query.eq('assignee_id', filters.assignee_id);
-      if (filters.type) query = query.eq('type', filters.type);
+      if (filters.tipo_incidencia) query = query.eq('tipo_incidencia', filters.tipo_incidencia);
     }
 
     const { data, error } = await query;
