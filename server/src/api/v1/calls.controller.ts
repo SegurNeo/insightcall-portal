@@ -3,13 +3,13 @@ import { supabase } from '../../lib/supabase';
 import { SegurneoSyncService } from '../../services/segurneo-sync.service';
 import config from '../../config';
 import { StoredTranscript, StoredCall } from '../../types/segurneo_voice.types';
-import { analysisService } from '@modules/analysis';
+import { analysisService } from '../../modules/analysis';
 import { ticketClassifierService } from '../../services/ticketClassifierService';
 import { ticketService } from '../../services/ticketService';
 import { nogalApiService } from '../../services/nogalApiService';
 import { ticketDefinitions } from '../../utils/ticketDefinitions';
 import { v4 as uuidv4 } from 'uuid';
-import { callService } from '@modules/calls';
+import { callService } from '../../modules/calls';
 
 interface TranscriptMessage {
   role: string;

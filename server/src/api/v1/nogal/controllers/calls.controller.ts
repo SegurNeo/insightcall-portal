@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { validationService } from '../services/validation.service';
 import { authService } from '../services/auth.service';
 import { databaseService } from '../services/database.service';
-import { VoiceCallPayload, VoiceCallResponse } from '@/types/voiceCalls.types';
+import { VoiceCallPayload, VoiceCallResponse } from '../../../../types/voiceCalls.types';
 
 export class CallsController {
   

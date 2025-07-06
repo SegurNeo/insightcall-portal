@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { analysisService } from '@modules/analysis';
+import { analysisService } from '../../modules/analysis';
 import { ticketClassifierService } from '../../services/ticketClassifierService';
 import { TranscriptMessage } from '../../types/transcript.types';
 

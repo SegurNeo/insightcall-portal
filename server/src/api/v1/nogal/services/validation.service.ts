@@ -1,4 +1,4 @@
-import { VoiceCallPayload, ValidationResult, ValidationError, VOICE_CALL_STATUSES } from '@/types/voiceCalls.types';
+import { VoiceCallPayload, ValidationResult, ValidationError, VOICE_CALL_STATUSES } from '../../../../types/voiceCalls.types';
 
 export class ValidationService {
   
