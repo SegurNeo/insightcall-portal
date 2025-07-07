@@ -231,7 +231,11 @@ export class CallsController {
         hasNogalApiKey: !!(process.env.NOGAL_API_KEY),
         nogalApiKeyLength: process.env.NOGAL_API_KEY?.length || 0,
         nodeEnv: process.env.NODE_ENV,
-        authRequired: authService.isAuthRequired()
+        authRequired: authService.isAuthRequired(),
+        hasSupabaseUrl: !!(process.env.NOGAL_SUPABASE_URL),
+        supabaseUrlLength: process.env.NOGAL_SUPABASE_URL?.length || 0,
+        hasSupabaseKey: !!(process.env.NOGAL_SUPABASE_SERVICE_KEY),
+        supabaseKeyLength: process.env.NOGAL_SUPABASE_SERVICE_KEY?.length || 0
       };
       
       console.log('[HealthCheck] Environment debug info:', envInfo);
