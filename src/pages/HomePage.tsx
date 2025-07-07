@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, Calendar, CalendarDays, ChevronRight, Clock, Download, FileText, Phone, Settings, Users } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import RecentCallsList from "@/components/calls/RecentCallsList";
+import RealCallsList from "@/components/calls/RealCallsList";
 import QuickAccessCard from "@/components/dashboard/QuickAccessCard";
 import { Link } from "react-router-dom";
 import AlertsCard from "@/components/dashboard/AlertsCard";
@@ -218,7 +218,7 @@ const HomePage = () => {
               </Link>
             </Button>
           </CardHeader>
-          <RecentCallsList limit={5} />
+                          <RealCallsList limit={5} />
         </Card>
 
         {/* Quick Access y Agent Activity */}

@@ -6,7 +6,7 @@ import { ArrowRight, ArrowUpRight, CalendarDays, Clock, Headphones, MessageSquar
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, LineChart, Line } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import RecentCallsList from "@/components/calls/RecentCallsList";
+import RealCallsList from "@/components/calls/RealCallsList";
 import { useState } from "react";
 import ElevenLabsWidget from "@/components/calls/ElevenLabsWidget";
 
@@ -308,9 +308,9 @@ const Index = () => {
         </TabsContent>
 
         <TabsContent value="calls">
-          <Card>
-            <RecentCallsList />
-          </Card>
+                      <Card>
+              <RealCallsList />
+            </Card>
         </TabsContent>
 
         <TabsContent value="metrics">
@@ -411,7 +411,7 @@ const Index = () => {
           </Button>
         </div>
         <Card>
-          <RecentCallsList limit={5} />
+                          <RealCallsList limit={5} />
         </Card>
       </div>
     </DashboardLayout>
