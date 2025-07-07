@@ -1,7 +1,19 @@
 import { Router } from 'express';
 import { callsController } from '../controllers/calls.controller';
+import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
+
+/**
+ * @route GET /api/v1/calls/health
+ * @desc Health check endpoint
+ * @access Public (NO authentication required)
+ * @returns Health status
+ */
+router.get('/health', callsController.healthCheck.bind(callsController));
+
+// Apply authentication middleware to all other routes
+router.use(authMiddleware);
 
 /**
  * @route POST /api/v1/calls
@@ -37,13 +49,5 @@ router.get('/', callsController.getCalls.bind(callsController));
  * @returns VoiceCallResponse with statistics
  */
 router.get('/stats', callsController.getStats.bind(callsController));
-
-/**
- * @route GET /api/v1/calls/health
- * @desc Health check endpoint
- * @access Public
- * @returns Health status
- */
-router.get('/health', callsController.healthCheck.bind(callsController));
 
 export default router; 

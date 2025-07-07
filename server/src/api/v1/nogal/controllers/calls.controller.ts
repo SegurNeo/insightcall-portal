@@ -16,19 +16,7 @@ export class CallsController {
     try {
       console.log('[CallsController] Received voice call request');
       
-      // 1. Authentication
-      const authResult = authService.validateApiKey(req.headers.authorization);
-      if (!authResult.isValid) {
-        console.warn('[CallsController] Authentication failed:', authResult.error);
-        res.status(401).json({
-          success: false,
-          message: 'Authentication failed',
-          errors: [authResult.error || 'Invalid API key']
-        } as VoiceCallResponse);
-        return;
-      }
-      
-      // 2. Validation
+      // Validation (authentication is now handled by middleware)
       const validationResult = validationService.validateVoiceCallPayload(req.body);
       if (!validationResult.isValid) {
         console.warn('[CallsController] Validation failed:', validationResult.errors);
@@ -39,10 +27,10 @@ export class CallsController {
         } as VoiceCallResponse);
         return;
       }
-      
+
       const payload = req.body as VoiceCallPayload;
       
-      // 3. Check for duplicates
+      // Check for duplicates
       const existsResult = await databaseService.voiceCallExists(payload.call_id);
       if (existsResult.error) {
         console.error('[CallsController] Error checking duplicates:', existsResult.error);
@@ -65,7 +53,7 @@ export class CallsController {
         return;
       }
       
-      // 4. Save to database
+      // Save to database
       const saveResult = await databaseService.saveVoiceCall(payload);
       if (!saveResult.success) {
         console.error('[CallsController] Error saving voice call:', saveResult.error);
@@ -78,7 +66,7 @@ export class CallsController {
         return;
       }
       
-      // 5. Success response
+      // Success response
       const processingTime = Date.now() - startTime;
       console.log(`[CallsController] Voice call saved successfully in ${processingTime}ms:`, {
         call_id: payload.call_id,
@@ -95,10 +83,8 @@ export class CallsController {
         nogal_internal_id: saveResult.nogalInternalId
       } as VoiceCallResponse);
       
-    } catch (error: any) {
-      const processingTime = Date.now() - startTime;
-      console.error(`[CallsController] Unexpected error after ${processingTime}ms:`, error);
-      
+    } catch (error) {
+      console.error('[CallsController] Unexpected error processing voice call:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -124,18 +110,7 @@ export class CallsController {
         return;
       }
       
-      // Authentication
-      const authResult = authService.validateApiKey(req.headers.authorization);
-      if (!authResult.isValid) {
-        res.status(401).json({
-          success: false,
-          message: 'Authentication failed',
-          errors: [authResult.error || 'Invalid API key']
-        } as VoiceCallResponse);
-        return;
-      }
-      
-      // Get voice call
+      // Get voice call (authentication handled by middleware)
       const result = await databaseService.getVoiceCallBySegurneoId(callId);
       if (result.error) {
         const status = result.error === 'Voice call not found' ? 404 : 500;
@@ -147,7 +122,7 @@ export class CallsController {
         } as VoiceCallResponse);
         return;
       }
-      
+
       res.status(200).json({
         success: true,
         message: 'Voice call retrieved successfully',
@@ -171,18 +146,7 @@ export class CallsController {
    */
   async getCalls(req: Request, res: Response): Promise<void> {
     try {
-      // Authentication
-      const authResult = authService.validateApiKey(req.headers.authorization);
-      if (!authResult.isValid) {
-        res.status(401).json({
-          success: false,
-          message: 'Authentication failed',
-          errors: [authResult.error || 'Invalid API key']
-        } as VoiceCallResponse);
-        return;
-      }
-      
-      // Get limit from query params
+      // Get limit from query params (authentication handled by middleware)
       const limit = parseInt(req.query.limit as string) || 10;
       if (limit < 1 || limit > 100) {
         res.status(400).json({
@@ -226,18 +190,7 @@ export class CallsController {
    */
   async getStats(req: Request, res: Response): Promise<void> {
     try {
-      // Authentication
-      const authResult = authService.validateApiKey(req.headers.authorization);
-      if (!authResult.isValid) {
-        res.status(401).json({
-          success: false,
-          message: 'Authentication failed',
-          errors: [authResult.error || 'Invalid API key']
-        } as VoiceCallResponse);
-        return;
-      }
-      
-      // Get stats
+      // Get stats (authentication handled by middleware)
       const result = await databaseService.getVoiceCallStats();
       if (result.error) {
         res.status(500).json({
@@ -266,7 +219,7 @@ export class CallsController {
   
   /**
    * GET /api/v1/calls/health
-   * Health check endpoint
+   * Health check endpoint - NO authentication required
    */
   async healthCheck(req: Request, res: Response): Promise<void> {
     try {
