@@ -27,7 +27,7 @@ export class DatabaseService {
         end_time: payload.end_time,
         duration_seconds: payload.duration_seconds,
         status: payload.status,
-        cost: payload.cost,
+        cost_cents: payload.cost,
         termination_reason: payload.termination_reason || null,
         transcript_summary: payload.transcript_summary || null,
         call_successful: payload.call_successful,
@@ -35,7 +35,7 @@ export class DatabaseService {
         user_messages: payload.participant_count.user_messages,
         total_messages: payload.participant_count.total_messages,
         audio_available: payload.audio_available,
-        external_created_at: payload.created_at,
+        received_at: payload.created_at,
         // created_at and updated_at are handled by the database
       };
       
@@ -174,7 +174,7 @@ export class DatabaseService {
     try {
       const { data, error } = await supabase
         .from('voice_calls')
-        .select('status, cost');
+        .select('status, cost_cents');
       
       if (error) {
         console.error('[DatabaseService] Error getting voice call stats:', error);
@@ -187,7 +187,7 @@ export class DatabaseService {
       
       const stats = data.reduce((acc, call) => {
         acc.total++;
-        acc.totalCost += call.cost || 0;
+        acc.totalCost += call.cost_cents || 0;
         
         switch (call.status) {
           case 'completed':
