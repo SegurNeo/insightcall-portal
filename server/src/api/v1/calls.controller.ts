@@ -237,27 +237,42 @@ export class CallsController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const { event_type, call_data } = req.body;
+      console.log('🎯 Webhook recibido de Segurneo:', JSON.stringify(req.body, null, 2));
 
-      if (event_type !== 'call.completed') {
-        return res.status(200).json({ message: 'Evento ignorado' });
-      }
+      // Detectar formato: ¿es el formato viejo con event_type o el formato real de Segurneo?
+      const isLegacyFormat = req.body.event_type && req.body.call_data;
+      const isSegurneoFormat = req.body.call_id || req.body.conversation_id;
 
-      // Detectar si es un formato de prueba (desde MP3)
-      if (call_data.metadata?.source === 'mp3-test') {
-        console.log('Procesando llamada de prueba desde MP3...');
+      if (isLegacyFormat) {
+        // Formato viejo para retrocompatibilidad
+        const { event_type, call_data } = req.body;
         
-        // Procesar la llamada de prueba directamente sin usar la API externa
-        await this.processTestCall(call_data);
-        
-        return res.json({
-          message: 'Llamada de prueba procesada correctamente',
-          externalCallId: call_data.externalCallId
+        if (event_type !== 'call.completed') {
+          return res.status(200).json({ message: 'Evento ignorado - formato legacy' });
+        }
+
+        // Detectar si es un formato de prueba (desde MP3)
+        if (call_data.metadata?.source === 'mp3-test') {
+          console.log('Procesando llamada de prueba desde MP3...');
+          await this.processTestCall(call_data);
+          return res.json({
+            message: 'Llamada de prueba procesada correctamente',
+            externalCallId: call_data.externalCallId
+          });
+        }
+
+        await this.syncService.processCall(call_data);
+      } else if (isSegurneoFormat) {
+        // Formato real de Segurneo Voice
+        console.log('✅ Procesando llamada real de Segurneo Voice...');
+        await this.processSegurneoCall(req.body);
+      } else {
+        console.warn('❌ Formato de webhook no reconocido:', req.body);
+        return res.status(400).json({ 
+          message: 'Formato de webhook no válido',
+          expected: 'call_id o conversation_id requeridos'
         });
       }
-
-      // Procesar llamada normal del Gateway
-      await this.syncService.processCall(call_data);
       
       return res.json({
         message: 'Webhook procesado correctamente'
@@ -268,6 +283,128 @@ export class CallsController {
         error: 'Error processing webhook',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  }
+
+  private async processSegurneoCall(segurneoData: any) {
+    try {
+      console.log(`🔄 Procesando llamada real de Segurneo: ${segurneoData.conversation_id}`);
+      
+      // Mapear formato de Segurneo a nuestro formato voice_calls
+      const voiceCallData = {
+        segurneo_call_id: segurneoData.call_id,
+        conversation_id: segurneoData.conversation_id,
+        agent_id: segurneoData.agent_id,
+        start_time: segurneoData.start_time,
+        end_time: segurneoData.end_time,
+        duration_seconds: segurneoData.duration_seconds,
+        status: segurneoData.status,
+        call_successful: segurneoData.call_successful || false,
+        termination_reason: segurneoData.termination_reason,
+        cost_cents: segurneoData.cost || 0,
+        transcript_summary: segurneoData.transcript_summary,
+        agent_messages: segurneoData.participant_count?.agent_messages || 0,
+        user_messages: segurneoData.participant_count?.user_messages || 0,
+        total_messages: segurneoData.participant_count?.total_messages || 0,
+        audio_available: segurneoData.audio_available || false,
+        received_at: new Date().toISOString(),
+        created_at: segurneoData.created_at || new Date().toISOString()
+      };
+
+      // Verificar si ya existe la llamada
+      const { data: existingCall } = await supabase
+        .from('voice_calls')
+        .select('id, segurneo_call_id')
+        .eq('segurneo_call_id', segurneoData.call_id)
+        .single();
+
+      if (existingCall) {
+        console.log(`⚠️ Llamada ${segurneoData.call_id} ya existe en voice_calls, actualizando...`);
+        
+        const { error: updateError } = await supabase
+          .from('voice_calls')
+          .update(voiceCallData)
+          .eq('segurneo_call_id', segurneoData.call_id);
+
+        if (updateError) {
+          console.error('Error actualizando voice_call:', updateError);
+          throw updateError;
+        }
+      } else {
+        console.log(`✅ Insertando nueva llamada ${segurneoData.call_id} en voice_calls...`);
+        
+        const { error: insertError } = await supabase
+          .from('voice_calls')
+          .insert([voiceCallData]);
+
+        if (insertError) {
+          console.error('Error insertando voice_call:', insertError);
+          throw insertError;
+        }
+      }
+
+      // Si hay transcripts, procesar también para análisis completo
+      if (segurneoData.transcripts && segurneoData.transcripts.length > 0) {
+        console.log(`📝 Procesando ${segurneoData.transcripts.length} transcripts para análisis...`);
+        
+        // Crear registro en processed_calls para análisis
+        const processedCallData = {
+          segurneo_external_call_id: segurneoData.conversation_id,
+          status: 'completed',
+          segurneo_call_details: {
+            call_id: segurneoData.call_id,
+            conversation_id: segurneoData.conversation_id,
+            agent_id: segurneoData.agent_id,
+            duration_seconds: segurneoData.duration_seconds,
+            cost: segurneoData.cost,
+            metadata: {
+              source: 'segurneo-voice-real',
+              processed_at: new Date().toISOString()
+            }
+          },
+          segurneo_transcripts: segurneoData.transcripts.map((t: any) => ({
+            speaker: t.speaker,
+            text: t.message,
+            segment_start_time: t.segment_start_time,
+            segment_end_time: t.segment_end_time,
+            confidence: t.confidence,
+            sequence: t.sequence,
+            metadata: {
+              is_agent: t.speaker === 'agent',
+              confidence: t.confidence
+            }
+          })),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          processed_at: new Date().toISOString()
+        };
+
+        // Verificar si ya existe en processed_calls
+        const { data: existingProcessed } = await supabase
+          .from('processed_calls')
+          .select('id')
+          .eq('segurneo_external_call_id', segurneoData.conversation_id)
+          .single();
+
+        if (!existingProcessed) {
+          const { error: processedError } = await supabase
+            .from('processed_calls')
+            .insert([processedCallData]);
+
+          if (processedError) {
+            console.error('Error insertando processed_call:', processedError);
+            // No lanzar error aquí, la llamada principal ya se guardó
+          } else {
+            console.log(`✅ Llamada ${segurneoData.conversation_id} guardada en processed_calls para análisis`);
+          }
+        }
+      }
+
+      console.log(`🎉 Llamada ${segurneoData.conversation_id} procesada exitosamente`);
+      
+    } catch (error) {
+      console.error(`❌ Error procesando llamada de Segurneo:`, error);
+      throw error;
     }
   }
 
