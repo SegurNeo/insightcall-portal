@@ -226,12 +226,23 @@ export class CallsController {
       // Test database connection
       const dbResult = await databaseService.testConnection();
       
+      // Debug info about environment variables
+      const envInfo = {
+        hasNogalApiKey: !!(process.env.NOGAL_API_KEY),
+        nogalApiKeyLength: process.env.NOGAL_API_KEY?.length || 0,
+        nodeEnv: process.env.NODE_ENV,
+        authRequired: authService.isAuthRequired()
+      };
+      
+      console.log('[HealthCheck] Environment debug info:', envInfo);
+      
       const health = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
         database: dbResult.connected ? 'connected' : 'disconnected',
         auth: authService.isAuthRequired() ? 'required' : 'optional',
-        version: '1.0.0'
+        version: '1.0.0',
+        debug: envInfo // Temporary debugging info
       };
       
       if (!dbResult.connected) {
