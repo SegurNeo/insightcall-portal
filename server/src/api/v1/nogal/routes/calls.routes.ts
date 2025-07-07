@@ -16,6 +16,14 @@ router.get('/health', callsController.healthCheck.bind(callsController));
 router.use(authMiddleware);
 
 /**
+ * @route GET /api/v1/calls/auth-test
+ * @desc Test authentication without database dependency
+ * @access Private (requires API key)
+ * @returns Success if auth works
+ */
+router.get('/auth-test', callsController.authTest.bind(callsController));
+
+/**
  * @route POST /api/v1/calls
  * @desc Create a new voice call record
  * @access Private (requires API key)

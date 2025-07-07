@@ -275,6 +275,32 @@ export class CallsController {
       });
     }
   }
+
+  /**
+   * GET /api/v1/calls/auth-test
+   * Test endpoint to verify authentication only (NO database)
+   */
+  async authTest(req: Request, res: Response): Promise<void> {
+    try {
+      res.status(200).json({
+        success: true,
+        message: 'Authentication test successful',
+        data: {
+          timestamp: new Date().toISOString(),
+          authHeader: req.headers.authorization ? 'present' : 'missing',
+          apiKeyLength: process.env.NOGAL_API_KEY?.length || 0,
+          version: '1.0.0'
+        }
+      });
+    } catch (error) {
+      console.error('[CallsController] Unexpected error in auth test:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Auth test failed',
+        errors: ['An unexpected error occurred']
+      });
+    }
+  }
 }
 
 export const callsController = new CallsController(); 
