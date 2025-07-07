@@ -36,7 +36,8 @@ export class DatabaseService {
         total_messages: payload.participant_count.total_messages,
         audio_available: payload.audio_available,
         received_at: payload.created_at,
-        // created_at and updated_at are handled by the database
+        created_at: new Date().toISOString(),
+        // updated_at is handled by the database
       };
       
       // Insert into voice_calls table
