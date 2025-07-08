@@ -2,12 +2,16 @@ import { Router } from 'express';
 import nogalRoutes from './nogal';
 import callsRoutes from './calls.routes';
 import testAnalysisRoutes from './test-analysis.routes';
+import translationRoutes from './translation.routes';
 
 const router = Router();
 
 // Existing routes (analysis system)
 router.use('/calls', callsRoutes);
 router.use('/test-analysis', testAnalysisRoutes);
+
+// Translation service
+router.use('/translation', translationRoutes);
 
 // New Nogal module routes
 router.use('/nogal', nogalRoutes);
@@ -20,6 +24,7 @@ router.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     services: {
       analysis: 'available',
+      translation: 'available',
       nogal: 'available'
     }
   });

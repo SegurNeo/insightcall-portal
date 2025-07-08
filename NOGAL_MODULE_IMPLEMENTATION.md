@@ -55,7 +55,8 @@ const translated = await translationService.translateToSpanish(text, apiKey);
 - 🧠 **Detección automática** de idioma español
 - 🔄 **Fallback robusto** en caso de error
 - 📝 **Preserva contexto** y tono original
-- ⚡ **Respuesta rápida** con GPT-3.5 Turbo
+- ⚡ **Respuesta rápida** con Gemini (consistente con análisis)
+- 🔒 **Centralizado en backend** para mayor seguridad
 
 ### **2. Servicio de Datos Mejorado** (`src/services/voiceCallsRealDataService.ts`)
 
@@ -91,12 +92,20 @@ const details = await voiceCallsRealDataService.getVoiceCallDetailsClean(callId)
 - ✅ **Almacenamiento dual**: `voice_calls` + `processed_calls`
 - ✅ **Manejo de errores** robusto
 
-### **🌍 2. Traducción Automática**
-- ✅ **Detección inteligente** de idioma
+### **🔧 1.1. Endpoint de Traducción**
+- ✅ **Endpoint nuevo**: `/api/v1/translation/translate`
+- ✅ **Health check**: `/api/v1/translation/health`
+- ✅ **Gemini integrado** para traducción
+- ✅ **Fallback automático** en caso de error
+
+### **🌍 2. Traducción Automática (Gemini)**
+- ✅ **Backend centralizado** con Gemini API
+- ✅ **Detección inteligente** de idioma  
 - ✅ **Traducción a español** preservando contexto
-- ✅ **Fallback** al texto original si falla
+- ✅ **Fallback robusto** al texto original si falla
 - ✅ **Metadatos** de traducción guardados
 - ✅ **Opción de ver** texto original
+- ✅ **Consistencia** con sistema de análisis
 
 ### **💬 3. Chat de Transcripción**
 - ✅ **Formato conversacional** como ElevenLabs
@@ -305,6 +314,22 @@ El módulo de Nogal ha sido **completamente implementado** con todas las funcion
 - ✅ **Datos reales** de la base de datos
 - ✅ **Diseño profesional** con ShadCN/UI
 - ✅ **Sistema robusto** y escalable
+- ✅ **Arquitectura unificada** con Gemini para todo
+
+### **🎯 Arquitectura Unificada con Gemini**
+
+El sistema ahora utiliza **Gemini para todas las tareas de IA**:
+
+1. **📊 Análisis de llamadas**: Sentimiento, puntos clave, recomendaciones
+2. **🌍 Traducción automática**: Resúmenes de inglés a español
+3. **🎫 Clasificación de tickets**: Detección automática de incidencias
+4. **🧠 Procesamiento unificado**: Un solo modelo para consistencia
+
+**Ventajas de la unificación:**
+- 🔧 **Mantenimiento simplificado**: Una sola API key y configuración
+- ⚡ **Rendimiento consistente**: Mismo modelo para todas las tareas
+- 🔒 **Seguridad centralizada**: Todas las llamadas desde el backend
+- 💰 **Optimización de costes**: Un solo proveedor de IA
 
 El sistema está **listo para producción** y maneja correctamente todos los flujos de datos desde Segurneo hasta la visualización final en el dashboard de Nogal.
 

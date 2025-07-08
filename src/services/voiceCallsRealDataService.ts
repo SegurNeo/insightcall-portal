@@ -371,16 +371,9 @@ class VoiceCallsRealDataService {
       return { translated: null, translationInfo: null };
     }
 
-    try {
-      // Solo traducir si está disponible la API key (opcional)
-      const apiKey = ''; // Se puede configurar desde el entorno
-      if (!apiKey) {
-        console.log('⚠️ API key no disponible, usando resumen original');
-        return { translated: summary, translationInfo: null };
-      }
-
-      console.log('🌍 Traduciendo resumen a español...');
-      const translationInfo = await translationService.translateToSpanish(summary, apiKey);
+         try {
+       console.log('🌍 Traduciendo resumen a español...');
+       const translationInfo = await translationService.translateToSpanish(summary);
       
       console.log('✅ Resumen traducido exitosamente');
       return { 
