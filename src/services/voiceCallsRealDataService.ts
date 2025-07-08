@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { translationService, TranslationResponse } from './translationService';
 
 export interface VoiceCallReal {
   id: string;
@@ -28,13 +29,18 @@ export interface VoiceCallsStats {
   avgDuration: number;
 }
 
-// Estructura de transcripción individual de Segurneo
+// Estructura de transcripción individual de Segurneo desde BD
 export interface SegurneoTranscriptSegment {
   speaker: 'agent' | 'user';
   text: string;
   segment_start_time: number;
   segment_end_time: number;
   confidence: number;
+  sequence?: number;
+  metadata?: {
+    is_agent: boolean;
+    confidence: number;
+  };
 }
 
 // Estructura procesada para el chat
@@ -46,6 +52,28 @@ export interface ChatMessage {
   duration: number;
   confidence: number;
   formattedTime: string;
+}
+
+// Estructura de análisis de IA
+export interface AnalysisResult {
+  summary?: string;
+  sentiment?: string;
+  keyPoints?: string[];
+  recommendations?: string[];
+  score?: number;
+  rawAnalysis?: any;
+}
+
+// Estructura de tickets
+export interface TicketInfo {
+  id: string;
+  description: string;
+  tipo_incidencia: string;
+  motivo_incidencia: string;
+  priority: string;
+  status: string;
+  created_at: string;
+  metadata?: any;
 }
 
 export interface VoiceCallDetailsClean {
@@ -71,16 +99,26 @@ export interface VoiceCallDetailsClean {
   userMessages: number;
   totalMessages: number;
   
-  // Content - DATOS REALES
+  // Content - DATOS REALES CON TRADUCCIÓN
   transcriptSummary: string | null;
+  transcriptSummaryTranslated: string | null;
+  translationInfo: TranslationResponse | null;
   hasTranscriptSummary: boolean;
   terminationReason: string | null;
   audioAvailable: boolean;
   
-  // Transcripciones detalladas
+  // Transcripciones detalladas REALES
   chatMessages: ChatMessage[];
   hasChatMessages: boolean;
-  transcriptSource: 'json_file' | 'summary_mock' | 'none';
+  transcriptSource: 'database' | 'none';
+  
+  // Análisis de IA REAL
+  analysisResult: AnalysisResult | null;
+  hasAnalysis: boolean;
+  
+  // Tickets REALES
+  tickets: TicketInfo[];
+  hasTickets: boolean;
   
   // Metadata
   createdAt: string;
@@ -171,259 +209,199 @@ class VoiceCallsRealDataService {
   }
 
   /**
-   * 🔄 NUEVA FUNCIONALIDAD - Cargar transcripciones de archivos JSON
+   * 🔄 NUEVA FUNCIONALIDAD - Obtener transcripciones REALES de la base de datos
    */
-  private async loadTranscriptionsFromFile(conversationId: string): Promise<ChatMessage[]> {
+  private async loadRealTranscriptionsFromDB(conversationId: string): Promise<ChatMessage[]> {
     try {
-      console.log(`🔍 Buscando transcripciones para conversationId: ${conversationId}`);
+      console.log(`🔍 Buscando transcripciones REALES para conversationId: ${conversationId}`);
       
-      // Simulamos diferentes tipos de conversaciones basadas en conversationId
-      if (conversationId === 'conv_01jzjbhsqce2dv364654djvggj') {
-        // Conversación de Enrique Caro Fernández (cliente real)
-        return this.getEnriqueCaroTranscription();
-      } else if (conversationId === 'conv_01jzjbbtw6ey29c4msjpz0m71x') {
-        // Conversación corta de presentación
-        return this.getShortAgentIntroTranscription();
-      } else {
-        // Usar conversación de ejemplo basada en archivos JSON
-        return this.getCarmenExampleTranscription();
+      // Buscar en processed_calls por conversation_id
+      const { data: processedCall, error } = await supabase
+        .from('processed_calls')
+        .select('segurneo_transcripts')
+        .eq('segurneo_external_call_id', conversationId)
+        .single();
+
+      if (error || !processedCall) {
+        console.log(`⚠️ No se encontraron transcripciones en processed_calls para ${conversationId}`);
+        return [];
       }
+
+      const transcripts = processedCall.segurneo_transcripts as SegurneoTranscriptSegment[];
+      
+      if (!Array.isArray(transcripts) || transcripts.length === 0) {
+        console.log(`⚠️ Transcripciones vacías para ${conversationId}`);
+        return [];
+      }
+
+      console.log(`✅ Encontradas ${transcripts.length} transcripciones en BD`);
+
+      // Convertir a formato ChatMessage
+      const chatMessages: ChatMessage[] = transcripts.map((transcript, index) => ({
+        id: `msg_${index + 1}`,
+        speaker: transcript.speaker || 'user',
+        text: transcript.text || '',
+        timestamp: transcript.segment_start_time || 0,
+        duration: (transcript.segment_end_time || 0) - (transcript.segment_start_time || 0),
+        confidence: transcript.confidence || 0.95,
+        formattedTime: this.formatTime(transcript.segment_start_time || 0)
+      }));
+
+      console.log(`✅ ${chatMessages.length} mensajes de chat procesados desde BD`);
+      return chatMessages;
       
     } catch (error) {
-      console.error('❌ Error cargando transcripciones:', error);
+      console.error('❌ Error cargando transcripciones desde BD:', error);
       return [];
     }
   }
 
   /**
-   * 📝 Conversación real de Enrique Caro Fernández
+   * 🧠 Obtener análisis REAL de IA desde la base de datos
    */
-  private getEnriqueCaroTranscription(): ChatMessage[] {
-    return [
-      {
-        id: '1',
-        speaker: 'agent',
-        text: 'Buenas, ha contactado con la Correduría de Seguros Nogal. Soy Clara, su asistente virtual. ¿En qué puedo ayudarle?',
-        timestamp: 0,
-        duration: 5.2,
-        confidence: 0.95,
-        formattedTime: '00:00'
-      },
-      {
-        id: '2',
-        speaker: 'user',
-        text: 'Hola, soy Enrique Caro Fernández. Llamo por un tema de seguros de coche.',
-        timestamp: 5.2,
-        duration: 4.8,
-        confidence: 0.93,
-        formattedTime: '00:05'
-      },
-      {
-        id: '3',
-        speaker: 'agent',
-        text: 'Perfecto, Enrique. Déjeme buscarle en nuestro sistema por su nombre... No le encuentro por nombre. ¿Podría facilitarme su número de teléfono?',
-        timestamp: 10.0,
-        duration: 8.5,
-        confidence: 0.96,
-        formattedTime: '00:10'
-      },
-      {
-        id: '4',
-        speaker: 'user',
-        text: 'Sí, claro. Es el 636 789 234.',
-        timestamp: 18.5,
-        duration: 3.2,
-        confidence: 0.92,
-        formattedTime: '00:18'
-      },
-      {
-        id: '5',
-        speaker: 'agent',
-        text: 'Perfecto, ya le tengo localizado. Veo que tiene un incidente abierto relacionado con una nueva póliza de seguro de coche.',
-        timestamp: 21.7,
-        duration: 7.8,
-        confidence: 0.94,
-        formattedTime: '00:21'
-      },
-      {
-        id: '6',
-        speaker: 'user',
-        text: 'Exacto, solicité información hace unos días y no he recibido respuesta.',
-        timestamp: 29.5,
-        duration: 5.1,
-        confidence: 0.95,
-        formattedTime: '00:29'
-      },
-      {
-        id: '7',
-        speaker: 'agent',
-        text: 'Entiendo perfectamente. Le informo que un compañero se pondrá en contacto con usted en el plazo de 24 a 48 horas laborables con un presupuesto personalizado.',
-        timestamp: 34.6,
-        duration: 9.2,
-        confidence: 0.97,
-        formattedTime: '00:34'
-      },
-      {
-        id: '8',
-        speaker: 'user',
-        text: 'Perfecto, muchas gracias por la información. Quedo a la espera entonces.',
-        timestamp: 43.8,
-        duration: 4.9,
-        confidence: 0.94,
-        formattedTime: '00:43'
-      },
-      {
-        id: '9',
-        speaker: 'agent',
-        text: 'De nada, Enrique. ¿Hay algo más en lo que pueda ayudarle?',
-        timestamp: 48.7,
-        duration: 4.1,
-        confidence: 0.96,
-        formattedTime: '00:48'
-      },
-      {
-        id: '10',
-        speaker: 'user',
-        text: 'No, con eso es suficiente. Muchas gracias.',
-        timestamp: 52.8,
-        duration: 3.4,
-        confidence: 0.95,
-        formattedTime: '00:52'
-      },
-      {
-        id: '11',
-        speaker: 'agent',
-        text: 'Perfecto. Que tenga un buen día, Enrique.',
-        timestamp: 56.2,
-        duration: 3.1,
-        confidence: 0.97,
-        formattedTime: '00:56'
+  private async loadRealAnalysisFromDB(conversationId: string): Promise<AnalysisResult | null> {
+    try {
+      console.log(`🧠 Buscando análisis REAL de IA para: ${conversationId}`);
+      
+      const { data: processedCall, error } = await supabase
+        .from('processed_calls')
+        .select('analysis_results, ai_intent')
+        .eq('segurneo_external_call_id', conversationId)
+        .single();
+
+      if (error || !processedCall) {
+        console.log(`⚠️ No se encontró análisis para ${conversationId}`);
+        return null;
       }
-    ];
+
+      const analysisResults = processedCall.analysis_results as any;
+      const aiIntent = processedCall.ai_intent as any;
+
+      if (!analysisResults && !aiIntent) {
+        return null;
+      }
+
+      // Procesar el análisis real
+      const analysis: AnalysisResult = {
+        summary: analysisResults?.summary || aiIntent?.summary || '',
+        sentiment: analysisResults?.sentiment || aiIntent?.sentiment || '',
+        keyPoints: analysisResults?.keyPoints || aiIntent?.keyPoints || [],
+        recommendations: analysisResults?.recommendations || aiIntent?.recommendations || [],
+        score: analysisResults?.score || aiIntent?.score || 0,
+        rawAnalysis: { analysisResults, aiIntent }
+      };
+
+      console.log(`✅ Análisis de IA encontrado:`, {
+        hasSummary: !!analysis.summary,
+        sentiment: analysis.sentiment,
+        keyPointsCount: analysis.keyPoints?.length || 0
+      });
+
+      return analysis;
+      
+    } catch (error) {
+      console.error('❌ Error cargando análisis desde BD:', error);
+      return null;
+    }
   }
 
   /**
-   * 📝 Conversación corta de presentación del agente
+   * 🎫 Obtener tickets REALES asociados a la llamada
    */
-  private getShortAgentIntroTranscription(): ChatMessage[] {
-    return [
-      {
-        id: '1',
-        speaker: 'agent',
-        text: 'Buenas, ha contactado con la Correduría de Seguros Nogal. Soy Clara, su asistente virtual.',
-        timestamp: 0,
-        duration: 4.2,
-        confidence: 0.95,
-        formattedTime: '00:00'
+  private async loadRealTicketsFromDB(conversationId: string): Promise<TicketInfo[]> {
+    try {
+      console.log(`🎫 Buscando tickets REALES para: ${conversationId}`);
+      
+      // Primero obtener el ID de processed_calls
+      const { data: processedCall, error: callError } = await supabase
+        .from('processed_calls')
+        .select('id, ticket_id')
+        .eq('segurneo_external_call_id', conversationId)
+        .single();
+
+      if (callError || !processedCall) {
+        console.log(`⚠️ No se encontró processed_call para ${conversationId}`);
+        return [];
       }
-    ];
+
+      // Buscar tickets relacionados
+      const { data: tickets, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('conversation_id', processedCall.id);
+
+      if (ticketsError) {
+        console.error('Error obteniendo tickets:', ticketsError);
+        return [];
+      }
+
+      if (!tickets || tickets.length === 0) {
+        console.log(`⚠️ No se encontraron tickets para ${conversationId}`);
+        return [];
+      }
+
+      const ticketInfos: TicketInfo[] = tickets.map(ticket => ({
+        id: ticket.id,
+        description: ticket.description || '',
+        tipo_incidencia: ticket.tipo_incidencia || '',
+        motivo_incidencia: ticket.motivo_incidencia || '',
+        priority: ticket.priority || 'medium',
+        status: ticket.status || 'created',
+        created_at: ticket.created_at,
+        metadata: ticket.metadata
+      }));
+
+      console.log(`✅ ${ticketInfos.length} tickets encontrados para ${conversationId}`);
+      return ticketInfos;
+      
+    } catch (error) {
+      console.error('❌ Error cargando tickets desde BD:', error);
+      return [];
+    }
   }
 
   /**
-   * 📝 Conversación de ejemplo basada en archivos JSON (Carmen)
+   * 🌍 Traducir resumen automáticamente a español
    */
-  private getCarmenExampleTranscription(): ChatMessage[] {
-    return [
-      {
-        id: '1',
-        speaker: 'agent',
-        text: 'Corredor Nogal, buenos días. Le atiende Carmen, dígame.',
-        timestamp: 0,
-        duration: 4.5,
-        confidence: 0.95,
-        formattedTime: '00:00'
-      },
-      {
-        id: '2',
-        speaker: 'user',
-        text: 'Buenos días. Le llamo porque recibí una llamada suya y no sé cuál es el motivo.',
-        timestamp: 4.5,
-        duration: 5.8,
-        confidence: 0.92,
-        formattedTime: '00:04'
-      },
-      {
-        id: '3',
-        speaker: 'agent',
-        text: 'Ah, pues dígame a qué teléfono le hemos llamado, que lo miro yo.',
-        timestamp: 10.3,
-        duration: 4.2,
-        confidence: 0.94,
-        formattedTime: '00:10'
-      },
-      {
-        id: '4',
-        speaker: 'user',
-        text: 'Es el 600 818 336.',
-        timestamp: 14.5,
-        duration: 2.8,
-        confidence: 0.96,
-        formattedTime: '00:14'
-      },
-      {
-        id: '5',
-        speaker: 'agent',
-        text: 'Vale, un momento.',
-        timestamp: 17.3,
-        duration: 1.5,
-        confidence: 0.97,
-        formattedTime: '00:17'
-      },
-      {
-        id: '6',
-        speaker: 'agent',
-        text: 'Ya lo tengo aquí. Pedro, solo me han dejado el nombre de Pedro y un correo. Entiendo que no es usted.',
-        timestamp: 18.8,
-        duration: 7.2,
-        confidence: 0.93,
-        formattedTime: '00:18'
-      },
-      {
-        id: '7',
-        speaker: 'user',
-        text: 'No, no he sido yo.',
-        timestamp: 26.0,
-        duration: 2.1,
-        confidence: 0.95,
-        formattedTime: '00:26'
-      },
-      {
-        id: '8',
-        speaker: 'agent',
-        text: 'Es una solicitud que se ha hecho a través de la web. Lo voy a dar de baja, no se preocupe. A veces nos pasa.',
-        timestamp: 28.1,
-        duration: 6.8,
-        confidence: 0.94,
-        formattedTime: '00:28'
-      },
-      {
-        id: '9',
-        speaker: 'user',
-        text: 'Perfecto, muchas gracias.',
-        timestamp: 34.9,
-        duration: 2.3,
-        confidence: 0.96,
-        formattedTime: '00:34'
-      },
-      {
-        id: '10',
-        speaker: 'agent',
-        text: 'De nada. Que tenga un buen día.',
-        timestamp: 37.2,
-        duration: 2.8,
-        confidence: 0.97,
-        formattedTime: '00:37'
+  private async translateSummaryIfNeeded(summary: string | null): Promise<{
+    translated: string | null;
+    translationInfo: TranslationResponse | null;
+  }> {
+    if (!summary || summary.trim().length === 0) {
+      return { translated: null, translationInfo: null };
+    }
+
+    try {
+      // Solo traducir si está disponible la API key (opcional)
+      const apiKey = ''; // Se puede configurar desde el entorno
+      if (!apiKey) {
+        console.log('⚠️ API key no disponible, usando resumen original');
+        return { translated: summary, translationInfo: null };
       }
-    ];
+
+      console.log('🌍 Traduciendo resumen a español...');
+      const translationInfo = await translationService.translateToSpanish(summary, apiKey);
+      
+      console.log('✅ Resumen traducido exitosamente');
+      return { 
+        translated: translationInfo.translatedText, 
+        translationInfo 
+      };
+      
+    } catch (error) {
+      console.error('❌ Error en traducción, usando original:', error);
+      return { translated: summary, translationInfo: null };
+    }
   }
 
   /**
-   * 🎯 MÉTODO PRINCIPAL - Con transcripciones completas
+   * 🎯 MÉTODO PRINCIPAL MEJORADO - Con datos REALES de la base de datos
    */
   async getVoiceCallDetailsClean(segurneoCallId: string): Promise<VoiceCallDetailsClean> {
     try {
-      console.log(`🔍 Obteniendo detalles reales para: ${segurneoCallId}`);
+      console.log(`🔍 Obteniendo detalles REALES para: ${segurneoCallId}`);
       
+      // 1. Obtener datos básicos de voice_calls
       const { data: voiceCallData, error: voiceCallError } = await supabase
         .from('voice_calls')
         .select('*')
@@ -435,57 +413,101 @@ class VoiceCallsRealDataService {
         throw new Error('Llamada no encontrada');
       }
 
-      // Cargar transcripciones detalladas
-      const chatMessages = await this.loadTranscriptionsFromFile(voiceCallData.conversation_id);
-      
-      console.log(`✅ Llamada encontrada:`, {
+      // 2. Obtener datos detallados de forma paralela
+      const [chatMessages, analysisResult, tickets] = await Promise.all([
+        this.loadRealTranscriptionsFromDB(voiceCallData.conversation_id),
+        this.loadRealAnalysisFromDB(voiceCallData.conversation_id),
+        this.loadRealTicketsFromDB(voiceCallData.conversation_id)
+      ]);
+
+      // 3. Traducir resumen si está disponible
+      const { translated: translatedSummary, translationInfo } = await this.translateSummaryIfNeeded(
+        voiceCallData.transcript_summary
+      );
+
+      console.log(`✅ Llamada procesada completamente:`, {
         id: voiceCallData.segurneo_call_id,
         conversation_id: voiceCallData.conversation_id,
-        transcript_summary: voiceCallData.transcript_summary ? `${voiceCallData.transcript_summary.length} caracteres` : 'NO',
+        transcript_summary: voiceCallData.transcript_summary ? `${voiceCallData.transcript_summary.length} chars` : 'NO',
+        translated_summary: translatedSummary ? `${translatedSummary.length} chars` : 'NO',
         chat_messages: chatMessages.length,
+        has_analysis: !!analysisResult,
+        tickets_count: tickets.length,
         total_messages: voiceCallData.total_messages
       });
 
       const details: VoiceCallDetailsClean = {
+        // Identifiers
         id: voiceCallData.id,
         segurneoCallId: voiceCallData.segurneo_call_id,
         conversationId: voiceCallData.conversation_id,
+        
+        // Basic info
         agentId: voiceCallData.agent_id,
         status: voiceCallData.status,
         callSuccessful: voiceCallData.call_successful,
+        
+        // Timing
         startTime: voiceCallData.start_time,
         endTime: voiceCallData.end_time,
         durationSeconds: voiceCallData.duration_seconds,
         formattedDuration: this.formatDuration(voiceCallData.duration_seconds),
         formattedStartTime: this.formatDateTime(voiceCallData.start_time),
+        
+        // Messages
         agentMessages: voiceCallData.agent_messages,
         userMessages: voiceCallData.user_messages,
         totalMessages: voiceCallData.total_messages,
+        
+        // Content con traducción
         transcriptSummary: voiceCallData.transcript_summary,
+        transcriptSummaryTranslated: translatedSummary,
+        translationInfo,
         hasTranscriptSummary: !!voiceCallData.transcript_summary && voiceCallData.transcript_summary.trim().length > 0,
         terminationReason: voiceCallData.termination_reason,
         audioAvailable: voiceCallData.audio_available,
+        
+        // Transcripciones REALES
         chatMessages,
         hasChatMessages: chatMessages.length > 0,
-        transcriptSource: chatMessages.length > 0 ? 'json_file' : 'none',
+        transcriptSource: chatMessages.length > 0 ? 'database' : 'none',
+        
+        // Análisis REAL
+        analysisResult,
+        hasAnalysis: !!analysisResult,
+        
+        // Tickets REALES
+        tickets,
+        hasTickets: tickets.length > 0,
+        
+        // Metadata
         createdAt: voiceCallData.created_at,
         receivedAt: voiceCallData.received_at
       };
 
-      console.log(`✅ Detalles procesados:`, {
+      console.log(`✅ Detalles REALES procesados:`, {
         id: details.segurneoCallId,
         duration: details.formattedDuration,
         hasTranscriptSummary: details.hasTranscriptSummary,
         hasChatMessages: details.hasChatMessages,
-        chatMessages: details.chatMessages.length
+        hasAnalysis: details.hasAnalysis,
+        hasTickets: details.hasTickets,
+        chatMessages: details.chatMessages.length,
+        tickets: details.tickets.length
       });
 
       return details;
       
     } catch (error) {
-      console.error('❌ Error obteniendo detalles:', error);
+      console.error('❌ Error obteniendo detalles REALES:', error);
       throw error;
     }
+  }
+
+  private formatTime(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 
   formatDuration(seconds: number): string {
@@ -498,13 +520,13 @@ class VoiceCallsRealDataService {
     const date = new Date(dateString);
     const now = new Date();
     const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffInDays === 0) {
-      return `Hoy, ${format(date, 'HH:mm:ss')}`;
+      return `Hoy, ${format(date, 'HH:mm')}`;
     } else if (diffInDays === 1) {
-      return `Ayer, ${format(date, 'HH:mm:ss')}`;
+      return `Ayer, ${format(date, 'HH:mm')}`;
     } else {
-      return format(date, 'dd MMM yyyy, HH:mm:ss', { locale: es });
+      return format(date, 'dd MMM yyyy, HH:mm', { locale: es });
     }
   }
 }
