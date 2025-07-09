@@ -195,38 +195,16 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                       {/* Resumen traducido */}
                       <Card className="border-black/10 bg-white shadow-sm">
                         <CardHeader>
-                          <CardTitle className="text-lg text-black flex items-center gap-2">
-                            <Globe className="h-5 w-5" />
+                          <CardTitle className="text-lg text-black">
                             Resumen de la Conversación
-                            {call.translationInfo && (
-                              <Badge variant="outline" className="border-blue-200 text-blue-800 text-xs">
-                                Traducido automáticamente
-                              </Badge>
-                            )}
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
                           {call.hasTranscriptSummary ? (
-                            <div className="space-y-4">
-                              <div className="bg-gradient-to-br from-black/5 to-black/10 rounded-lg p-4 border border-black/10">
-                                <p className="text-black leading-relaxed">
-                                  {call.transcriptSummaryTranslated || call.transcriptSummary}
-                                </p>
-                              </div>
-                              
-                              {call.translationInfo && call.translationInfo.fromLanguage !== 'es' && (
-                                <details className="text-xs text-black/60">
-                                  <summary className="cursor-pointer hover:text-black/80">Ver texto original</summary>
-                                  <div className="mt-2 p-3 bg-gray-100 rounded border border-black/10">
-                                    <p className="text-black/70 italic">{call.transcriptSummary}</p>
-                                  </div>
-                                </details>
-                              )}
-                              
-                              <div className="flex justify-between text-xs text-black/60">
-                                <span>Resumen disponible • Fuente: {call.transcriptSource}</span>
-                                <span>{call.transcriptSummaryTranslated?.length || call.transcriptSummary?.length} caracteres</span>
-                              </div>
+                            <div className="bg-gradient-to-br from-black/5 to-black/10 rounded-lg p-4 border border-black/10">
+                              <p className="text-black leading-relaxed">
+                                {call.transcriptSummaryTranslated || call.transcriptSummary}
+                              </p>
                             </div>
                           ) : (
                             <div className="text-center py-8 text-black/60 bg-gray-50 rounded-lg border border-dashed border-black/20">

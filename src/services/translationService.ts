@@ -7,6 +7,14 @@ interface TranslationResponse {
 }
 
 class TranslationService {
+  private getBaseUrl(): string {
+    // En desarrollo, usar el puerto del servidor backend
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:3000';
+    }
+    // En producción, usar el mismo host
+    return window.location.origin;
+  }
 
   async translateToSpanish(text: string): Promise<TranslationResponse> {
     if (!text || text.trim().length === 0) {
@@ -19,8 +27,11 @@ class TranslationService {
     }
 
     try {
+      const baseUrl = this.getBaseUrl();
+      console.log(`🌍 Traduciendo texto usando: ${baseUrl}/api/v1/translation/translate`);
+      
       // Llamar al endpoint de traducción del backend
-      const response = await fetch('/api/v1/translation/translate', {
+      const response = await fetch(`${baseUrl}/api/v1/translation/translate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -70,7 +81,8 @@ class TranslationService {
   // Health check del servicio
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch('/api/v1/translation/health');
+      const baseUrl = this.getBaseUrl();
+      const response = await fetch(`${baseUrl}/api/v1/translation/health`);
       return response.ok;
     } catch (error) {
       console.error('❌ Error en health check de traducción:', error);

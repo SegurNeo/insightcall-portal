@@ -1,4 +1,4 @@
-import { generateStructuredResponse } from '../lib/gemini';
+import { generateTextResponse } from '../lib/gemini';
 
 export interface TranslationResult {
   originalText: string;
@@ -16,58 +16,40 @@ class TranslationService {
     try {
       console.log(`[TranslationService] Analizando texto: "${text.substring(0, 50)}..."`);
       
-      const prompt = `
-Analiza el siguiente texto y determina:
-1. ¿Está en inglés, español o es ambiguo?
-2. Si está en inglés, tradúcelo al español manteniendo el contexto de seguros/telecomunicaciones
-3. Si ya está en español, devuélvelo igual
-
-TEXTO A ANALIZAR:
-"${text}"
-
-Responde en JSON con este formato exacto:
-{
-  "detectedLanguage": "en|es|unknown",
-  "translatedText": "texto traducido o original si ya estaba en español",
-  "confidence": 0.95
-}
-
-IMPORTANTE: 
-- Si detectas inglés, traduce profesionalmente al español
-- Si ya está en español, copia el texto original sin cambios
-- Mantén la terminología de seguros (póliza, correduría, etc.)
-`;
-
-      const response = await generateStructuredResponse<{
-        detectedLanguage: string;
-        translatedText: string;
-        confidence: number;
-      }>(prompt);
-
-      // Validar respuesta
-      if (!response || !response.translatedText) {
-        console.warn('[TranslationService] Respuesta de Gemini inválida, usando texto original');
+      // Detectar si ya está en español
+      if (this.isSpanish(text)) {
+        console.log('[TranslationService] Texto ya está en español');
         return {
           originalText: text,
           translatedText: text,
-          detectedLanguage: 'unknown',
-          confidence: 0.5
+          detectedLanguage: 'es',
+          confidence: 0.9
         };
+      }
+
+      // Usar Gemini directamente para traducir
+      const prompt = `Traduce este texto al español de manera natural y profesional. Mantén el tono y significado original.
+
+TEXTO A TRADUCIR:
+${text}
+
+TRADUCCIÓN AL ESPAÑOL:`;
+
+      console.log('[TranslationService] Enviando a Gemini para traducción...');
+      const translatedText = await generateTextResponse(prompt);
+
+      if (!translatedText || translatedText.trim().length === 0) {
+        throw new Error('Gemini devolvió una respuesta vacía');
       }
 
       const result: TranslationResult = {
         originalText: text,
-        translatedText: response.translatedText,
-        detectedLanguage: this.normalizeLanguage(response.detectedLanguage),
-        confidence: Math.max(0, Math.min(1, response.confidence || 0.8))
+        translatedText: translatedText.trim(),
+        detectedLanguage: 'en',
+        confidence: 0.9
       };
 
-      console.log(`[TranslationService] Resultado:`, {
-        detected: result.detectedLanguage,
-        changed: result.originalText !== result.translatedText,
-        confidence: result.confidence
-      });
-
+      console.log(`[TranslationService] Traducción exitosa: "${result.translatedText.substring(0, 50)}..."`);
       return result;
       
     } catch (error) {
@@ -83,13 +65,22 @@ IMPORTANTE:
   }
 
   /**
-   * Normaliza el idioma detectado
+   * Detecta si un texto está en español usando palabras clave
    */
-  private normalizeLanguage(detectedLang: string): 'en' | 'es' | 'unknown' {
-    const lang = detectedLang?.toLowerCase();
-    if (lang === 'en' || lang === 'english' || lang === 'inglés') return 'en';
-    if (lang === 'es' || lang === 'spanish' || lang === 'español') return 'es';
-    return 'unknown';
+  private isSpanish(text: string): boolean {
+    const spanishWords = [
+      'el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'es', 'se', 'no', 'te', 'lo', 'le', 'da', 'su', 'por', 'son', 'con', 'para', 'mi', 'está', 'tiene', 'le', 'ha', 'me', 'si', 'sin', 'sobre', 'este', 'ya', 'entre', 'cuando', 'todo', 'esta', 'ser', 'son', 'dos', 'también', 'fue', 'había', 'era', 'muy', 'años', 'hasta', 'desde', 'está', 'estaba', 'estamos', 'pueden', 'como', 'llama', 'llamada', 'cliente', 'seguro', 'póliza', 'incidencia', 'ticket', 'gracias', 'buenos días', 'buenas tardes', 'hola', 'adiós'
+    ];
+
+    const lowerText = text.toLowerCase();
+    const spanishWordCount = spanishWords.filter(word => 
+      lowerText.includes(` ${word} `) || 
+      lowerText.startsWith(`${word} `) || 
+      lowerText.endsWith(` ${word}`)
+    ).length;
+
+    // Si encontramos más de 3 palabras españolas, asumimos que está en español
+    return spanishWordCount > 3;
   }
 
   /**

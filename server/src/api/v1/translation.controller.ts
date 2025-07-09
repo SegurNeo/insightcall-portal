@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { generateStructuredResponse } from '../../lib/gemini';
+import { generateTextResponse } from '../../lib/gemini';
 
 interface TranslationRequest {
   text: string;
@@ -56,28 +56,25 @@ export class TranslationController {
         return res.json(response);
       }
 
-      // Usar Gemini para traducción
-      const prompt = `Traduce el siguiente texto al español manteniendo el tono y significado original. Responde SOLO con la traducción, sin comentarios adicionales.
+      // Prompt simple y directo para Gemini
+      const prompt = `Traduce este texto al español de manera natural y profesional. Mantén el tono y significado original.
 
-Texto a traducir: ${text}`;
+TEXTO A TRADUCIR:
+${text}
+
+TRADUCCIÓN AL ESPAÑOL:`;
 
       console.log('[TranslationController] Enviando a Gemini...');
       
-      // Usar generateStructuredResponse pero esperando texto simple
-      const geminiResult = await generateStructuredResponse<{ translation: string }>(
-        `${prompt}\n\nDevuelve el resultado en formato JSON: {"translation": "texto traducido aquí"}`
-      );
+      // Usar generateTextResponse directamente - mucho más simple
+      const translatedText = await generateTextResponse(prompt);
 
-      let translatedText = text; // fallback
-      
-      if (geminiResult && geminiResult.translation) {
-        translatedText = geminiResult.translation.trim();
-      } else {
-        console.warn('[TranslationController] Respuesta de Gemini inválida, usando texto original');
+      if (!translatedText || translatedText.trim().length === 0) {
+        throw new Error('Gemini devolvió una respuesta vacía');
       }
 
       const response: TranslationResponse = {
-        translatedText,
+        translatedText: translatedText.trim(),
         originalText: text,
         fromLanguage: 'auto',
         toLanguage: targetLanguage,
@@ -85,6 +82,8 @@ Texto a traducir: ${text}`;
       };
 
       console.log(`[TranslationController] Traducción completada en ${response.processingTime}ms`);
+      console.log(`[TranslationController] Original: "${text.substring(0, 50)}..."`);
+      console.log(`[TranslationController] Traducido: "${response.translatedText.substring(0, 50)}..."`);
       
       return res.json(response);
 
