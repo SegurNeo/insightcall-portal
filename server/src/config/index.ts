@@ -6,8 +6,16 @@ dotenv.config();
 interface Config {
   port: number;
   nodeEnv: string;
+  
+  // Supabase Configuration - Unificada para todo el sistema
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  supabaseServiceKey?: string;
+  
+  // Legacy Nogal Supabase (para compatibilidad)
   nogalSupabaseUrl: string;
   nogalSupabaseServiceKey: string;
+  
   segurneoVoiceApiKey: string;
   segurneoVoiceBaseUrl: string;
   geminiApiKey: string;
@@ -35,16 +43,21 @@ const config: Config = {
   port: parseInt(getOptionalEnvVar('PORT', '3000')),
   nodeEnv: getOptionalEnvVar('NODE_ENV', 'development'),
 
-  // Nogal Supabase Configuration
-  nogalSupabaseUrl: getRequiredEnvVar('NOGAL_SUPABASE_URL'),
-  nogalSupabaseServiceKey: getRequiredEnvVar('NOGAL_SUPABASE_SERVICE_KEY'),
+  // Supabase Configuration - Unificada
+  supabaseUrl: getOptionalEnvVar('SUPABASE_URL', 'https://zfmrknubpbzsowfatnbq.supabase.co'),
+  supabaseAnonKey: getOptionalEnvVar('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmbXJrbnVicGJ6c293ZmF0bmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc2MTMxMDAsImV4cCI6MjA2MzE4OTEwMH0.zaVXvVOTKRZzAA52f8m2qLXewIsS1bk_6x59N5Kx1wU'),
+  supabaseServiceKey: getOptionalEnvVar('SUPABASE_SERVICE_ROLE_KEY'),
 
-  // Segurneo Voice Configuration
-  segurneoVoiceApiKey: getRequiredEnvVar('SEGURNEO_VOICE_API_KEY'),
+  // Legacy Nogal Supabase (fallback a configuración unificada)
+  nogalSupabaseUrl: getOptionalEnvVar('NOGAL_SUPABASE_URL', getOptionalEnvVar('SUPABASE_URL', 'https://zfmrknubpbzsowfatnbq.supabase.co')),
+  nogalSupabaseServiceKey: getOptionalEnvVar('NOGAL_SUPABASE_SERVICE_KEY', getOptionalEnvVar('SUPABASE_SERVICE_ROLE_KEY', getOptionalEnvVar('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmbXJrbnVicGJ6c293ZmF0bmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc2MTMxMDAsImV4cCI6MjA2MzE4OTEwMH0.zaVXvVOTKRZzAA52f8m2qLXewIsS1bk_6x59N5Kx1wU'))),
+
+  // Segurneo Voice Configuration  
+  segurneoVoiceApiKey: getOptionalEnvVar('SEGURNEO_VOICE_API_KEY', 'segurneo_test_key'),
   segurneoVoiceBaseUrl: getOptionalEnvVar('SEGURNEO_VOICE_API_BASE_URL', 'https://segurneo-voice.onrender.com/api/v1'),
 
   // Gemini Configuration
-  geminiApiKey: getRequiredEnvVar('GEMINI_API_KEY'),
+  geminiApiKey: getOptionalEnvVar('GEMINI_API_KEY', 'development_key'),
 
   // Nogal API Configuration
   nogalApiBaseUrl: getOptionalEnvVar('NOGAL_API_BASE_URL', 'https://api.nogal.app/v1'),

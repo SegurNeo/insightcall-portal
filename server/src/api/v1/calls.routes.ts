@@ -1,25 +1,18 @@
 import { Router } from 'express';
-import { CallsController } from './calls.controller';
+import { callsController } from './calls/controllers/calls.controller';
 
 const router = Router();
-const controller = new CallsController();
 
-// GET /api/v1/calls - Get all calls with pagination
-router.get('/', controller.getCalls.bind(controller));
+// Health check endpoint 
+router.get('/health', callsController.healthCheck.bind(callsController));
 
-// GET /api/v1/calls/:id - Get a specific call
-router.get('/:id', controller.getCallById.bind(controller));
+// GET /api/v1/calls - Get all calls with pagination using CallDataService
+router.get('/', callsController.getCalls.bind(callsController));
 
-// GET /api/v1/calls/:id/audio - Get call audio
-router.get('/:id/audio', controller.getCallAudio.bind(controller));
+// GET /api/v1/calls/:id - Get a specific call using CallDataService
+router.get('/:id', callsController.getCallById.bind(callsController));
 
-// POST /api/v1/calls/sync - Sync calls from Segurneo
-router.post('/sync', controller.syncCalls.bind(controller));
-
-// POST /api/v1/calls/sync/elevenlabs - Sync all Eleven Labs calls
-router.post('/sync/elevenlabs', controller.syncElevenLabsCalls.bind(controller));
-
-// POST /api/v1/calls/webhook - Webhook endpoint for Segurneo Voice
-router.post('/webhook', controller.webhookHandler.bind(controller));
+// POST /api/v1/calls/analyze - Analyze call transcript
+router.post('/analyze', callsController.analyzeCall.bind(callsController));
 
 export default router; 
