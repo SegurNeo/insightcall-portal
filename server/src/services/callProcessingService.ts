@@ -151,7 +151,16 @@ export class CallProcessingService {
     }
 
     // 🧠 ANÁLISIS IA si hay transcripts
-    let aiAnalysis = null;
+    let aiAnalysis: {
+      tipo_incidencia: string;
+      motivo_gestion: string;
+      confidence: number;
+      prioridad: 'low' | 'medium' | 'high';
+      resumen_analisis: string;
+      datos_extraidos: Record<string, any>;
+      notas_para_nogal?: string;
+      requiere_ticket?: boolean;
+    } | null = null;
     
     if (callRecord.transcripts && callRecord.transcripts.length > 0) {
       try {
@@ -173,7 +182,9 @@ export class CallProcessingService {
           confidence: nogalAnalysis.confidence,
           prioridad: nogalAnalysis.prioridad as 'low' | 'medium' | 'high',
           resumen_analisis: nogalAnalysis.resumenLlamada,
-          datos_extraidos: nogalAnalysis.datosExtraidos
+          datos_extraidos: nogalAnalysis.datosExtraidos,
+          notas_para_nogal: nogalAnalysis.notasParaNogal,
+          requiere_ticket: nogalAnalysis.requiereTicket
         };
 
         console.log(`🧠 [SIMPLE] Análisis IA completado con confianza: ${nogalAnalysis.confidence}`);
@@ -208,32 +219,60 @@ export class CallProcessingService {
    * 🎫 Crear tickets automáticos si cumple criterios
    */
   private async createTicketsIfNeeded(callRecord: CallRecord): Promise<void> {
-    // Solo crear tickets si hay análisis IA y confianza alta
-    const aiAnalysis = callRecord.ai_analysis;
-    if (!aiAnalysis || aiAnalysis.confidence < 0.7) {
-      console.log(`⏭️ [SIMPLE] No se crean tickets: confianza ${aiAnalysis?.confidence || 0}`);
+    // Solo crear tickets si hay análisis IA, requiere ticket y confianza alta
+    const aiAnalysis = callRecord.ai_analysis as any; // Cast to allow new fields
+    if (!aiAnalysis || !aiAnalysis.requiere_ticket || aiAnalysis.confidence < 0.7) {
+      console.log(`⏭️ [SIMPLE] No se crean tickets: requiere=${aiAnalysis?.requiere_ticket}, confianza=${aiAnalysis?.confidence || 0}`);
       return;
     }
 
     try {
+      // Construir notas específicas según reglas del CSV
+      let notasEspecificas = aiAnalysis.notas_para_nogal || '';
+      
+      // Añadir datos extraídos según las reglas del CSV
+      const datosExtraidos = aiAnalysis.datos_extraidos || {};
+      if (datosExtraidos.numeroPoliza) {
+        notasEspecificas += `\nNúmero de póliza: ${datosExtraidos.numeroPoliza}`;
+      }
+      if (datosExtraidos.cuentaBancaria) {
+        notasEspecificas += `\nNueva cuenta bancaria: ${datosExtraidos.cuentaBancaria}`;
+      }
+      if (datosExtraidos.direccion) {
+        notasEspecificas += `\nNueva dirección: ${datosExtraidos.direccion}`;
+      }
+      if (datosExtraidos.fechaEfecto) {
+        notasEspecificas += `\nFecha de efecto solicitada: ${datosExtraidos.fechaEfecto}`;
+      }
+      if (datosExtraidos.asegurados) {
+        notasEspecificas += `\nAsegurados: ${JSON.stringify(datosExtraidos.asegurados)}`;
+      }
+      if (datosExtraidos.prestamo) {
+        const prestamo = datosExtraidos.prestamo;
+        notasEspecificas += `\nDatos préstamo - Nº: ${prestamo.numero}, Banco: ${prestamo.banco} (${prestamo.entidad}-${prestamo.oficina}), Fechas: ${prestamo.fechaInicio} a ${prestamo.fechaFin}`;
+      }
+
+      // Añadir información de análisis automático
+      const descripcionCompleta = `${notasEspecificas}
+
+--- INFORMACIÓN DEL ANÁLISIS ---
+Confianza IA: ${(aiAnalysis.confidence * 100).toFixed(1)}%
+Resumen: ${aiAnalysis.resumen_analisis}
+Procesado automáticamente: ${new Date().toLocaleString('es-ES')}`;
+
       const ticketData = {
         conversation_id: callRecord.id,
         tipo_incidencia: aiAnalysis.tipo_incidencia,
         motivo_incidencia: aiAnalysis.motivo_gestion,
-        status: 'pending',
+        status: 'created',
         priority: aiAnalysis.prioridad,
-        description: `Ticket automático generado por IA.
-
-Resumen: ${aiAnalysis.resumen_analisis}
-
-Tipo: ${aiAnalysis.tipo_incidencia}
-Motivo: ${aiAnalysis.motivo_gestion}
-Confianza: ${(aiAnalysis.confidence * 100).toFixed(1)}%`,
+        description: descripcionCompleta.trim(),
         metadata: {
           source: 'ai-analysis-auto',
           confidence: aiAnalysis.confidence,
           analysis_timestamp: new Date().toISOString(),
-          datos_extraidos: aiAnalysis.datos_extraidos
+          datos_extraidos: aiAnalysis.datos_extraidos,
+          notas_nogal_originales: aiAnalysis.notas_para_nogal
         }
       };
 
@@ -257,7 +296,8 @@ Confianza: ${(aiAnalysis.confidence * 100).toFixed(1)}%`,
         })
         .eq('id', callRecord.id);
 
-      console.log(`🎫 [SIMPLE] Ticket automático creado: ${createdTicket.id}`);
+      console.log(`🎫 [SIMPLE] Ticket automático creado con notas específicas: ${createdTicket.id}`);
+      console.log(`📝 [SIMPLE] Notas generadas: ${notasEspecificas}`);
       
     } catch (error) {
       console.error(`❌ [SIMPLE] Error creando ticket:`, error);

@@ -18,6 +18,7 @@ export interface NogalAnalysisResult {
   datosExtraidos: {
     [key: string]: any;
   };
+  notasParaNogal?: string; // Notas específicas según reglas del CSV
   requiereTicket: boolean;
   prioridad: 'low' | 'medium' | 'high';
 }
@@ -28,64 +29,115 @@ class NogalAnalysisService {
 Eres un experto en seguros y atención al cliente de la Correduría de Seguros Nogal. 
 Analiza la siguiente conversación telefónica y clasifícala según los tipos de incidencia exactos de Nogal.
 
-TIPOS DE INCIDENCIA DISPONIBLES (del CSV oficial de Nogal):
+TIPOS DE INCIDENCIA DISPONIBLES (CSV oficial actualizado de Nogal):
 
 1. **Nueva contratación de seguros**
-   - Contratación Póliza
-   - Póliza anterior suspensión de garantías
+   - "Contratación Póliza" (ramo: hogar/auto/vida/decesos/Salud/otros)
+     • Consideración: Si el cliente no existe se crea y sobre esa ficha se crea la incidencia
+     • Necesidad: Cliente quiere contratar un seguro y no tiene incidencia de vencimiento pendiente
+   - "Póliza anterior suspensión de garantías"
+     • Consideración: debe tener la póliza el check de suspensión de garantías "sí"
+     • Necesidad: Cliente quiere contratar un seguro y tiene una reserva de prima en cia
 
 2. **Modificación póliza emitida**
-   - Atención al cliente - Modif datos póliza
-   - Cambio nº de cuenta
-   - Cambio fecha de efecto
-   - Cambio forma de pago
-   - Modificación nº asegurados
-   - Cambio dirección postal
-   - Modificación coberturas
-   - Cesión de derechos datos incompletos (Exclusiva IA)
-   - Cesión de derechos
-   - Corrección datos erróneos en póliza
-   - Datos incompletos (Exclusiva IA)
+   - "Atención al cliente - Modif datos póliza"
+     • Consideración: rellenamos datos en notas
+     • Necesidad: Cliente quiere hacer modificación que no varía prima (nombre, apellido...)
+   - "Cambio nº de cuenta"
+     • Consideración: rellenamos datos en notas
+     • Necesidad: Cliente quiere cambiar la CCC en las pólizas y facilita la nueva cuenta
+   - "Cambio fecha de efecto"
+     • Consideración: metemos en notas este dato
+     • Necesidad: Cliente solicita cambio de fecha de efecto/entrada en vigor del seguro
+   - "Cambio forma de pago"
+     • Consideración: metemos en notas este dato
+     • Necesidad: Cliente solicita cambio de peridicidad (sin que fuera anual la forma anterior)
+   - "Modificación nº asegurados"
+     • Consideración: metemos en notas asegurado a incluir/excluir (nombre, apellidos, DNI, fecha nacimiento) y fecha de vigor
+     • Necesidad: Cliente solicita incluir nuevo asegurado o eliminar uno existente
+   - "Cambio dirección postal"
+     • Consideración: metemos en notas la nueva dirección
+     • Necesidad: Cliente solicita modificar dirección postal de sus pólizas
+   - "Modificación coberturas"
+     • Consideración: metemos en notas la cobertura a modificar y fecha de vigor
+     • Necesidad: Cliente solicita modificar cobertura (ej: todo riesgo a terceros, electrodomésticos...)
+   - "Cesión de derechos datos incompletos" (Exclusiva IA)
+     • Consideración: Cliente no tiene datos completos del préstamo hipotecario
+     • Necesidad: Cliente solicita cesión pero falta Nº préstamo, banco, fechas
+   - "Cesión de derechos"
+     • Consideración: metemos en notas Nº préstamo, banco (entidad y oficina), fecha inicio y fin
+     • Necesidad: Cliente solicita cesión de derechos y dispone de todos los datos
+   - "Corrección datos erróneos en póliza"
+     • Consideración: metemos en notas los datos a corregir y valores correctos
+     • Necesidad: Cliente solicita corregir errores detectados en su póliza
+   - "Datos incompletos" (Exclusiva IA)
+     • Consideración: metemos en notas los campos que quería modificar señalando que no tenía datos completos
+     • Necesidad: Cliente solicita cambios pero no dispone de los nuevos datos
 
 3. **Llamada asistencia en carretera**
-   - Siniestros
+   - "Siniestros"
+     • Necesidad: Cliente necesita una grúa. Pasamos directamente con asistencia de cia
 
 4. **Retención de Cliente Cartera**
-   - Retención de Cliente Cartera Llamada
+   - "Retención de Cliente Cartera Llamada"
+     • Necesidad: Cliente llama para ver renovación o anular una póliza de cartera
 
 5. **Cancelación antes de efecto**
-   - Cancelación antes de efecto llamada
+   - "Cancelación antes de efecto llamada"
+     • Necesidad: Cliente llama para cancelar una póliza de NP
 
-6. **Llamada gestión comercial**
-   - LLam gestión comerc
-   - Pago de Recibo
-   - Consulta cliente
-   - Cambio forma de pago (desde anual a fraccionado)
-   - Reenvío siniestros (Exclusiva IA)
-   - Reenvío agentes humanos (Exclusiva IA)
+6. **Retención cliente**
+   - "Retención cliente"
+     • Necesidad: Cliente llama para ver renovación o anular una póliza
 
-7. **Baja cliente en BBDD**
-   - Baja Cliente BBDD
+7. **Llamada gestión comercial**
+   - "LLam gestión comerc"
+     • Necesidad: Cliente solicita gestión sobre póliza contratada que no es renovación ni anulación
+   - "Pago de Recibo"
+     • Necesidad: Cliente llama para realizar un pago pendiente de recibo
+   - "Consulta cliente"
+     • Consideración: los gestores de att al cliente dan respuesta al cliente en línea, la incidencia se les genera y se debe cerrar siempre
+     • Necesidad: Cliente llama para consulta resoluble desde att cliente (fechas efecto, formas pago, cias...)
+   - "Cambio forma de pago"
+     • Consideración: metemos en notas este dato
+     • Necesidad: Cliente tiene forma de pago anual y quiere fraccionar
+   - "Reenvío siniestros" (Exclusiva IA)
+     • Consideración: Siempre que se pase la llamada a la cola de siniestros
+   - "Reenvío agentes humanos" (Exclusiva IA)
+     • Consideración: Siempre que se pase la llamada a la cola de humanos
 
-8. **Reclamación cliente regalo**
-   - Reclamación atención al cliente
+8. **Baja cliente en BBDD**
+   - "Baja Cliente BBDD"
+     • Necesidad: Cliente solicita baja en la base de datos porque no quiere que le llamen más
 
-9. **Solicitud duplicado póliza**
-   - Correo ordinario
-   - Duplicado Tarjeta
-   - Email
-   - Información recibos declaración renta
+9. **Reclamación cliente regalo**
+   - "Reclamación atención al cliente"
+     • Necesidad: Cliente indica que no ha recibido regalo ofrecido por comercial o por recomendar
 
-RAMOS DISPONIBLES: hogar, auto, vida, decesos, Salud, otros
+10. **Solicitud duplicado póliza**
+    - "Correo ordinario"
+      • Necesidad: Cliente solicita envío de duplicado de póliza por correo ordinario
+    - "Duplicado Tarjeta"
+      • Necesidad: Cliente solicita envío de duplicado de tarjetas de seguro de decesos o salud
+    - "Email"
+      • Necesidad: Cliente solicita envío de duplicado de póliza por email
+    - "Información recibos declaración renta"
+      • Necesidad: Cliente solicita envío de recibos de ejercicio fiscal anterior para declaración renta
+
+REGLAS ESPECIALES:
+- En modificaciones: SIEMPRE preguntar fecha de inicio (hoy, renovación póliza...)
+- Si existe incidencia pendiente de vencimiento: crear rellamada sobre esa incidencia
+- Para "Exclusiva IA": solo crear automáticamente con alta confianza
 
 CONVERSACIÓN A ANALIZAR:
 {{conversation}}
 
 INSTRUCCIONES:
 1. Identifica la incidencia principal que mejor describe la consulta del cliente
-2. Extrae todos los datos relevantes mencionados (números de póliza, cuentas, direcciones, etc.)
-3. Determina si requiere creación de ticket
-4. Calcula la prioridad basada en la urgencia y complejidad
+2. Extrae TODOS los datos relevantes mencionados (números de póliza, cuentas, direcciones, etc.)
+3. Genera notas específicas según las consideraciones del CSV
+4. Determina si requiere creación de ticket
+5. Calcula la prioridad basada en urgencia y complejidad
 
 Responde EXACTAMENTE en este formato JSON:
 {
@@ -93,20 +145,24 @@ Responde EXACTAMENTE en este formato JSON:
     "tipo": "uno de los tipos exactos listados arriba",
     "motivo": "uno de los motivos exactos listados arriba",
     "ramo": "hogar|auto|vida|decesos|Salud|otros (solo si aplica)",
-    "consideraciones": "notas especiales para el gestor",
-    "necesidadCliente": "descripción de lo que necesita el cliente",
-    "tipoCreacion": "Manual|Automática|Exclusiva IA"
+    "consideraciones": "notas específicas según reglas del CSV",
+    "necesidadCliente": "descripción exacta de lo que necesita el cliente",
+    "tipoCreacion": "Manual / Automática|Exclusiva IA"
   },
   "incidenciasSecundarias": [],
   "confidence": 0.95,
   "resumenLlamada": "resumen claro y conciso en español",
   "datosExtraidos": {
-    "numeroPoliza": "si se menciona",
+    "numeroPoliza": "si se menciona exactamente",
     "numeroRecibo": "si se menciona",
-    "cuentaBancaria": "si se menciona",
-    "direccion": "si se menciona nueva dirección",
-    "otros": "cualquier otro dato relevante"
+    "cuentaBancaria": "nueva CCC si se proporciona",
+    "direccion": "nueva dirección completa si se menciona",
+    "fechaEfecto": "fecha de inicio del cambio si se menciona",
+    "asegurados": "datos de asegurados a incluir/excluir",
+    "prestamo": "datos del préstamo hipotecario si aplica",
+    "otros": "cualquier otro dato específico relevante"
   },
+  "notasParaNogal": "información específica que debe ir en el campo Notas del ticket según las reglas del CSV",
   "requiereTicket": true,
   "prioridad": "low|medium|high"
 }
@@ -155,6 +211,7 @@ Responde EXACTAMENTE en este formato JSON:
           confidence: Math.max(0, Math.min(1, response.confidence || 0.8)),
           resumenLlamada: response.resumenLlamada || 'Llamada procesada sin resumen disponible',
           datosExtraidos: response.datosExtraidos || {},
+          notasParaNogal: response.notasParaNogal,
           requiereTicket: response.requiereTicket !== false, // Default true
           prioridad: this.normalizePriority(response.prioridad)
         };

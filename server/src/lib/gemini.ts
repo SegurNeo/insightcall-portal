@@ -26,13 +26,41 @@ export async function generateStructuredResponse<T>(
 ): Promise<T> {
   try {
     const response = await generateTextResponse(prompt, context);
+    console.log('[Gemini] Raw response:', response.substring(0, 500) + '...[truncated]');
     
-    // Try to parse the response as JSON
+    // Try to parse the response as JSON with improved error handling
     let parsedResponse: any;
     try {
+      // First, try direct JSON parsing
       parsedResponse = JSON.parse(response);
     } catch (parseError) {
-      throw new Error('Failed to parse Gemini response as JSON');
+      // If that fails, try to extract JSON from markdown code blocks
+      const jsonMatch = response.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i);
+      if (jsonMatch) {
+        try {
+          parsedResponse = JSON.parse(jsonMatch[1]);
+          console.log('[Gemini] Extracted JSON from markdown blocks');
+        } catch (markdownError) {
+          console.error('[Gemini] Failed to parse JSON from markdown:', markdownError);
+          throw new Error('Failed to parse JSON from markdown blocks');
+        }
+      } else {
+        // Try to find JSON-like content between { and }
+        const braceMatch = response.match(/\{[\s\S]*\}/);
+        if (braceMatch) {
+          try {
+            parsedResponse = JSON.parse(braceMatch[0]);
+            console.log('[Gemini] Extracted JSON from braces');
+          } catch (braceError) {
+            console.error('[Gemini] Failed to parse JSON from braces:', braceError);
+            console.error('[Gemini] Original response:', response);
+            throw new Error('Failed to parse Gemini response as JSON');
+          }
+        } else {
+          console.error('[Gemini] No JSON content found in response:', response);
+          throw new Error('No JSON content found in Gemini response');
+        }
+      }
     }
 
     // If a validator is provided, use it to validate and transform the response
