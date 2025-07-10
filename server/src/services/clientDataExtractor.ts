@@ -34,7 +34,16 @@ export class ClientDataExtractor {
     let totalToolCalls = 0;
     let successfulExtractions = 0;
 
-    // 1. Procesar tools en los transcripts
+    // 1. NUEVO: Buscar tool calls como texto (formato real de Segurneo)
+    const textToolExtractions = this.extractFromTextTools(transcripts);
+    if (textToolExtractions.found) {
+      Object.assign(extractedData, textToolExtractions.data);
+      extractedData.toolsUsed = textToolExtractions.toolsUsed;
+      totalToolCalls = textToolExtractions.toolsUsed.length;
+      successfulExtractions = textToolExtractions.found ? 1 : 0;
+    }
+
+    // 2. Procesar tools estructuradas (formato legacy)
     for (const transcript of transcripts) {
       if (transcript.tool_calls && transcript.tool_results) {
         totalToolCalls++;
@@ -54,9 +63,9 @@ export class ClientDataExtractor {
       }
     }
 
-    // 2. Si no hay datos de tools, extraer del texto
+    // 3. Si no hay datos de tools, extraer del texto general
     if (totalToolCalls === 0) {
-      console.log(`📝 [EXTRACTOR] No hay tool calls, extrayendo del texto`);
+      console.log(`📝 [EXTRACTOR] No hay tool calls, extrayendo del texto general`);
       const textData = this.extractFromTranscriptText(transcripts);
       Object.assign(extractedData, textData);
       extractedData.extractionSource = 'transcript_text';
@@ -67,18 +76,131 @@ export class ClientDataExtractor {
       extractedData.extractionSource = 'mixed';
     }
 
-    // 3. Calcular confianza
+    // 4. Calcular confianza
     extractedData.confidence = this.calculateConfidence(extractedData, totalToolCalls, successfulExtractions);
 
     console.log(`✅ [EXTRACTOR] Datos extraídos:`, {
       idCliente: extractedData.idCliente,
       numeroPoliza: extractedData.numeroPoliza,
+      nombre: extractedData.nombre,
       source: extractedData.extractionSource,
       confidence: extractedData.confidence,
       toolsUsed: extractedData.toolsUsed
     });
 
     return extractedData;
+  }
+
+  /**
+   * 🔧 NUEVO: Extraer datos de tool calls en formato texto (Segurneo)
+   */
+  private extractFromTextTools(transcripts: CallTranscript[]): {
+    found: boolean;
+    data: Partial<ExtractedClientData>;
+    toolsUsed: string[];
+  } {
+    console.log(`🔍 [EXTRACTOR] Buscando tool calls en formato texto`);
+    
+    const extracted: Partial<ExtractedClientData> = {};
+    const toolsUsed: string[] = [];
+    let found = false;
+
+    for (let i = 0; i < transcripts.length; i++) {
+      const transcript = transcripts[i];
+      const message = transcript.message;
+
+      // Buscar pattern: "[Tool Call: identificar_cliente]"
+      const toolCallMatch = message.match(/\[Tool Call:\s*([^\]]+)\]/i);
+      if (toolCallMatch) {
+        const toolName = toolCallMatch[1].trim();
+        toolsUsed.push(toolName);
+
+        // Buscar la respuesta del agente después del tool result
+        const responseTranscript = this.findAgentResponseAfterTool(transcripts, i);
+        if (responseTranscript) {
+          console.log(`📋 [EXTRACTOR] Analizando respuesta del agente para tool: ${toolName}`);
+          console.log(`📋 [EXTRACTOR] Respuesta: ${responseTranscript.message.substring(0, 200)}...`);
+          
+          // Extraer datos específicos según el tipo de tool
+          const toolData = this.extractFromAgentResponse(toolName, responseTranscript.message);
+          if (toolData && Object.keys(toolData).length > 0) {
+            Object.assign(extracted, toolData);
+            found = true;
+          }
+        }
+      }
+    }
+
+    return { found, data: extracted, toolsUsed };
+  }
+
+  /**
+   * 🎯 Encontrar respuesta del agente después de un tool result
+   */
+  private findAgentResponseAfterTool(transcripts: CallTranscript[], toolCallIndex: number): CallTranscript | null {
+    // Buscar el próximo mensaje del agente que no sea tool call/result
+    for (let i = toolCallIndex + 1; i < transcripts.length; i++) {
+      const transcript = transcripts[i];
+      
+      if (transcript.speaker === 'agent' && 
+          !transcript.message.includes('[Tool Call:') && 
+          !transcript.message.includes('[Tool Result:') &&
+          transcript.message.trim().length > 20) {
+        return transcript;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 🧠 Extraer datos del cliente de la respuesta del agente
+   */
+  private extractFromAgentResponse(toolName: string, agentMessage: string): Partial<ExtractedClientData> | null {
+    const extracted: Partial<ExtractedClientData> = {};
+    const message = agentMessage.toLowerCase();
+
+    // Patrones específicos para diferentes tools
+    switch (toolName.toLowerCase()) {
+      case 'identificar_cliente':
+      case 'buscar_cliente':
+        // Buscar confirmación de que el cliente fue encontrado
+        if (message.includes('veo que tienes') || 
+            message.includes('tienes contratadas') ||
+            message.includes('he encontrado') ||
+            message.includes('localizado')) {
+          
+          // Extraer nombre si está en la respuesta
+          const nombreMatch = agentMessage.match(/(?:perfecto|hola|buenos días),?\s+([A-ZÁÉÍÓÚ][a-záéíóú]+(?:\s+[A-ZÁÉÍÓÚ][a-záéíóú]+)*)/i);
+          if (nombreMatch) {
+            extracted.nombre = nombreMatch[1].trim();
+          }
+
+          // Buscar menciones de pólizas
+          const polizaMatches = message.match(/pólizas?\s+de\s+([^,\.]+)/g);
+          if (polizaMatches) {
+            extracted.numeroPoliza = polizaMatches.join(', ');
+          }
+
+          // Generar ID de cliente temporal (se mejorará con datos reales)
+          if (extracted.nombre) {
+            const nombreParts = extracted.nombre.split(' ');
+            const initial = nombreParts.map(p => p[0]).join('').toUpperCase();
+            extracted.idCliente = `CLI-${initial}-${Date.now().toString().slice(-6)}`;
+          }
+        }
+        break;
+
+      case 'consultar_poliza':
+      case 'buscar_poliza':
+        // Extraer número de póliza si se menciona
+        const polizaMatch = agentMessage.match(/póliza\s+(?:número\s+)?([A-Z0-9\-]+)/i);
+        if (polizaMatch) {
+          extracted.numeroPoliza = polizaMatch[1];
+        }
+        break;
+    }
+
+    return Object.keys(extracted).length > 0 ? extracted : null;
   }
 
   /**
