@@ -307,7 +307,8 @@ export class CallProcessingService {
       if (nogalResult.success) {
         console.log(`✅ [SIMPLE] Ticket enviado a Segurneo Voice: ${nogalResult.ticket_id}`);
         finalStatus = 'sent_to_nogal';
-        updatedMetadata.nogal_ticket_id = nogalResult.ticket_id;
+        updatedMetadata.ticket_id = nogalResult.ticket_id; // Campo estandarizado para búsquedas
+        updatedMetadata.nogal_ticket_id = nogalResult.ticket_id; // Mantener compatibilidad
         updatedMetadata.nogal_sent_at = new Date().toISOString();
         updatedMetadata.segurneo_voice_response = nogalResult.message;
       } else {
