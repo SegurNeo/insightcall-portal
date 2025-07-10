@@ -78,7 +78,7 @@ export interface NogalTicketPayload {
   IdLlamada: string;
   TipoIncidencia: string;
   MotivoIncidencia: string;
-  NumeroPoliza?: string;
+  NumeroPoliza: string; // ✅ REQUERIDO por Segurneo Voice API
   Notas: string;
   FicheroLlamada?: string;
   // Nota: JsonId, Fecha, Hora los añade automáticamente Segurneo Voice

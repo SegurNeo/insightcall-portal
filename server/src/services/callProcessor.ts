@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { translationService } from './translationService';
 import { nogalAnalysisService } from './nogalAnalysisService';
 import { clientDataExtractor } from './clientDataExtractor';
+import { nogalTicketService } from './nogalTicketService';
 import { 
   Call, 
   SegurneoWebhookPayload, 
@@ -14,6 +15,7 @@ import {
   UpdateCallAnalysis,
   CallStats
 } from '../types/call.types';
+import { NogalTicketPayload } from '../types/calls.types';
 
 /**
  * 🎯 Procesador principal de llamadas
@@ -190,6 +192,76 @@ export class CallProcessor {
       }
 
       console.log(`🎫 [PROCESSOR] Auto-ticket created: ${ticket.id}`);
+
+      // 📤 ENVIAR TICKET A SEGURNEO/NOGAL si tiene ID de cliente
+      if (idCliente && clientData.confidence >= 0.7) {
+        console.log(`📤 [PROCESSOR] Enviando ticket a Segurneo/Nogal: ${ticket.id}`);
+        
+        try {
+          // Preparar payload para Segurneo Voice
+          const nogalPayload: Omit<NogalTicketPayload, 'IdTicket'> = {
+            IdCliente: idCliente,
+            IdLlamada: call.conversation_id,
+            TipoIncidencia: analysis.incident_type,
+            MotivoIncidencia: analysis.management_reason,
+            NumeroPoliza: clientData.numeroPoliza || 'N/A', // ✅ Valor por defecto requerido
+            Notas: ticketData.description
+          };
+
+          const nogalResult = await nogalTicketService.createAndSendTicket(nogalPayload);
+
+          // Actualizar estado del ticket según resultado
+          let finalStatus: string;
+          const updatedMetadata = { ...ticketData.metadata } as any;
+
+          if (nogalResult.success) {
+            console.log(`✅ [PROCESSOR] Ticket enviado a Segurneo/Nogal: ${nogalResult.ticket_id}`);
+            finalStatus = 'completed'; // ✅ Estado válido en BD
+            updatedMetadata.ticket_id = nogalResult.ticket_id;
+            updatedMetadata.nogal_ticket_id = nogalResult.ticket_id;
+            updatedMetadata.nogal_sent_at = new Date().toISOString();
+            updatedMetadata.segurneo_voice_response = nogalResult.message;
+            updatedMetadata.nogal_status = 'sent_to_nogal';
+          } else {
+            console.error(`❌ [PROCESSOR] Error enviando a Segurneo/Nogal: ${nogalResult.error}`);
+            finalStatus = 'pending'; // ✅ Estado válido en BD - mantener pendiente para reintento
+            updatedMetadata.nogal_error = nogalResult.error;
+            updatedMetadata.nogal_failed_at = new Date().toISOString();
+            updatedMetadata.nogal_status = 'failed_send';
+          }
+
+          // Actualizar ticket con resultado del envío
+          await supabase
+            .from('tickets')
+            .update({
+              status: finalStatus,
+              metadata: updatedMetadata
+            })
+            .eq('id', ticket.id);
+
+          console.log(`🎉 [PROCESSOR] Ticket ${ticket.id} finalizado con estado: ${finalStatus}`);
+
+        } catch (error) {
+          console.error(`❌ [PROCESSOR] Error en envío a Segurneo/Nogal:`, error);
+          
+          // Marcar como fallido pero mantener pendiente para reintento
+          await supabase
+            .from('tickets')
+            .update({
+              status: 'pending', // ✅ Estado válido en BD
+              metadata: {
+                ...ticketData.metadata,
+                nogal_error: error instanceof Error ? error.message : 'Error desconocido',
+                nogal_failed_at: new Date().toISOString(),
+                nogal_status: 'failed_send'
+              }
+            })
+            .eq('id', ticket.id);
+        }
+      } else {
+        console.log(`⏭️ [PROCESSOR] No se envía a Segurneo/Nogal: idCliente=${!!idCliente}, confidence=${clientData.confidence}`);
+      }
+
       return [ticket.id];
       
     } catch (error) {
