@@ -302,19 +302,40 @@ export class CallProcessor {
   }
 
   private generateTicketDescription(call: Call, analysis: CallAnalysis): string {
-    return `Ticket automático generado por IA
+    const sections: string[] = [];
 
-📞 Llamada: ${call.conversation_id}
-🕐 Duración: ${Math.floor(call.duration_seconds / 60)}m ${call.duration_seconds % 60}s
-👤 Agente: ${call.agent_id}
+    // 1. Resumen principal
+    if (analysis.summary) {
+      sections.push(analysis.summary.trim());
+    }
 
-🧠 Análisis IA:
-• Tipo: ${analysis.incident_type}
-• Motivo: ${analysis.management_reason}
-• Confianza: ${Math.round(analysis.confidence * 100)}%
-• Prioridad: ${analysis.priority}
+    // 2. Datos extraídos si los hay
+    if (analysis.extracted_data && Object.keys(analysis.extracted_data).length > 0) {
+      const datosRelevantes: string[] = [];
+      
+      if (analysis.extracted_data.numeroPoliza) {
+        datosRelevantes.push(`• Póliza: ${analysis.extracted_data.numeroPoliza}`);
+      }
+      if (analysis.extracted_data.cuentaBancaria) {
+        datosRelevantes.push(`• Nueva cuenta: ${analysis.extracted_data.cuentaBancaria}`);
+      }
+      if (analysis.extracted_data.direccion) {
+        datosRelevantes.push(`• Nueva dirección: ${analysis.extracted_data.direccion}`);
+      }
 
-📝 Resumen: ${analysis.summary}`;
+      if (datosRelevantes.length > 0) {
+        sections.push(`\nDatos relevantes:\n${datosRelevantes.join('\n')}`);
+      }
+    }
+
+    // 3. Footer discreto con confianza
+    if (analysis.confidence >= 0.9) {
+      sections.push(`\n[Generado automáticamente - Alta confianza]`);
+    } else if (analysis.confidence >= 0.7) {
+      sections.push(`\n[Generado automáticamente - Requiere revisión]`);
+    }
+
+    return sections.join('\n').trim();
   }
 }
 

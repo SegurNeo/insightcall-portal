@@ -50,10 +50,13 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
       )}
 
       {/* Sidebar */}
-      <div className={`
-        fixed top-0 right-0 h-full w-[800px] bg-white z-50 transform transition-transform duration-300 ease-in-out shadow-2xl
-        ${isOpen ? 'translate-x-0' : 'translate-x-full'}
-      `}>
+      <div 
+        className={`
+          fixed top-0 right-0 h-screen w-[800px] bg-white z-50 transform transition-transform duration-300 ease-in-out shadow-2xl overflow-hidden
+          ${isOpen ? 'translate-x-0' : 'translate-x-full'}
+        `}
+        onWheel={(e) => e.stopPropagation()}
+      >
         
         {/* Header limpio estilo ElevenLabs */}
         <div className="border-b border-gray-200 px-8 py-6">
@@ -263,9 +266,9 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
               </TabsContent>
 
               {/* ANÁLISIS DETALLADO REAL */}
-              <TabsContent value="analisis" className="h-full m-0">
-                <ScrollArea className="h-full">
-                  <div className="p-6 space-y-6">
+              <TabsContent value="analisis" className="mt-0">
+                <ScrollArea className="h-[calc(100vh-280px)]">
+                  <div className="px-2 space-y-6">
                     {call.hasAnalysis && call.analysisResult ? (
                       <>
                         {/* Resumen del análisis */}
@@ -367,9 +370,9 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
               </TabsContent>
 
               {/* TICKETS REALES */}
-              <TabsContent value="tickets" className="h-full m-0">
-                <ScrollArea className="h-full">
-                  <div className="p-6 space-y-6">
+              <TabsContent value="tickets" className="mt-0">
+                <ScrollArea className="h-[calc(100vh-280px)]">
+                  <div className="px-2 space-y-6">
                     {call.hasTickets ? (
                       <>
                         <div className="flex items-center justify-between">
