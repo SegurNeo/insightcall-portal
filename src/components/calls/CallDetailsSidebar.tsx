@@ -407,27 +407,136 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                   </div>
                                 </div>
                               </CardHeader>
-                              <CardContent className="space-y-3">
+                              <CardContent className="space-y-4">
+                                {/* Información principal del ticket */}
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <div className="text-xs font-medium text-black/70 mb-1">Tipo de incidencia</div>
-                                    <div className="text-sm text-black">{ticket.tipo_incidencia}</div>
+                                    <div className="text-sm text-black font-medium">{ticket.tipo_incidencia}</div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-medium text-black/70 mb-1">Motivo</div>
                                     <div className="text-sm text-black">{ticket.motivo_incidencia}</div>
                                   </div>
                                 </div>
+
+                                {/* Estados y datos técnicos */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <div className="text-xs font-medium text-black/70 mb-1">ID Cliente</div>
+                                    <div className="text-sm text-black font-mono">
+                                      {ticket.metadata?.id_cliente || 
+                                       ticket.metadata?.client_data?.idCliente || 
+                                       <span className="text-red-600">No asignado</span>}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-medium text-black/70 mb-1">Confianza IA</div>
+                                    <div className="text-sm">
+                                      {ticket.metadata?.confidence ? (
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                            <div 
+                                              className={`h-2 rounded-full ${
+                                                parseFloat(ticket.metadata.confidence) >= 0.8 ? 'bg-green-500' :
+                                                parseFloat(ticket.metadata.confidence) >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'
+                                              }`}
+                                              style={{ width: `${parseFloat(ticket.metadata.confidence) * 100}%` }}
+                                            />
+                                          </div>
+                                          <span className="text-xs font-medium text-black">
+                                            {Math.round(parseFloat(ticket.metadata.confidence) * 100)}%
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-gray-500">N/A</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Estado de envío a Segurneo Voice */}
+                                <div>
+                                  <div className="text-xs font-medium text-black/70 mb-2">Estado Segurneo Voice</div>
+                                  <div className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 bg-gray-50">
+                                    {ticket.metadata?.ticket_id || ticket.metadata?.nogal_ticket_id ? (
+                                      <>
+                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <div className="text-sm text-black">
+                                          ✅ Enviado: <span className="font-mono text-xs">
+                                            {ticket.metadata.ticket_id || ticket.metadata.nogal_ticket_id}
+                                          </span>
+                                        </div>
+                                      </>
+                                    ) : ticket.metadata?.nogal_error ? (
+                                      <>
+                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                        <div className="text-sm text-red-600">❌ Error: {ticket.metadata.nogal_error}</div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                        <div className="text-sm text-yellow-600">⏳ No enviado</div>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Datos extraídos */}
+                                {ticket.metadata?.datos_extraidos && Object.keys(ticket.metadata.datos_extraidos).length > 0 && (
+                                  <div>
+                                    <div className="text-xs font-medium text-black/70 mb-2">Datos extraídos</div>
+                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                      <div className="grid grid-cols-1 gap-2 text-xs">
+                                        {Object.entries(ticket.metadata.datos_extraidos).map(([key, value]) => (
+                                          value && value !== null && value !== "" && (
+                                            <div key={key} className="flex gap-2">
+                                              <span className="font-medium text-blue-800 capitalize">{key}:</span>
+                                              <span className="text-blue-700">{String(value)}</span>
+                                            </div>
+                                          )
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Descripción del ticket */}
                                 <div>
                                   <div className="text-xs font-medium text-black/70 mb-2">Descripción</div>
-                                  <div className="text-sm text-black bg-blue-50 p-3 rounded-lg border border-blue-200 leading-relaxed whitespace-pre-line">
+                                  <div className="text-sm text-black bg-indigo-50 p-3 rounded-lg border border-indigo-200 leading-relaxed whitespace-pre-line">
                                     {ticket.description}
                                   </div>
                                 </div>
-                                <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                                  <span className="text-xs text-black/60">ID: {ticket.id.slice(0, 8)}...</span>
-                                  <span className="text-xs text-black/60">{new Date(ticket.created_at).toLocaleDateString('es-ES')}</span>
-                                </div>
+
+                                {/* Información técnica expandible */}
+                                <details className="text-xs">
+                                  <summary className="cursor-pointer text-black/60 hover:text-black font-medium">
+                                    🔧 Información técnica
+                                  </summary>
+                                  <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                    <div className="grid grid-cols-1 gap-2">
+                                      <div>
+                                        <span className="font-medium">ID completo:</span> 
+                                        <span className="font-mono ml-2">{ticket.id}</span>
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">Fuente:</span> 
+                                        <span className="ml-2">{ticket.metadata?.source || 'N/A'}</span>
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">Creado:</span> 
+                                        <span className="ml-2">{new Date(ticket.created_at).toLocaleString('es-ES')}</span>
+                                      </div>
+                                      {ticket.metadata?.nogal_sent_at && (
+                                        <div>
+                                          <span className="font-medium">Enviado a Segurneo:</span> 
+                                          <span className="ml-2">{new Date(ticket.metadata.nogal_sent_at).toLocaleString('es-ES')}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </details>
                               </CardContent>
                             </Card>
                           ))}
