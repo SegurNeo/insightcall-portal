@@ -193,6 +193,20 @@ export class CallProcessingService {
         
       } catch (error) {
         console.error(`❌ [SIMPLE] Error en análisis IA:`, error);
+        
+        // 🛡️ Fallback: Crear análisis básico para evitar bloqueo
+        aiAnalysis = {
+          tipo_incidencia: 'Llamada gestión comercial',
+          motivo_gestion: 'Consulta cliente',
+          confidence: 0.3, // Baja confianza por ser fallback
+          prioridad: 'low',
+          resumen_analisis: 'Error en análisis IA - requiere revisión manual',
+          datos_extraidos: {},
+          notas_para_nogal: 'Error en análisis automático. Revisar transcript manualmente.',
+          requiere_ticket: false // No crear ticket automático en caso de error
+        };
+        
+        console.log(`🛡️ [SIMPLE] Aplicado análisis de fallback para evitar bloqueo`);
       }
     }
 
@@ -223,10 +237,24 @@ export class CallProcessingService {
   private async createTicketsIfNeeded(callRecord: CallRecord): Promise<void> {
     // Solo crear tickets si hay análisis IA, requiere ticket y confianza alta
     const aiAnalysis = callRecord.ai_analysis as any; // Cast to allow new fields
-    if (!aiAnalysis || !aiAnalysis.requiere_ticket || aiAnalysis.confidence < 0.7) {
-      console.log(`⏭️ [SIMPLE] No se crean tickets: requiere=${aiAnalysis?.requiere_ticket}, confianza=${aiAnalysis?.confidence || 0}`);
+    
+    // 🔍 Verificar formato y validez del análisis
+    if (!aiAnalysis) {
+      console.log(`⏭️ [SIMPLE] No se crean tickets: sin análisis IA`);
       return;
     }
+
+    // 🔄 Normalizar campo requiere_ticket (soportar formatos legacy)
+    const requiereTicket = aiAnalysis.requiere_ticket ?? aiAnalysis.requires_ticket ?? true; // Default true para compatibilidad
+    const confidence = aiAnalysis.confidence || 0;
+
+    if (!requiereTicket || confidence < 0.7) {
+      console.log(`⏭️ [SIMPLE] No se crean tickets: requiere=${requiereTicket}, confianza=${confidence}`);
+      return;
+    }
+    
+    console.log(`✅ [SIMPLE] Creando ticket automático: confianza=${confidence}, requiere=${requiereTicket}`);
+    
 
     try {
       // 1. 🔍 Extraer datos de cliente de los transcripts
@@ -244,26 +272,26 @@ export class CallProcessingService {
 
       // 3. Generar descripción profesional y concisa
       const descripcionCompleta = this.generateProfessionalTicketDescription(
-        aiAnalysis.notas_para_nogal || '',
-        aiAnalysis.datos_extraidos || {},
-        aiAnalysis.resumen_analisis,
-        aiAnalysis.confidence
+        aiAnalysis.notas_para_nogal || aiAnalysis.notes || '',
+        aiAnalysis.datos_extraidos || aiAnalysis.extracted_data || {},
+        aiAnalysis.resumen_analisis || aiAnalysis.summary || 'Análisis no disponible',
+        confidence
       );
 
       // 4. 📝 Crear ticket interno en Supabase
       const ticketData = {
         conversation_id: callRecord.id,
-        tipo_incidencia: aiAnalysis.tipo_incidencia,
-        motivo_incidencia: aiAnalysis.motivo_gestion,
+        tipo_incidencia: aiAnalysis.tipo_incidencia || aiAnalysis.incident_type || 'Consulta cliente',
+        motivo_incidencia: aiAnalysis.motivo_gestion || aiAnalysis.management_reason || 'Consulta general',
         status: 'pending',
-        priority: aiAnalysis.prioridad,
+        priority: aiAnalysis.prioridad || aiAnalysis.priority || 'medium',
         description: descripcionCompleta.trim(),
         metadata: {
           source: 'ai-analysis-auto',
-          confidence: aiAnalysis.confidence,
+          confidence: confidence,
           analysis_timestamp: new Date().toISOString(),
-          datos_extraidos: aiAnalysis.datos_extraidos,
-          notas_nogal_originales: aiAnalysis.notas_para_nogal,
+          datos_extraidos: aiAnalysis.datos_extraidos || aiAnalysis.extracted_data || {},
+          notas_nogal_originales: aiAnalysis.notas_para_nogal || 'Generado automáticamente',
           client_data: clientData,
           id_cliente: idCliente
         }
@@ -285,9 +313,9 @@ export class CallProcessingService {
       const nogalPayload = {
         IdCliente: idCliente,
         IdLlamada: callRecord.conversation_id,
-        TipoIncidencia: aiAnalysis.tipo_incidencia,
-        MotivoIncidencia: aiAnalysis.motivo_gestion,
-        NumeroPoliza: clientData.numeroPoliza || aiAnalysis.datos_extraidos?.numeroPoliza,
+        TipoIncidencia: aiAnalysis.tipo_incidencia || aiAnalysis.incident_type || 'Consulta cliente',
+        MotivoIncidencia: aiAnalysis.motivo_gestion || aiAnalysis.management_reason || 'Consulta general',
+        NumeroPoliza: clientData.numeroPoliza || aiAnalysis.datos_extraidos?.numeroPoliza || aiAnalysis.extracted_data?.numeroPoliza,
         Notas: aiAnalysis.notas_para_nogal || descripcionCompleta
       };
 
