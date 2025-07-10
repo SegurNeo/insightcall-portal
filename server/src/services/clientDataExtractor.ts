@@ -34,31 +34,45 @@ export class ClientDataExtractor {
     let totalToolCalls = 0;
     let successfulExtractions = 0;
 
-    // 1. NUEVO: Buscar tool calls como texto (formato real de Segurneo)
-    const textToolExtractions = this.extractFromTextTools(transcripts);
-    if (textToolExtractions.found) {
-      Object.assign(extractedData, textToolExtractions.data);
-      extractedData.toolsUsed = textToolExtractions.toolsUsed;
-      totalToolCalls = textToolExtractions.toolsUsed.length;
-      successfulExtractions = textToolExtractions.found ? 1 : 0;
+    // 1. NUEVO: Procesar tool_results estructurados (formato real de Segurneo)
+    const structuredToolExtractions = this.extractFromStructuredTools(transcripts);
+    if (structuredToolExtractions.found) {
+      Object.assign(extractedData, structuredToolExtractions.data);
+      extractedData.toolsUsed = structuredToolExtractions.toolsUsed;
+      totalToolCalls = structuredToolExtractions.toolsUsed.length;
+      successfulExtractions = structuredToolExtractions.found ? 1 : 0;
     }
 
-    // 2. Procesar tools estructuradas (formato legacy)
-    for (const transcript of transcripts) {
-      if (transcript.tool_calls && transcript.tool_results) {
-        totalToolCalls++;
-        
-        const toolData = this.extractFromToolResult(
-          transcript.tool_calls.function.name,
-          transcript.tool_results
-        );
+    // 2. Fallback: Buscar tool calls como texto  
+    if (totalToolCalls === 0) {
+      const textToolExtractions = this.extractFromTextTools(transcripts);
+      if (textToolExtractions.found) {
+        Object.assign(extractedData, textToolExtractions.data);
+        extractedData.toolsUsed = textToolExtractions.toolsUsed;
+        totalToolCalls = textToolExtractions.toolsUsed.length;
+        successfulExtractions = textToolExtractions.found ? 1 : 0;
+      }
+    }
 
-        if (toolData) {
-          successfulExtractions++;
-          extractedData.toolsUsed.push(transcript.tool_calls.function.name);
+    // 3. Procesar tools legacy (compatibilidad hacia atrás)
+    if (totalToolCalls === 0) {
+      for (const transcript of transcripts) {
+        // Verificar si usa el formato legacy
+        if ((transcript as any).tool_calls?.function && (transcript as any).tool_results?.status) {
+          totalToolCalls++;
           
-          // Combinar datos extraídos
-          Object.assign(extractedData, toolData);
+          const toolData = this.extractFromLegacyToolResult(
+            (transcript as any).tool_calls.function.name,
+            (transcript as any).tool_results
+          );
+
+          if (toolData) {
+            successfulExtractions++;
+            extractedData.toolsUsed.push((transcript as any).tool_calls.function.name);
+            
+            // Combinar datos extraídos
+            Object.assign(extractedData, toolData);
+          }
         }
       }
     }
@@ -204,9 +218,102 @@ export class ClientDataExtractor {
   }
 
   /**
-   * 🛠️ Extraer datos de tool_results específicos
+   * 🚀 NUEVO: Extraer datos de tool_results estructurados (formato real Segurneo)
    */
-  private extractFromToolResult(toolName: string, toolResult: ToolResult): Partial<ExtractedClientData> | null {
+  private extractFromStructuredTools(transcripts: CallTranscript[]): {
+    found: boolean;
+    data: Partial<ExtractedClientData>;
+    toolsUsed: string[];
+  } {
+    console.log(`🔍 [EXTRACTOR] Procesando tool_results estructurados de Segurneo`);
+    
+    const extracted: Partial<ExtractedClientData> = {};
+    const toolsUsed: string[] = [];
+    let found = false;
+
+    for (const transcript of transcripts) {
+      // Verificar si hay tool_results en este transcript
+      if (transcript.tool_results && transcript.tool_results.length > 0) {
+        for (const toolResult of transcript.tool_results) {
+          if (!toolResult.is_error && toolResult.result_value) {
+            try {
+              // Parsear el result_value como JSON
+              const parsedResult = JSON.parse(toolResult.result_value);
+              console.log(`📋 [EXTRACTOR] Tool: ${toolResult.tool_name}, Status: ${parsedResult.status}`);
+              
+              if (parsedResult.status === 'success' && parsedResult.data) {
+                const toolData = this.extractFromSegurneoToolData(toolResult.tool_name, parsedResult.data);
+                if (toolData && Object.keys(toolData).length > 0) {
+                  Object.assign(extracted, toolData);
+                  toolsUsed.push(toolResult.tool_name);
+                  found = true;
+                  
+                  console.log(`✅ [EXTRACTOR] Datos extraídos de ${toolResult.tool_name}:`, toolData);
+                }
+              }
+            } catch (error) {
+              console.error(`❌ [EXTRACTOR] Error parseando result_value de ${toolResult.tool_name}:`, error);
+            }
+          }
+        }
+      }
+    }
+
+    return { found, data: extracted, toolsUsed };
+  }
+
+  /**
+   * 🎯 Extraer datos específicos del formato de identificar_cliente de Segurneo
+   */
+  private extractFromSegurneoToolData(toolName: string, data: any): Partial<ExtractedClientData> | null {
+    const extracted: Partial<ExtractedClientData> = {};
+
+    switch (toolName.toLowerCase()) {
+      case 'identificar_cliente':
+        // Formato real: { clientes: [...], detalle_polizas: [...], vtos_polizas: [...] }
+        if (data.clientes && data.clientes.length > 0) {
+          const cliente = data.clientes[0]; // Tomar primer cliente
+          
+          extracted.idCliente = cliente.codigo_cliente;
+          extracted.nombre = cliente.nombre_cliente;
+          extracted.email = cliente.email_cliente;
+          extracted.telefono = cliente.telefono_1 || cliente.telefono_2 || cliente.telefono_3;
+          
+          // Extraer números de póliza
+          if (data.detalle_polizas && data.detalle_polizas.length > 0) {
+            const polizas = data.detalle_polizas.map((p: any) => p.poliza).filter(Boolean);
+            extracted.numeroPoliza = polizas.join(', ');
+          }
+          
+          console.log(`✅ [EXTRACTOR] Cliente identificado: ${extracted.nombre} (${extracted.idCliente})`);
+          console.log(`✅ [EXTRACTOR] Pólizas: ${extracted.numeroPoliza}`);
+        }
+        break;
+
+      case 'consultar_poliza':
+      case 'buscar_poliza':
+        // Procesamiento específico para consultas de pólizas
+        if (data.poliza) {
+          extracted.numeroPoliza = data.poliza.numero || data.poliza;
+        }
+        if (data.titular) {
+          extracted.nombre = data.titular.nombre || data.titular;
+          extracted.idCliente = data.titular.id || data.titular_id;
+        }
+        break;
+
+      default:
+        console.log(`⚠️ [EXTRACTOR] Tool no reconocida: ${toolName}`);
+        break;
+    }
+
+    return Object.keys(extracted).length > 0 ? extracted : null;
+  }
+
+  /**
+   * 🛠️ Extraer datos de tool_results legacy (compatibilidad)
+   */
+  private extractFromLegacyToolResult(toolName: string, toolResult: ToolResult): Partial<ExtractedClientData> | null {
     if (toolResult.status !== 'success' || !toolResult.data) {
       return null;
     }

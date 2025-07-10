@@ -1,8 +1,47 @@
 // 🎯 NUEVA ESTRUCTURA SIMPLE - TIPOS DE LLAMADAS
 // Una sola interfaz clara para todo el sistema
 
-// 🛠️ Tipos para herramientas (tools) en transcripts
-export interface ToolCall {
+// 🛠️ FORMATO REAL DE SEGURNEO VOICE - Herramientas
+export interface SegurneoToolCall {
+  type: string;
+  tool_name: string;
+  request_id: string;
+  tool_details: {
+    url: string;
+    body: string;
+    type: string;
+    method: string;
+    headers: Record<string, string>;
+    path_params: Record<string, any>;
+    query_params: Record<string, any>;
+  };
+  params_as_json: string;
+  tool_has_been_called: boolean;
+}
+
+export interface SegurneoToolResult {
+  type: string;
+  is_error: boolean;
+  tool_name: string;
+  request_id: string;
+  result_value: string; // JSON string que hay que parsear
+  tool_latency_secs: number;
+  tool_has_been_called: boolean;
+}
+
+export interface CallTranscript {
+  sequence: number;
+  speaker: 'agent' | 'user';
+  message: string;
+  segment_start_time: number;
+  segment_end_time: number;
+  tool_calls: SegurneoToolCall[];  // Array de tool calls
+  tool_results: SegurneoToolResult[]; // Array de tool results
+  feedback?: any;
+}
+
+// 🔄 LEGACY: Mantener compatibilidad con código anterior
+export interface LegacyToolCall {
   type: 'function';
   function: {
     name: string;
@@ -10,24 +49,27 @@ export interface ToolCall {
   };
 }
 
-export interface ToolResult {
+export interface LegacyToolResult {
   status: 'success' | 'error';
   data?: Record<string, any>;
   error?: string;
 }
 
-export interface CallTranscript {
+export interface LegacyCallTranscript {
   sequence: number;
   speaker: 'agent' | 'user';
   message: string;
   start_time: number;
   end_time: number;
   confidence: number;
-  // 🆕 NUEVO: Datos de herramientas
-  tool_calls?: ToolCall;
-  tool_results?: ToolResult;
+  tool_calls?: LegacyToolCall;
+  tool_results?: LegacyToolResult;
   feedback?: string;
 }
+
+// Mantener alias para compatibilidad
+export interface ToolCall extends LegacyToolCall {}
+export interface ToolResult extends LegacyToolResult {}
 
 // 🎫 Estructura para ticket de Nogal (enviado a Segurneo Voice)
 export interface NogalTicketPayload {
@@ -73,7 +115,7 @@ export interface CallRecord {
   
   // 📝 Contenido
   transcript_summary: string;          // Siempre en español (traducido)
-  transcripts: CallTranscript[];       // Array completo de mensajes
+  transcripts: CallTranscript[];       // Array con tool_calls y tool_results reales
   
   // 🧠 Análisis IA (se rellena tras procesar)
   analysis_completed: boolean;
@@ -117,12 +159,5 @@ export interface SegurneoWebhookPayload {
   };
   audio_available: boolean;
   created_at: string;
-  transcripts: {
-    sequence: number;
-    speaker: 'agent' | 'user';
-    message: string;
-    segment_start_time: number;
-    segment_end_time: number;
-    confidence: number;
-  }[];
+  transcripts: CallTranscript[]; // Usar formato real con tool_calls y tool_results
 } 

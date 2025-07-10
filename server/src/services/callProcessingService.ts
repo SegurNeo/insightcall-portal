@@ -95,14 +95,7 @@ export class CallProcessingService {
       
       // Contenido (transcript_summary se traducirá después)
       transcript_summary: payload.transcript_summary,
-      transcripts: payload.transcripts.map(t => ({
-        sequence: t.sequence,
-        speaker: t.speaker,
-        message: t.message,
-        start_time: t.segment_start_time,
-        end_time: t.segment_end_time,
-        confidence: t.confidence
-      })),
+      transcripts: payload.transcripts, // Usar directamente el formato de Segurneo
       
       // Estado inicial del análisis
       analysis_completed: false,

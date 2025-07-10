@@ -43,12 +43,12 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
     <>
       {/* Overlay */}
       {isOpen && (
-        <div 
+      <div 
           className="fixed inset-0 bg-black/20 z-40" 
-          onClick={onClose}
-        />
+        onClick={onClose}
+      />
       )}
-
+      
       {/* Sidebar */}
       <div 
         className={`
@@ -77,7 +77,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
               <X className="h-5 w-5 text-gray-400" />
             </button>
           </div>
-        </div>
+          </div>
 
         {/* Métricas principales estilo ElevenLabs */}
         <div className="px-8 py-6 border-b border-gray-200">
@@ -119,17 +119,17 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
             <TabsList className="grid w-full grid-cols-4 bg-gray-50">
               <TabsTrigger value="resumen" className="data-[state=active]:bg-white data-[state=active]:text-gray-900">
                 Resumen IA
-              </TabsTrigger>
+                  </TabsTrigger>
               <TabsTrigger value="transcripcion" className="data-[state=active]:bg-white data-[state=active]:text-gray-900">
                 Transcription
-              </TabsTrigger>
+                  </TabsTrigger>
               <TabsTrigger value="analisis" className="data-[state=active]:bg-white data-[state=active]:text-gray-900">
                 Análisis Profundo
-              </TabsTrigger>
+                  </TabsTrigger>
               <TabsTrigger value="tickets" className="data-[state=active]:bg-white data-[state=active]:text-gray-900">
                 Tickets ({call.tickets?.length || 0})
-              </TabsTrigger>
-            </TabsList>
+                  </TabsTrigger>
+                </TabsList>
 
             {/* Contenido */}
             <div className="mt-8">
@@ -152,7 +152,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                           <div className="text-sm text-gray-500 mb-1">Fecha y hora</div>
                           <div className="text-gray-900 font-medium text-sm">{call.formattedStartTime}</div>
                         </div>
-                      </div>
+              </div>
 
                       <div className="grid grid-cols-3 gap-3 py-3 bg-gray-50 rounded-lg px-3">
                         <div className="text-center">
@@ -193,11 +193,11 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                           </p>
                         </div>
                       )}
-                    </div>
+                          </div>
+                          
 
 
-
-                  </div>
+                            </div>
                 </ScrollArea>
               </TabsContent>
 
@@ -223,8 +223,8 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                     ) : (
                                       <User className="h-4 w-4 text-white" />
                                     )}
-                                  </div>
-                                </div>
+                            </div>
+                          </div>
 
                                 {/* Contenido del mensaje */}
                                 <div className={`flex-1 max-w-[80%] ${!isAgent ? 'text-right' : ''}`}>
@@ -244,13 +244,13 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                       </span>
                                     </div>
                                   </div>
-                                </div>
+                              </div>
                               </div>
                             </div>
                           );
                         })}
-                      </div>
-                    ) : (
+                            </div>
+                          ) : (
                       <div className="flex items-center justify-center h-[400px]">
                         <div className="text-center">
                           <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -259,8 +259,8 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                             La transcripción se procesará automáticamente cuando esté disponible
                           </p>
                         </div>
-                      </div>
-                    )}
+                            </div>
+                          )}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -274,12 +274,12 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                         {/* Resumen del análisis */}
                         {call.analysisResult.summary && (
                           <Card className="border-black/10 bg-white shadow-sm">
-                            <CardHeader>
+                        <CardHeader>
                               <CardTitle className="text-lg text-black flex items-center gap-2">
                                 <Brain className="h-5 w-5" />
                                 Resumen del análisis
                               </CardTitle>
-                            </CardHeader>
+                        </CardHeader>
                             <CardContent>
                               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
                                 <p className="text-black leading-relaxed">{call.analysisResult.summary}</p>
@@ -300,7 +300,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                   <li key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                                     <div className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">
                                       {index + 1}
-                                    </div>
+                            </div>
                                     <div className="text-black">{point}</div>
                                   </li>
                                 ))}
@@ -344,10 +344,10 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                       style={{ width: `${(call.analysisResult.score / 10) * 100}%` }}
                                     ></div>
                                   </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                         )}
                       </>
                     ) : (
@@ -365,9 +365,9 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                         </CardContent>
                       </Card>
                     )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
 
               {/* TICKETS REALES */}
               <TabsContent value="tickets" className="mt-0">
@@ -557,14 +557,14 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                         </CardContent>
                       </Card>
                     )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
 
-            </div>
-          </Tabs>
+              </div>
+            </Tabs>
+          </div>
         </div>
-      </div>
     </>
   );
 }; 
