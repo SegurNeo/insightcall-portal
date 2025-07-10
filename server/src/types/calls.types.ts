@@ -1,6 +1,55 @@
 // 🎯 NUEVA ESTRUCTURA SIMPLE - TIPOS DE LLAMADAS
 // Una sola interfaz clara para todo el sistema
 
+// 🛠️ Tipos para herramientas (tools) en transcripts
+export interface ToolCall {
+  type: 'function';
+  function: {
+    name: string;
+    arguments: Record<string, any>;
+  };
+}
+
+export interface ToolResult {
+  status: 'success' | 'error';
+  data?: Record<string, any>;
+  error?: string;
+}
+
+export interface CallTranscript {
+  sequence: number;
+  speaker: 'agent' | 'user';
+  message: string;
+  start_time: number;
+  end_time: number;
+  confidence: number;
+  // 🆕 NUEVO: Datos de herramientas
+  tool_calls?: ToolCall;
+  tool_results?: ToolResult;
+  feedback?: string;
+}
+
+// 🎫 Estructura para ticket de Nogal (enviado a Segurneo Voice)
+export interface NogalTicketPayload {
+  IdCliente: string;
+  IdTicket: string;
+  IdLlamada: string;
+  TipoIncidencia: string;
+  MotivoIncidencia: string;
+  NumeroPoliza?: string;
+  Notas: string;
+  FicheroLlamada?: string;
+  // Nota: JsonId, Fecha, Hora los añade automáticamente Segurneo Voice
+}
+
+// 🎫 Respuesta del servicio de tickets
+export interface NogalTicketResponse {
+  success: boolean;
+  message: string;
+  ticket_id?: string;
+  error?: string;
+}
+
 export interface CallRecord {
   // 🆔 Identificadores
   id: string;                           // UUID interno de Nogal
@@ -46,15 +95,6 @@ export interface CallRecord {
   processed_at?: string;               // Cuándo se completó el procesamiento
   created_at: string;
   updated_at: string;
-}
-
-export interface CallTranscript {
-  sequence: number;
-  speaker: 'agent' | 'user';
-  message: string;
-  segment_start_time: number;
-  segment_end_time: number;
-  confidence: number;
 }
 
 // 🎯 Payload que llega de Segurneo (según documentación)

@@ -4,6 +4,7 @@ import callsRoutes from './calls.routes';
 import newCallsRoutes from './newCalls.routes';
 import testAnalysisRoutes from './test-analysis.routes';
 import translationRoutes from './translation.routes';
+import crearTicketRoutes from './crear-ticket.routes';
 
 const router = Router();
 
@@ -18,6 +19,9 @@ router.use('/test-analysis', testAnalysisRoutes);
 // Translation service
 router.use('/translation', translationRoutes);
 
+// Ticket creation service
+router.use('/crear-ticket', crearTicketRoutes);
+
 // New Nogal module routes
 router.use('/nogal', nogalRoutes);
 
@@ -30,6 +34,7 @@ router.get('/health', (req, res) => {
     services: {
       analysis: 'available',
       translation: 'available',
+      ticketCreation: 'available',
       nogal: 'available',
       newCalls: 'available'
     }

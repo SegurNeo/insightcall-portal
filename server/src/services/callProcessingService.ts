@@ -4,6 +4,8 @@
 import { supabase } from '../lib/supabase';
 import { translationService } from './translationService';
 import { nogalAnalysisService } from './nogalAnalysisService';
+import { clientDataExtractor } from './clientDataExtractor';
+import { nogalTicketService } from './nogalTicketService';
 import { v4 as uuidv4 } from 'uuid';
 import { CallRecord, SegurneoWebhookPayload, CallTranscript } from '../types/calls.types';
 
@@ -97,8 +99,8 @@ export class CallProcessingService {
         sequence: t.sequence,
         speaker: t.speaker,
         message: t.message,
-        segment_start_time: t.segment_start_time,
-        segment_end_time: t.segment_end_time,
+        start_time: t.segment_start_time,
+        end_time: t.segment_end_time,
         confidence: t.confidence
       })),
       
@@ -216,7 +218,7 @@ export class CallProcessingService {
   }
 
   /**
-   * 🎫 Crear tickets automáticos si cumple criterios
+   * 🎫 Crear tickets automáticos si cumple criterios y enviarlos a Nogal
    */
   private async createTicketsIfNeeded(callRecord: CallRecord): Promise<void> {
     // Solo crear tickets si hay análisis IA, requiere ticket y confianza alta
@@ -227,7 +229,20 @@ export class CallProcessingService {
     }
 
     try {
-      // Generar descripción profesional y concisa
+      // 1. 🔍 Extraer datos de cliente de los transcripts
+      const clientData = clientDataExtractor.extractClientData(callRecord.transcripts);
+      console.log(`🔍 [SIMPLE] Datos de cliente extraídos:`, {
+        idCliente: clientData.idCliente,
+        confidence: clientData.confidence,
+        source: clientData.extractionSource,
+        toolsUsed: clientData.toolsUsed
+      });
+
+      // 2. 🎯 Generar ID de cliente si no se encontró
+      const idCliente = clientData.idCliente || 
+        clientDataExtractor.generateFallbackClientId(callRecord.conversation_id, clientData.telefono);
+
+      // 3. Generar descripción profesional y concisa
       const descripcionCompleta = this.generateProfessionalTicketDescription(
         aiAnalysis.notas_para_nogal || '',
         aiAnalysis.datos_extraidos || {},
@@ -235,11 +250,12 @@ export class CallProcessingService {
         aiAnalysis.confidence
       );
 
+      // 4. 📝 Crear ticket interno en Supabase
       const ticketData = {
         conversation_id: callRecord.id,
         tipo_incidencia: aiAnalysis.tipo_incidencia,
         motivo_incidencia: aiAnalysis.motivo_gestion,
-        status: 'created',
+        status: 'pending',
         priority: aiAnalysis.prioridad,
         description: descripcionCompleta.trim(),
         metadata: {
@@ -247,7 +263,9 @@ export class CallProcessingService {
           confidence: aiAnalysis.confidence,
           analysis_timestamp: new Date().toISOString(),
           datos_extraidos: aiAnalysis.datos_extraidos,
-          notas_nogal_originales: aiAnalysis.notas_para_nogal
+          notas_nogal_originales: aiAnalysis.notas_para_nogal,
+          client_data: clientData,
+          id_cliente: idCliente
         }
       };
 
@@ -261,7 +279,54 @@ export class CallProcessingService {
         throw error;
       }
 
-      // Actualizar registro con el ticket creado
+      console.log(`🎫 [SIMPLE] Ticket interno creado: ${createdTicket.id}`);
+
+      // 5. 📤 Enviar ticket a Nogal vía Segurneo Voice
+      const nogalPayload = {
+        IdCliente: idCliente,
+        IdLlamada: callRecord.conversation_id,
+        TipoIncidencia: aiAnalysis.tipo_incidencia,
+        MotivoIncidencia: aiAnalysis.motivo_gestion,
+        NumeroPoliza: clientData.numeroPoliza || aiAnalysis.datos_extraidos?.numeroPoliza,
+        Notas: aiAnalysis.notas_para_nogal || descripcionCompleta
+      };
+
+      console.log(`📤 [SIMPLE] Enviando a Segurneo Voice:`, {
+        IdCliente: nogalPayload.IdCliente,
+        IdLlamada: nogalPayload.IdLlamada,
+        TipoIncidencia: nogalPayload.TipoIncidencia,
+        hasPoliza: !!nogalPayload.NumeroPoliza
+      });
+
+      const nogalResult = await nogalTicketService.createAndSendTicket(nogalPayload);
+
+      // 6. 📊 Actualizar ticket según resultado de Nogal
+      let finalStatus: string;
+      let updatedMetadata = { ...ticketData.metadata } as any;
+
+      if (nogalResult.success) {
+        console.log(`✅ [SIMPLE] Ticket enviado a Segurneo Voice: ${nogalResult.ticket_id}`);
+        finalStatus = 'sent_to_nogal';
+        updatedMetadata.nogal_ticket_id = nogalResult.ticket_id;
+        updatedMetadata.nogal_sent_at = new Date().toISOString();
+        updatedMetadata.segurneo_voice_response = nogalResult.message;
+      } else {
+        console.error(`❌ [SIMPLE] Error enviando a Segurneo Voice: ${nogalResult.error}`);
+        finalStatus = 'failed_nogal';
+        updatedMetadata.nogal_error = nogalResult.error;
+        updatedMetadata.nogal_failed_at = new Date().toISOString();
+      }
+
+      // Actualizar estado del ticket
+      await supabase
+        .from('tickets')
+        .update({
+          status: finalStatus,
+          metadata: updatedMetadata
+        })
+        .eq('id', createdTicket.id);
+
+      // 7. 📊 Actualizar registro de llamada con el ticket creado
       await supabase
         .from('calls')
         .update({
@@ -271,10 +336,10 @@ export class CallProcessingService {
         })
         .eq('id', callRecord.id);
 
-      console.log(`🎫 [SIMPLE] Ticket automático creado: ${createdTicket.id}`);
+      console.log(`🎉 [SIMPLE] Flujo de tickets completado: ${createdTicket.id} (${finalStatus})`);
       
     } catch (error) {
-      console.error(`❌ [SIMPLE] Error creando ticket:`, error);
+      console.error(`❌ [SIMPLE] Error en flujo de tickets:`, error);
     }
   }
 
