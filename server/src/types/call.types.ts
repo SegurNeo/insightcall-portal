@@ -61,6 +61,43 @@ export interface CallTranscript {
   readonly start_time: number;            // Segundos desde inicio de llamada
   readonly end_time: number;              // Segundos desde inicio de llamada
   readonly confidence: number;            // Confianza de la transcripción (0-1)
+  // 🚀 DATOS ESTRUCTURADOS DE HERRAMIENTAS (para extracción de cliente)
+  readonly tool_calls: readonly ToolCall[];
+  readonly tool_results: readonly ToolResult[];
+  readonly feedback: unknown | null;
+}
+
+/**
+ * 🛠️ Llamada a herramienta estructurada
+ */
+export interface ToolCall {
+  readonly type: string;
+  readonly tool_name: string;
+  readonly request_id: string;
+  readonly tool_details: {
+    readonly url: string;
+    readonly body: string;
+    readonly type: string;
+    readonly method: string;
+    readonly headers: Record<string, string>;
+    readonly path_params: Record<string, unknown>;
+    readonly query_params: Record<string, unknown>;
+  };
+  readonly params_as_json: string;
+  readonly tool_has_been_called: boolean;
+}
+
+/**
+ * 🎯 Resultado de herramienta estructurado
+ */
+export interface ToolResult {
+  readonly type: string;
+  readonly is_error: boolean;
+  readonly tool_name: string;
+  readonly request_id: string;
+  readonly result_value: string;           // JSON string que contiene los datos del cliente
+  readonly tool_latency_secs: number;
+  readonly tool_has_been_called: boolean;
 }
 
 /**
@@ -104,6 +141,10 @@ export interface SegurneoWebhookPayload {
     readonly segment_start_time: number;
     readonly segment_end_time: number;
     readonly confidence: number;
+    // 🚀 CAMPOS ESTRUCTURADOS QUE LLEGAN DE SEGURNEO
+    readonly tool_calls?: readonly ToolCall[];
+    readonly tool_results?: readonly ToolResult[];
+    readonly feedback?: unknown;
   }[];
 }
 

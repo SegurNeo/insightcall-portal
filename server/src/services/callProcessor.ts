@@ -4,6 +4,7 @@
 import { supabase } from '../lib/supabase';
 import { translationService } from './translationService';
 import { nogalAnalysisService } from './nogalAnalysisService';
+import { clientDataExtractor } from './clientDataExtractor';
 import { 
   Call, 
   SegurneoWebhookPayload, 
@@ -133,6 +134,32 @@ export class CallProcessor {
     }
 
     try {
+      // 🔍 EXTRAER DATOS DE CLIENTE de los transcripts estructurados
+      // Adaptar formato para compatibilidad con clientDataExtractor
+      const adaptedTranscripts = call.transcripts.map(t => ({
+        sequence: t.sequence,
+        speaker: t.speaker,
+        message: t.message,
+        segment_start_time: t.start_time,
+        segment_end_time: t.end_time,
+        tool_calls: t.tool_calls,
+        tool_results: t.tool_results,
+        feedback: t.feedback
+      }));
+      
+      const clientData = clientDataExtractor.extractClientData(adaptedTranscripts as any);
+      console.log(`🔍 [PROCESSOR] Datos de cliente extraídos:`, {
+        idCliente: clientData.idCliente,
+        nombre: clientData.nombre,
+        confidence: clientData.confidence,
+        source: clientData.extractionSource,
+        toolsUsed: clientData.toolsUsed
+      });
+
+      // 🎯 Generar ID de cliente si no se encontró
+      const idCliente = clientData.idCliente || 
+        clientDataExtractor.generateFallbackClientId(call.conversation_id, clientData.telefono);
+
       const ticketData = {
         call_id: call.id, // Actualizado para usar call_id en lugar de conversation_id
         tipo_incidencia: analysis.incident_type,
@@ -144,7 +171,10 @@ export class CallProcessor {
           source: 'ai-auto-generated',
           confidence: analysis.confidence,
           created_at: new Date().toISOString(),
-          extracted_data: analysis.extracted_data
+          extracted_data: analysis.extracted_data,
+          // 🚀 AÑADIR DATOS DE CLIENTE EXTRAÍDOS
+          client_data: clientData,
+          id_cliente: idCliente
         }
       };
 
@@ -297,7 +327,11 @@ export class CallProcessor {
       message: t.message,
       start_time: t.segment_start_time,
       end_time: t.segment_end_time,
-      confidence: t.confidence
+      confidence: t.confidence,
+      // 🚀 PRESERVAR DATOS ESTRUCTURADOS PARA EXTRACCIÓN DE CLIENTE
+      tool_calls: t.tool_calls || [],
+      tool_results: t.tool_results || [],
+      feedback: t.feedback || null
     }));
   }
 
