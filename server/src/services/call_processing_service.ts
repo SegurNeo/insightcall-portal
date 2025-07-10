@@ -151,7 +151,7 @@ class CallProcessingService {
           "IdTicket": idTicket,
           "TipoIncidencia": def.tipoIncidencia,
           "MotivoIncidencia": def.motivoIncidencia,
-          "Notas": `IA (${(suggestion.score*100).toFixed(0)}%): ${suggestion.justification}.`,
+          "Notas": `${suggestion.justification}`,
         };
 
         try {
@@ -161,7 +161,7 @@ class CallProcessingService {
           // Crear ticket interno para dashboard
           const internalTicket = await ticketService.createTicket({
             conversation_id: nogalCall.id,
-            description: payload.Notas,
+            description: suggestion.justification,
             type: `${def.tipoIncidencia} / ${def.motivoIncidencia}`,
             priority: 'medium',
             status: 'created',

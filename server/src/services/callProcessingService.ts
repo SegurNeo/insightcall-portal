@@ -227,38 +227,13 @@ export class CallProcessingService {
     }
 
     try {
-      // Construir notas específicas según reglas del CSV
-      let notasEspecificas = aiAnalysis.notas_para_nogal || '';
-      
-      // Añadir datos extraídos según las reglas del CSV
-      const datosExtraidos = aiAnalysis.datos_extraidos || {};
-      if (datosExtraidos.numeroPoliza) {
-        notasEspecificas += `\nNúmero de póliza: ${datosExtraidos.numeroPoliza}`;
-      }
-      if (datosExtraidos.cuentaBancaria) {
-        notasEspecificas += `\nNueva cuenta bancaria: ${datosExtraidos.cuentaBancaria}`;
-      }
-      if (datosExtraidos.direccion) {
-        notasEspecificas += `\nNueva dirección: ${datosExtraidos.direccion}`;
-      }
-      if (datosExtraidos.fechaEfecto) {
-        notasEspecificas += `\nFecha de efecto solicitada: ${datosExtraidos.fechaEfecto}`;
-      }
-      if (datosExtraidos.asegurados) {
-        notasEspecificas += `\nAsegurados: ${JSON.stringify(datosExtraidos.asegurados)}`;
-      }
-      if (datosExtraidos.prestamo) {
-        const prestamo = datosExtraidos.prestamo;
-        notasEspecificas += `\nDatos préstamo - Nº: ${prestamo.numero}, Banco: ${prestamo.banco} (${prestamo.entidad}-${prestamo.oficina}), Fechas: ${prestamo.fechaInicio} a ${prestamo.fechaFin}`;
-      }
-
-      // Añadir información de análisis automático
-      const descripcionCompleta = `${notasEspecificas}
-
---- INFORMACIÓN DEL ANÁLISIS ---
-Confianza IA: ${(aiAnalysis.confidence * 100).toFixed(1)}%
-Resumen: ${aiAnalysis.resumen_analisis}
-Procesado automáticamente: ${new Date().toLocaleString('es-ES')}`;
+      // Generar descripción profesional y concisa
+      const descripcionCompleta = this.generateProfessionalTicketDescription(
+        aiAnalysis.notas_para_nogal || '',
+        aiAnalysis.datos_extraidos || {},
+        aiAnalysis.resumen_analisis,
+        aiAnalysis.confidence
+      );
 
       const ticketData = {
         conversation_id: callRecord.id,
@@ -296,8 +271,7 @@ Procesado automáticamente: ${new Date().toLocaleString('es-ES')}`;
         })
         .eq('id', callRecord.id);
 
-      console.log(`🎫 [SIMPLE] Ticket automático creado con notas específicas: ${createdTicket.id}`);
-      console.log(`📝 [SIMPLE] Notas generadas: ${notasEspecificas}`);
+      console.log(`🎫 [SIMPLE] Ticket automático creado: ${createdTicket.id}`);
       
     } catch (error) {
       console.error(`❌ [SIMPLE] Error creando ticket:`, error);
@@ -347,6 +321,64 @@ Procesado automáticamente: ${new Date().toLocaleString('es-ES')}`;
       totalCost: Math.round(totalCost / 100), // Convertir a euros
       analysisRate: total > 0 ? Math.round((analyzed / total) * 100) : 0
     };
+  }
+
+  /**
+   * 📝 Genera una descripción profesional y concisa para tickets
+   */
+  private generateProfessionalTicketDescription(
+    notasNogal: string,
+    datosExtraidos: Record<string, any>,
+    resumen: string,
+    confidence: number
+  ): string {
+    const sections: string[] = [];
+
+    // 1. Resumen principal (limpio y profesional)
+    if (resumen) {
+      sections.push(resumen.trim());
+    }
+
+    // 2. Datos específicos extraídos (solo los relevantes)
+    const datosRelevantes: string[] = [];
+    
+    if (datosExtraidos.numeroPoliza) {
+      datosRelevantes.push(`• Póliza: ${datosExtraidos.numeroPoliza}`);
+    }
+    if (datosExtraidos.cuentaBancaria) {
+      datosRelevantes.push(`• Nueva cuenta: ${datosExtraidos.cuentaBancaria}`);
+    }
+    if (datosExtraidos.direccion) {
+      datosRelevantes.push(`• Nueva dirección: ${datosExtraidos.direccion}`);
+    }
+    if (datosExtraidos.fechaEfecto) {
+      datosRelevantes.push(`• Fecha efectiva: ${datosExtraidos.fechaEfecto}`);
+    }
+    if (datosExtraidos.asegurados && Array.isArray(datosExtraidos.asegurados)) {
+      datosRelevantes.push(`• Asegurados: ${datosExtraidos.asegurados.join(', ')}`);
+    }
+    if (datosExtraidos.prestamo) {
+      const p = datosExtraidos.prestamo;
+      datosRelevantes.push(`• Préstamo: ${p.numero} (${p.banco})`);
+    }
+
+    if (datosRelevantes.length > 0) {
+      sections.push(`\nDatos relevantes:\n${datosRelevantes.join('\n')}`);
+    }
+
+    // 3. Notas específicas de Nogal (si las hay)
+    if (notasNogal && notasNogal.trim()) {
+      sections.push(`\nIndicaciones:\n${notasNogal.trim()}`);
+    }
+
+    // 4. Footer discreto con confianza (solo si es relevante)
+    if (confidence >= 0.9) {
+      sections.push(`\n[Generado automáticamente - Alta confianza]`);
+    } else if (confidence >= 0.7) {
+      sections.push(`\n[Generado automáticamente - Requiere revisión]`);
+    }
+
+    return sections.join('\n').trim();
   }
 }
 

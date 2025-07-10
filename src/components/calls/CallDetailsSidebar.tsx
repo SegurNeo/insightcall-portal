@@ -135,37 +135,34 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                   <div className="px-2 space-y-8">
                     
                     {/* Información de la llamada estilo ElevenLabs */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       <h2 className="text-lg font-semibold text-gray-900">
-                        Información de la Llamada
+                        Información de la llamada
                       </h2>
                       
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <div className="text-sm text-gray-500 mb-1">Agente</div>
-                          <div className="text-gray-900 font-medium">{call.agentId}</div>
+                          <div className="text-gray-900 font-medium text-sm">{call.agentId}</div>
                         </div>
                         <div>
-                          <div className="text-sm text-gray-500 mb-1">Fecha y Hora</div>
-                          <div className="text-gray-900 font-medium">{call.formattedStartTime}</div>
+                          <div className="text-sm text-gray-500 mb-1">Fecha y hora</div>
+                          <div className="text-gray-900 font-medium text-sm">{call.formattedStartTime}</div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-6 py-4 bg-gray-50 rounded-lg px-4">
+                      <div className="grid grid-cols-3 gap-3 py-3 bg-gray-50 rounded-lg px-3">
                         <div className="text-center">
-                          <div className="text-xl font-bold text-gray-900">{call.agentMessages}</div>
-                          <div className="text-sm text-gray-500">Agente</div>
-                          <div className="text-xs text-gray-400">mensajes</div>
+                          <div className="text-lg font-bold text-gray-900">{call.agentMessages}</div>
+                          <div className="text-xs text-gray-500">Agente</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-xl font-bold text-gray-900">{call.userMessages}</div>
-                          <div className="text-sm text-gray-500">Usuario</div>
-                          <div className="text-xs text-gray-400">mensajes</div>
+                          <div className="text-lg font-bold text-gray-900">{call.userMessages}</div>
+                          <div className="text-xs text-gray-500">Usuario</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-xl font-bold text-gray-900">{call.totalMessages}</div>
-                          <div className="text-sm text-gray-500">Total</div>
-                          <div className="text-xs text-gray-400">mensajes</div>
+                          <div className="text-lg font-bold text-gray-900">{call.totalMessages}</div>
+                          <div className="text-xs text-gray-500">Total</div>
                         </div>
                       </div>
                     </div>
@@ -173,7 +170,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                     {/* Resumen estilo ElevenLabs */}
                     <div className="space-y-6">
                       <h2 className="text-lg font-semibold text-gray-900">
-                        Summary
+                        Resumen
                       </h2>
                       
                       {call.hasTranscriptSummary ? (
@@ -187,54 +184,15 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                           <div className="text-gray-400 mb-3">
                             <Brain className="h-8 w-8 mx-auto" />
                           </div>
-                          <p className="text-gray-500">No summary available</p>
+                          <p className="text-gray-500">No hay resumen disponible</p>
                           <p className="text-gray-400 text-sm mt-1">
-                            Summary will be generated automatically after analysis
+                            El resumen se generará automáticamente tras el análisis
                           </p>
                         </div>
                       )}
                     </div>
 
-                      {/* Análisis rápido */}
-                      {call.hasAnalysis && call.analysisResult && (
-                        <Card className="border-black/10 bg-white shadow-sm">
-                          <CardHeader>
-                            <CardTitle className="text-lg text-black flex items-center gap-2">
-                              <Brain className="h-5 w-5" />
-                              Análisis Rápido de IA
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            {call.analysisResult.sentiment && (
-                              <div>
-                                <div className="text-sm font-medium text-black/70 mb-2">Sentimiento General</div>
-                                <Badge variant="outline" className="border-black/20 text-black">
-                                  {call.analysisResult.sentiment}
-                                </Badge>
-                              </div>
-                            )}
-                            
-                            {call.analysisResult.keyPoints && call.analysisResult.keyPoints.length > 0 && (
-                              <div>
-                                <div className="text-sm font-medium text-black/70 mb-2">Puntos Clave</div>
-                                <ul className="space-y-1">
-                                  {call.analysisResult.keyPoints.slice(0, 3).map((point, index) => (
-                                    <li key={index} className="text-sm text-black flex items-start gap-2">
-                                      <div className="w-1.5 h-1.5 bg-black rounded-full mt-2 flex-shrink-0"></div>
-                                      {point}
-                                    </li>
-                                  ))}
-                                </ul>
-                                {call.analysisResult.keyPoints.length > 3 && (
-                                  <div className="text-xs text-black/60 mt-2">
-                                    +{call.analysisResult.keyPoints.length - 3} puntos más en el análisis detallado
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      )}
+
 
                   </div>
                 </ScrollArea>
@@ -293,9 +251,9 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                       <div className="flex items-center justify-center h-[400px]">
                         <div className="text-center">
                           <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                          <p className="text-gray-500 text-lg mb-2">No transcription available</p>
+                          <p className="text-gray-500 text-lg mb-2">No hay transcripción disponible</p>
                           <p className="text-gray-400 text-sm">
-                            The transcription will be processed automatically when available
+                            La transcripción se procesará automáticamente cuando esté disponible
                           </p>
                         </div>
                       </div>
@@ -316,7 +274,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                             <CardHeader>
                               <CardTitle className="text-lg text-black flex items-center gap-2">
                                 <Brain className="h-5 w-5" />
-                                Resumen del Análisis
+                                Resumen del análisis
                               </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -331,7 +289,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                         {call.analysisResult.keyPoints && call.analysisResult.keyPoints.length > 0 && (
                           <Card className="border-black/10 bg-white shadow-sm">
                             <CardHeader>
-                              <CardTitle className="text-lg text-black">Puntos Clave Identificados</CardTitle>
+                              <CardTitle className="text-lg text-black">Puntos clave identificados</CardTitle>
                             </CardHeader>
                             <CardContent>
                               <ul className="space-y-3">
@@ -371,7 +329,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                         {call.analysisResult.score !== undefined && (
                           <Card className="border-black/10 bg-white shadow-sm">
                             <CardHeader>
-                              <CardTitle className="text-lg text-black">Puntuación de Calidad</CardTitle>
+                              <CardTitle className="text-lg text-black">Puntuación de calidad</CardTitle>
                             </CardHeader>
                             <CardContent>
                               <div className="flex items-center gap-4">
@@ -392,7 +350,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                     ) : (
                       <Card className="border-black/10 bg-white shadow-sm">
                         <CardHeader>
-                          <CardTitle className="text-lg text-black">Análisis Profundo</CardTitle>
+                          <CardTitle className="text-lg text-black">Análisis profundo</CardTitle>
                           <p className="text-sm text-black/60">Análisis generado por IA sobre la conversación</p>
                         </CardHeader>
                         <CardContent>
@@ -415,9 +373,9 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                     {call.hasTickets ? (
                       <>
                         <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-black">Tickets Generados</h3>
+                          <h3 className="text-lg font-semibold text-black">Tickets generados</h3>
                           <Badge variant="outline" className="border-black/20 text-black">
-                            {call.tickets.length} tickets
+                            {call.tickets.length} {call.tickets.length === 1 ? 'ticket' : 'tickets'}
                           </Badge>
                         </div>
                         
@@ -447,23 +405,25 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                 </div>
                               </CardHeader>
                               <CardContent className="space-y-3">
-                                <div>
-                                  <div className="text-xs font-medium text-black/70 mb-1">Tipo de Incidencia</div>
-                                  <div className="text-sm text-black">{ticket.tipo_incidencia}</div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <div className="text-xs font-medium text-black/70 mb-1">Tipo de incidencia</div>
+                                    <div className="text-sm text-black">{ticket.tipo_incidencia}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-medium text-black/70 mb-1">Motivo</div>
+                                    <div className="text-sm text-black">{ticket.motivo_incidencia}</div>
+                                  </div>
                                 </div>
                                 <div>
-                                  <div className="text-xs font-medium text-black/70 mb-1">Motivo</div>
-                                  <div className="text-sm text-black">{ticket.motivo_incidencia}</div>
-                                </div>
-                                <div>
-                                  <div className="text-xs font-medium text-black/70 mb-1">Descripción</div>
-                                  <div className="text-sm text-black bg-gray-50 p-3 rounded border">
+                                  <div className="text-xs font-medium text-black/70 mb-2">Descripción</div>
+                                  <div className="text-sm text-black bg-blue-50 p-3 rounded-lg border border-blue-200 leading-relaxed whitespace-pre-line">
                                     {ticket.description}
                                   </div>
                                 </div>
-                                <div className="flex justify-between text-xs text-black/60">
-                                  <span>ID: {ticket.id.slice(0, 8)}...</span>
-                                  <span>{new Date(ticket.created_at).toLocaleDateString('es-ES')}</span>
+                                <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                                  <span className="text-xs text-black/60">ID: {ticket.id.slice(0, 8)}...</span>
+                                  <span className="text-xs text-black/60">{new Date(ticket.created_at).toLocaleDateString('es-ES')}</span>
                                 </div>
                               </CardContent>
                             </Card>
@@ -473,7 +433,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                     ) : (
                       <Card className="border-black/10 bg-white shadow-sm">
                         <CardHeader>
-                          <CardTitle className="text-lg text-black">Gestión de Tickets</CardTitle>
+                          <CardTitle className="text-lg text-black">Gestión de tickets</CardTitle>
                           <p className="text-sm text-black/60">Tickets generados automáticamente por IA</p>
                         </CardHeader>
                         <CardContent>

@@ -516,7 +516,7 @@ export class CallsController {
               "IdTicket": idTicket,
               "TipoIncidencia": def.tipoIncidencia,
               "MotivoIncidencia": def.motivoIncidencia,
-              "Notas": `IA (${(suggestion.score*100).toFixed(0)}%): ${suggestion.justification}. [Llamada de prueba MP3]`,
+              "Notas": `${suggestion.justification}`,
             };
 
             // Intentar crear en Nogal (puede fallar si no está configurado)
@@ -530,7 +530,7 @@ export class CallsController {
             // Crear ticket interno siempre
             const internalTicket = await ticketService.createTicket({
               conversation_id: callId,
-              description: payload.Notas,
+              description: suggestion.justification,
               tipo_incidencia: def.tipoIncidencia,
               motivo_incidencia: def.motivoIncidencia,
               priority: 'medium',

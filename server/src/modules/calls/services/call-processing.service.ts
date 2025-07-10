@@ -109,14 +109,14 @@ export class CallProcessingService {
           "IdTicket": idTicket,
           "TipoIncidencia": def.tipoIncidencia,
           "MotivoIncidencia": def.motivoIncidencia,
-          "Notas": `IA (${(suggestion.score*100).toFixed(0)}%): ${suggestion.justification}`,
+          "Notas": `${suggestion.justification}`,
         };
 
         try {
           const { ticketId } = await nogalApiClient.createTicket(payload);
           const internalTicket = await ticketService.createTicket({
             conversation_id: nogalCall.id,
-            description: payload.Notas,
+            description: suggestion.justification,
             tipo_incidencia: def.tipoIncidencia,
             motivo_incidencia: def.motivoIncidencia,
             priority: 'medium',
