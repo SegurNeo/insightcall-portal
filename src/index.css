@@ -4,65 +4,90 @@
 
 @layer base {
   :root {
-    /* Black and White Theme */
-    --background: 0 0% 100%; /* White */
-    --foreground: 0 0% 0%;   /* Black */
+    /* Elegant Gray Scale Theme */
+    --background: 0 0% 100%; /* Pure White */
+    --foreground: 0 0% 3.9%; /* Almost Black */
 
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 0 0% 0%; /* Black */
+    --card: 0 0% 100%; /* Pure White */
+    --card-foreground: 0 0% 3.9%; /* Almost Black */
 
-    --popover: 0 0% 100%; /* White */
-    --popover-foreground: 0 0% 0%; /* Black */
+    --popover: 0 0% 100%; /* Pure White */
+    --popover-foreground: 0 0% 3.9%; /* Almost Black */
 
-    --primary: 0 0% 0%; /* Black */
-    --primary-foreground: 0 0% 100%; /* White */
+    --primary: 0 0% 9%; /* Dark Gray */
+    --primary-foreground: 0 0% 98%; /* Off White */
 
-    --secondary: 0 0% 95%; /* Light Gray */
-    --secondary-foreground: 0 0% 0%; /* Black */
+    --secondary: 0 0% 96.1%; /* Light Gray */
+    --secondary-foreground: 0 0% 9%; /* Dark Gray */
 
-    --muted: 0 0% 95%; /* Light Gray */
-    --muted-foreground: 0 0% 40%; /* Dark Gray */
+    --muted: 0 0% 96.1%; /* Light Gray */
+    --muted-foreground: 0 0% 45.1%; /* Medium Gray */
 
-    --accent: 0 0% 90%; /* Lighter Gray */
-    --accent-foreground: 0 0% 0%; /* Black */
+    --accent: 0 0% 96.1%; /* Light Gray */
+    --accent-foreground: 0 0% 9%; /* Dark Gray */
 
-    --destructive: 0 0% 0%; /* Black */
-    --destructive-foreground: 0 0% 100%; /* White */
+    --destructive: 0 84.2% 60.2%; /* Red */
+    --destructive-foreground: 0 0% 98%; /* Off White */
 
-    --border: 0 0% 85%; /* Medium Gray */
-    --input: 0 0% 85%; /* Medium Gray */
-    --ring: 0 0% 0%; /* Black */
+    --border: 0 0% 89.8%; /* Light Gray Border */
+    --input: 0 0% 89.8%; /* Light Gray Input */
+    --ring: 0 0% 3.9%; /* Almost Black Ring */
 
     --radius: 0.5rem;
   }
 
-  /* Optional: Define dark mode explicitly if needed, otherwise it inherits */
-  /* For a strict B&W, dark mode might just invert background/foreground */
-  /* .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 0%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 0%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 15%; 
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 20%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 0% 100%;
-    --destructive-foreground: 0 0% 0%;
-    --border: 0 0% 25%;
-    --input: 0 0% 25%;
-    --ring: 0 0% 100%;
-  } */
+  .dark {
+    --background: 0 0% 3.9%; /* Dark Background */
+    --foreground: 0 0% 98%; /* Light Text */
+
+    --card: 0 0% 3.9%; /* Dark Card */
+    --card-foreground: 0 0% 98%; /* Light Text */
+
+    --popover: 0 0% 3.9%; /* Dark Popover */
+    --popover-foreground: 0 0% 98%; /* Light Text */
+
+    --primary: 0 0% 98%; /* Light Primary */
+    --primary-foreground: 0 0% 9%; /* Dark Text */
+
+    --secondary: 0 0% 14.9%; /* Dark Secondary */
+    --secondary-foreground: 0 0% 98%; /* Light Text */
+
+    --muted: 0 0% 14.9%; /* Dark Muted */
+    --muted-foreground: 0 0% 63.9%; /* Light Gray */
+
+    --accent: 0 0% 14.9%; /* Dark Accent */
+    --accent-foreground: 0 0% 98%; /* Light Text */
+
+    --destructive: 0 62.8% 30.6%; /* Dark Red */
+    --destructive-foreground: 0 0% 98%; /* Light Text */
+
+    --border: 0 0% 14.9%; /* Dark Border */
+    --input: 0 0% 14.9%; /* Dark Input */
+    --ring: 0 0% 83.1%; /* Light Ring */
+  }
+
+  * {
+    @apply border-border;
+  }
 
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Typography improvements */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+  }
+
+  p {
+    line-height: 1.7;
   }
 }
 
@@ -73,47 +98,111 @@
   .animation-delay-400 {
     animation-delay: 400ms;
   }
+  
+  /* Text improvements */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  
+  /* Modern shadows */
+  .shadow-elegant {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+  
+  .shadow-elegant-md {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+  
+  .shadow-elegant-lg {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
 }
 
-/* Custom Animations */
+/* Modern Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { 
+    opacity: 0; 
+    transform: translateY(8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
 }
 
 @keyframes slideIn {
-  from { transform: translateX(-20px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from { 
+    transform: translateX(-12px); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateX(0); 
+    opacity: 1; 
+  }
+}
+
+@keyframes slideUp {
+  from { 
+    transform: translateY(8px); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateY(0); 
+    opacity: 1; 
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    transform: scale(0.95); 
+    opacity: 0; 
+  }
+  to { 
+    transform: scale(1); 
+    opacity: 1; 
+  }
 }
 
 .fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .slide-in {
-  animation: slideIn 0.3s ease-out forwards;
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .page-transition {
-  animation: fadeIn 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Glass effect */
+/* Improved Glass Effect */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .glass-dark {
-  background: rgba(30, 30, 30, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(15, 15, 15, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Elegant scrollbar */
+/* Modern Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -124,10 +213,124 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Selection */
+::selection {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+/* Focus improvements */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Smooth transitions */
+* {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Remove default button focus */
+button:focus {
+  outline: none;
+}
+
+/* Improved card hover effects */
+.card-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* Elegant loading animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Elegant borders */
+.border-elegant {
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+/* Modern spacing */
+.section-spacing {
+  @apply py-16 md:py-24;
+}
+
+.container-spacing {
+  @apply px-4 md:px-6 lg:px-8;
+}
+
+/* Improved form elements */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  transition: all 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+/* Elegant status indicators */
+.status-dot {
+  position: relative;
+}
+
+.status-dot::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.status-active::after {
+  background: rgba(34, 197, 94, 0.4);
+}
+
+.status-dot.status-error::after {
+  background: rgba(239, 68, 68, 0.4);
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

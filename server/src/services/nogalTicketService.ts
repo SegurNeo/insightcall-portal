@@ -19,11 +19,15 @@ export class NogalTicketService {
       // 1. Generar ID único para el ticket
       const idTicket = await this.generateUniqueTicketId();
       
-      // 2. Completar payload con sanitización de NumeroPoliza
+      // 2. Completar payload con sanitización de campos
       const completePayload: NogalTicketPayload = {
         ...ticketData,
         IdTicket: idTicket,
-        NumeroPoliza: this.sanitizeNumeroPoliza(ticketData.NumeroPoliza) // ✅ Sanitizar formato
+        IdCliente: this.sanitizeTextField(ticketData.IdCliente, 50, 'IdCliente'),
+        TipoIncidencia: this.sanitizeTextField(ticketData.TipoIncidencia, 100, 'TipoIncidencia'),
+        MotivoIncidencia: this.sanitizeTextField(ticketData.MotivoIncidencia, 100, 'MotivoIncidencia'),
+        NumeroPoliza: this.sanitizeNumeroPoliza(ticketData.NumeroPoliza), // ✅ Sanitizar formato
+        Notas: this.sanitizeNotas(ticketData.Notas) // ✅ Limitar longitud de notas
       };
 
       console.log(`📋 [NOGAL] Payload para Segurneo Voice:`, {
@@ -217,12 +221,87 @@ export class NogalTicketService {
     
     // ✅ FIX: Nogal no acepta múltiples pólizas separadas por comas
     // Convertir comas a pipes que sí acepta
-    const sanitized = numeroPoliza
+    let sanitized = numeroPoliza
       .trim()
       .replace(/,\s*/g, '|') // Reemplazar "," y ", " por "|"
       .replace(/\s+/g, ' ');  // Normalizar espacios
     
+    // 🚫 FIX CRÍTICO: Limitar longitud para evitar truncamiento en BD de Nogal
+    const MAX_POLIZA_LENGTH = 50; // Límite conservador para BD de Nogal
+    
+    if (sanitized.length > MAX_POLIZA_LENGTH) {
+      const polizas = sanitized.split('|');
+      
+      if (polizas.length > 1) {
+        // Múltiples pólizas: tomar solo las primeras que quepan
+        let result = '';
+        let count = 0;
+        
+        for (const poliza of polizas) {
+          const nextResult = result ? `${result}|${poliza}` : poliza;
+          if (nextResult.length <= MAX_POLIZA_LENGTH - 5) { // -5 para "+X más"
+            result = nextResult;
+            count++;
+          } else {
+            break;
+          }
+        }
+        
+        const remaining = polizas.length - count;
+        if (remaining > 0) {
+          result += `|+${remaining}`;
+        }
+        
+        sanitized = result;
+      } else {
+        // Una sola póliza muy larga: truncar con indicador
+        sanitized = sanitized.substring(0, MAX_POLIZA_LENGTH - 3) + '...';
+      }
+      
+      console.log(`⚠️ [NOGAL] NumeroPoliza truncado por longitud: ${polizas.length} pólizas → "${sanitized}"`);
+    }
+    
     console.log(`🧹 [NOGAL] Sanitizando NumeroPoliza: "${numeroPoliza}" → "${sanitized}"`);
+    
+    return sanitized;
+  }
+
+  /**
+   * 🧹 Sanitizar y limitar longitud de Notas para evitar truncamiento en BD de Nogal
+   */
+  private sanitizeNotas(notas: string): string {
+    if (!notas || notas.trim() === '') {
+      return 'Sin notas adicionales';
+    }
+    
+    const MAX_NOTAS_LENGTH = 500; // Límite conservador para campo Notas
+    let sanitized = notas.trim();
+    
+    if (sanitized.length > MAX_NOTAS_LENGTH) {
+      // Truncar manteniendo la información más importante al principio
+      sanitized = sanitized.substring(0, MAX_NOTAS_LENGTH - 20) + '... [Texto truncado]';
+      console.log(`⚠️ [NOGAL] Notas truncadas por longitud: ${notas.length} → ${sanitized.length} chars`);
+    }
+    
+    console.log(`🧹 [NOGAL] Sanitizando Notas: ${notas.length} chars → ${sanitized.length} chars`);
+    
+    return sanitized;
+  }
+
+  /**
+   * 🧹 Sanitizar texto general para evitar truncamiento en BD de Nogal
+   */
+  private sanitizeTextField(text: string, maxLength: number, fieldName: string): string {
+    if (!text || text.trim() === '') {
+      return text;
+    }
+    
+    let sanitized = text.trim();
+    
+    if (sanitized.length > maxLength) {
+      sanitized = sanitized.substring(0, maxLength - 3) + '...';
+      console.log(`⚠️ [NOGAL] ${fieldName} truncado: ${text.length} → ${sanitized.length} chars`);
+    }
     
     return sanitized;
   }

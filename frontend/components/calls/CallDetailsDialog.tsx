@@ -1,17 +1,24 @@
+import React, { useState, useEffect, useRef } from "react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetClose,
-} from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+} from "../ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Button } from "../ui/button";
+import { Separator } from "../ui/separator";
+import { ScrollArea } from "../ui/scroll-area";
+import { Progress } from "../ui/progress";
+import { Slider } from "../ui/slider";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Skeleton } from "../ui/skeleton";
+import { Alert, AlertDescription } from "../ui/alert";
+import { Label } from "../ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { 
   MessageSquare, 
   AlignLeft, 
@@ -39,19 +46,17 @@ import {
   ThumbsDown,
   Music
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Conversation } from "@/types/api";
-import { TranscriptMessage } from "@/types";
-import { callService } from "@/services/callService";
-import { cn, formatTicketType } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
-import { analysisService } from '@/services/analysisService';
-import { TranscriptionAnalysisResult, TicketActionType } from '@/types/analysis';
+import { Conversation } from "../../types/api";
+import { TranscriptMessage } from "../../types";
+import { callService } from "../../services/callService";
+import { cn, formatTicketType } from "../../lib/utils";
+import { useToast } from "../../hooks/use-toast";
+import { analysisService } from '../../services/analysisService';
+import { TranscriptionAnalysisResult, TicketActionType } from '../../types/analysis';
 import { CreateTicketDialog } from "./CreateTicketDialog";
-import { ticketService, Ticket } from "@/services/ticketService";
+import { ticketService, Ticket } from "../../services/ticketService";
 
 interface CallDetailsDialogProps {
   call?: Conversation;
@@ -383,26 +388,37 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
 
             <div className="grid grid-cols-3 gap-4 px-6 py-4 border-b bg-zinc-50/50">
               <div className="space-y-1">
-                <div className="flex items-center space-x-1.5 text-xs text-muted-foreground">
+                <Label className="flex items-center space-x-1.5 text-xs text-muted-foreground">
                   <Hash className="h-3 w-3" />
                   <span>ID Conversación</span>
-                </div>
-                <p className="text-sm font-medium text-zinc-800 truncate" title={call.conversation_id}>{call.conversation_id}</p>
+                </Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <p className="text-sm font-medium text-zinc-800 truncate cursor-help" title={call.conversation_id}>
+                        {call.conversation_id}
+                      </p>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>ID completo: {call.conversation_id}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               <div className="space-y-1">
-                <div className="flex items-center space-x-1.5 text-xs text-muted-foreground">
+                <Label className="flex items-center space-x-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
                   <span>Duración</span>
-                </div>
+                </Label>
                 <p className="text-sm font-medium text-zinc-800">
                   {formatTime(call.call_duration_secs)}
                 </p>
               </div>
               <div className="space-y-1">
-                <div className="flex items-center space-x-1.5 text-xs text-muted-foreground">
+                <Label className="flex items-center space-x-1.5 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
                   <span>Fecha y Hora</span>
-                </div>
+                </Label>
                 <p className="text-sm font-medium text-zinc-800">
                   {call?.start_time_unix_secs 
                     ? format(call.start_time_unix_secs * 1000, "P p", { locale: es })
@@ -424,7 +440,7 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                   <CardContent className="p-4 pt-0 space-y-5">
                     <div className="grid gap-x-6 gap-y-2 grid-cols-1 sm:grid-cols-2">
                       <div className="space-y-1">
-                        <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block mb-1">Estado</label>
+                        <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Estado</Label>
                         <div className="flex items-center">
                           <Badge variant={call?.call_successful === 'success' ? 'secondary' : 'destructive'}>
                             {call?.call_successful === 'success' ? 'Exitosa' : 'Fallida'}
@@ -432,11 +448,14 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block mb-1">Agente</label>
+                        <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Agente</Label>
                         <div className="flex items-center space-x-2">
-                          <div className="h-6 w-6 rounded-full bg-zinc-100 flex items-center justify-center border">
-                            <User2 className="h-3.5 w-3.5 text-zinc-600" />
-                          </div>
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src="" alt={call.metadata.agent_name || 'Agente'} />
+                            <AvatarFallback className="text-xs">
+                              {call.metadata.agent_name ? call.metadata.agent_name.charAt(0).toUpperCase() : 'A'}
+                            </AvatarFallback>
+                          </Avatar>
                           <span className="text-sm font-medium text-zinc-800">{call.metadata.agent_name || 'N/A'}</span>
                         </div>
                       </div>
@@ -457,25 +476,34 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                       </div>
                       
                       <div className="grid grid-cols-2 gap-x-6 gap-y-2 pt-2 items-start">
-                           <div>
-                              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block mb-1">Puntuación</label>
-                              <div className="flex items-center space-x-1">
-                                 {[1, 2, 3].map((i) => {
-                                   const isFilled = i === 1 || (Boolean(call.call_successful) && call.call_successful === 'success' && i <= 3);
-                                   return (
-                                     <Star 
-                                       key={i} 
-                                       className={cn(
-                                         "w-5 h-5",
-                                         isFilled ? "text-yellow-400 fill-yellow-400" : "text-zinc-300"
-                                       )}
-                                     />
-                                   );
-                                  })}
-                              </div>
+                                                        <div>
+                              <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Puntuación</Label>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center space-x-1">
+                                      {[1, 2, 3].map((i) => {
+                                        const isFilled = i === 1 || (Boolean(call.call_successful) && call.call_successful === 'success' && i <= 3);
+                                        return (
+                                          <Star 
+                                            key={i} 
+                                            className={cn(
+                                              "w-5 h-5",
+                                              isFilled ? "text-yellow-400 fill-yellow-400" : "text-zinc-300"
+                                            )}
+                                          />
+                                        );
+                                       })}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Puntuación basada en el resultado de la llamada</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                              </div>
                             <div>
-                              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block mb-1">Estado atención</label>
+                              <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Estado atención</Label>
                               <Badge variant={call.call_successful === 'success' ? 'secondary' : 'destructive'}>
                                  {call.call_successful === 'success' ? 'Atención Exitosa' : 'Atención Fallida'}
                               </Badge>
@@ -485,24 +513,42 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                         <Separator className="my-4" />
 
                        <div>
-                         <label className="text-sm font-medium text-zinc-700 mb-1.5 block">Feedback rápido (manual)</label>
+                         <Label className="text-sm font-medium text-zinc-700 mb-1.5 block">Feedback rápido (manual)</Label>
                          <div className="flex space-x-2">
-                           <Button
-                             variant={manualFeedback === 'like' ? 'secondary' : 'outline'}
-                             size="icon"
-                             className="h-9 w-9 border-zinc-200 rounded-full"
-                             onClick={() => handleManualFeedback('like')}
-                           >
-                             <ThumbsUp className="h-4 w-4" />
-                           </Button>
-                           <Button
-                             variant={manualFeedback === 'dislike' ? 'secondary' : 'outline'}
-                             size="icon"
-                             className="h-9 w-9 border-zinc-200 rounded-full"
-                             onClick={() => handleManualFeedback('dislike')}
-                           >
-                             <ThumbsDown className="h-4 w-4" />
-                           </Button>
+                           <TooltipProvider>
+                             <Tooltip>
+                               <TooltipTrigger asChild>
+                                 <Button
+                                   variant={manualFeedback === 'like' ? 'secondary' : 'outline'}
+                                   size="icon"
+                                   className="h-9 w-9 border-zinc-200 rounded-full"
+                                   onClick={() => handleManualFeedback('like')}
+                                 >
+                                   <ThumbsUp className="h-4 w-4" />
+                                 </Button>
+                               </TooltipTrigger>
+                               <TooltipContent>
+                                 <p>Marcar como positivo</p>
+                               </TooltipContent>
+                             </Tooltip>
+                           </TooltipProvider>
+                           <TooltipProvider>
+                             <Tooltip>
+                               <TooltipTrigger asChild>
+                                 <Button
+                                   variant={manualFeedback === 'dislike' ? 'secondary' : 'outline'}
+                                   size="icon"
+                                   className="h-9 w-9 border-zinc-200 rounded-full"
+                                   onClick={() => handleManualFeedback('dislike')}
+                                 >
+                                   <ThumbsDown className="h-4 w-4" />
+                                 </Button>
+                               </TooltipTrigger>
+                               <TooltipContent>
+                                 <p>Marcar como negativo</p>
+                               </TooltipContent>
+                             </Tooltip>
+                           </TooltipProvider>
                          </div>
                        </div>
                     </div>
@@ -519,9 +565,18 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                           </CardHeader>
                           <CardContent className="p-0">
                              {isLoadingAudio ? (
-                               <div className="flex items-center justify-center h-20">
-                                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                                 <span className="ml-2 text-sm text-muted-foreground">Cargando audio...</span>
+                               <div className="space-y-4">
+                                 <div className="flex items-center space-x-3">
+                                   <Skeleton className="h-9 w-9 rounded-full" />
+                                   <Skeleton className="h-4 w-12" />
+                                   <Skeleton className="h-2 flex-1" />
+                                   <Skeleton className="h-4 w-12" />
+                                   <div className="flex items-center space-x-2">
+                                     <Skeleton className="h-9 w-9 rounded-full" />
+                                     <Skeleton className="h-2 w-20" />
+                                     <Skeleton className="h-9 w-9 rounded-full" />
+                                   </div>
+                                 </div>
                                </div>
                              ) : (
                                <div className="space-y-4">
@@ -658,9 +713,28 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                     </CardHeader>
                     <CardContent className="pt-2">
                      {isLoadingTranscript ? (
-                      <div className="flex items-center justify-center py-12 min-h-[300px]">
-                        <Loader2 className="h-5 w-5 text-zinc-500 animate-spin mr-2" />
-                        <div className="text-sm text-zinc-500">Cargando transcripción...</div>
+                      <div className="p-4 space-y-4">
+                        <div className="flex items-center space-x-3">
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3 justify-end">
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-2/3 ml-auto" />
+                            <Skeleton className="h-3 w-1/3 ml-auto" />
+                          </div>
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-4/5" />
+                            <Skeleton className="h-3 w-3/5" />
+                          </div>
+                        </div>
                       </div>
                     ) : transcriptionView === 'chat' ? (
                        <div className="space-y-5 p-4">
@@ -700,12 +774,15 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                                        "flex items-center space-x-2 mb-1.5", 
                                        !isAgent && "flex-row-reverse space-x-reverse"
                                      )}>
-                                       <div className={cn(
-                                         "h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0 border", 
-                                         isAgent ? "bg-zinc-100" : "bg-zinc-800"
-                                       )}>
-                                         <User2 className={cn("h-3 w-3", isAgent ? "text-zinc-600" : "text-white")}/>
-                                       </div>
+                                       <Avatar className="h-6 w-6">
+                                         <AvatarImage src="" alt={isAgent ? 'Agente' : 'Cliente'} />
+                                         <AvatarFallback className={cn(
+                                           "text-xs",
+                                           isAgent ? "bg-zinc-100 text-zinc-600" : "bg-zinc-800 text-white"
+                                         )}>
+                                           {isAgent ? 'A' : 'C'}
+                                         </AvatarFallback>
+                                       </Avatar>
                                        <div className="text-xs text-muted-foreground">
                                          {formatTime(message.time_in_call_secs)}
                                        </div>
@@ -728,10 +805,12 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                              })}
                            </>
                          ) : (
-                           <div className="flex flex-col items-center justify-center py-12 text-center">
-                             <MessageSquare className="h-12 w-12 text-zinc-200 mb-4" />
-                             <p className="text-sm text-zinc-500">No hay transcripción disponible para esta llamada.</p>
-                           </div>
+                           <Alert>
+                             <MessageSquare className="h-4 w-4" />
+                             <AlertDescription>
+                               No hay transcripción disponible para esta llamada.
+                             </AlertDescription>
+                           </Alert>
                          )}
                        </div>
                     ) : (
@@ -756,9 +835,12 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                              </div>
                            );
                          }) : (
-                           <div className="text-center py-8 text-zinc-500">
-                             No hay transcripción disponible en formato raw.
-                           </div>
+                           <Alert>
+                             <AlertCircle className="h-4 w-4" />
+                             <AlertDescription>
+                               No hay transcripción disponible en formato raw.
+                             </AlertDescription>
+                           </Alert>
                          )}
                        </div>
                     )}
@@ -779,69 +861,87 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                      </CardHeader>
                      <CardContent className="space-y-4 pt-2">
                        {(analysisResult.status === 'loading' || isAnalyzing) && (
-                         <div className="flex items-center justify-center py-12 text-center">
-                           <Loader2 className="h-5 w-5 text-zinc-500 animate-spin mr-2" />
-                           <p className="text-sm text-zinc-500">Analizando conversación...</p>
+                         <div className="space-y-4">
+                           <div className="flex items-center space-x-2">
+                             <Skeleton className="h-6 w-24" />
+                             <Skeleton className="h-6 w-20" />
+                             <Skeleton className="h-6 w-16" />
+                           </div>
+                           <div className="space-y-2">
+                             <Skeleton className="h-4 w-full" />
+                             <Skeleton className="h-4 w-5/6" />
+                             <Skeleton className="h-4 w-4/6" />
+                           </div>
+                           <div className="space-y-2">
+                             <Skeleton className="h-4 w-3/4" />
+                             <Skeleton className="h-4 w-2/3" />
+                           </div>
                          </div>
                        )}
                        {analysisResult.status === 'idle' && !isLoadingTranscript && !isAnalyzing && (
-                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                           <ClipboardCheck className="h-10 w-10 text-zinc-300 mb-3" />
-                           <p className="text-sm text-zinc-500">
+                         <Alert>
+                           <Info className="h-4 w-4" />
+                           <AlertDescription>
                              {transcript.length === 0 ? "Se requiere transcripción para el análisis." : "Análisis no iniciado o pendiente."}
-                           </p>
-                         </div>
+                           </AlertDescription>
+                         </Alert>
                        )}
                        {analysisResult.status === 'error' && (
-                         <div className="rounded-lg border border-red-200 bg-red-50/50 p-4">
-                           <div className="flex items-start space-x-2 text-red-700 mb-1">
-                             <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                             <p className="text-sm font-medium">Error en el análisis automático</p>
-                           </div>
-                           <p className="text-sm text-red-600 pl-6">{analysisResult.error}</p>
-                         </div>
+                         <Alert variant="destructive">
+                           <AlertCircle className="h-4 w-4" />
+                           <AlertDescription>
+                             <p className="font-medium mb-1">Error en el análisis automático</p>
+                             <p className="text-sm">{analysisResult.error}</p>
+                           </AlertDescription>
+                         </Alert>
                        )}
                        {analysisResult.status === 'success' && analysisResult.action && (
-                         <div className="space-y-4">
-                           <div className="rounded-lg border bg-white p-4 space-y-3">
+                         <Card>
+                           <CardHeader className="pb-3">
                              <div className="flex items-center justify-between flex-wrap gap-2">
                                <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                                  <Badge variant="secondary">
                                    Intención: {formatTicketType(analysisResult.action.type)}
                                  </Badge>
-                                 <Badge variant="outline">
-                                   Confianza: {Math.round(analysisResult.action.confidence * 100)}%
-                                 </Badge>
+                                 <TooltipProvider>
+                                   <Tooltip>
+                                     <TooltipTrigger asChild>
+                                       <Badge variant="outline">
+                                         Confianza: {Math.round(analysisResult.action.confidence * 100)}%
+                                       </Badge>
+                                     </TooltipTrigger>
+                                     <TooltipContent>
+                                       <p>Nivel de confianza del análisis automático</p>
+                                     </TooltipContent>
+                                   </Tooltip>
+                                 </TooltipProvider>
                                </div>
                                <Badge 
-                                 variant="outline" 
-                                 className={cn(
-                                   "capitalize px-2 py-0.5 text-xs font-medium",
-                                   analysisResult.action.details.priority === 'high' && "text-red-700 border-red-300 bg-red-50",
-                                   analysisResult.action.details.priority === 'medium' && "text-yellow-700 border-yellow-300 bg-yellow-50",
-                                   analysisResult.action.details.priority === 'low' && "text-green-700 border-green-300 bg-green-50"
-                                 )}
+                                 variant={analysisResult.action.details.priority === 'high' ? 'destructive' : 
+                                         analysisResult.action.details.priority === 'medium' ? 'default' : 'secondary'}
+                                 className="capitalize"
                                >
-                                 Prioridad: {analysisResult.action.details.priority}
+                                 {analysisResult.action.details.priority}
                                </Badge>
                              </div>
-                             
-                             <Separator />
+                           </CardHeader>
+                           
+                           <CardContent className="space-y-4">
                              <div>
-                               <h4 className="text-sm font-semibold text-zinc-800 mb-1">Resumen detectado</h4>
+                               <Label className="text-sm font-semibold text-zinc-800 mb-1">Resumen detectado</Label>
                                <p className="text-sm text-zinc-600 leading-relaxed">{analysisResult.action.summary || "-"}</p>
                              </div>
 
                             {analysisResult.action.details.context && (
                                <div>
-                                 <h4 className="text-sm font-semibold text-zinc-800 mb-1">Contexto relevante</h4>
+                                 <Label className="text-sm font-semibold text-zinc-800 mb-1">Contexto relevante</Label>
                                  <p className="text-sm text-zinc-600 leading-relaxed">{analysisResult.action.details.context}</p>
                                </div>
                              )}
 
                              {analysisResult.action.details.requiredData && analysisResult.action.details.requiredData.length > 0 && (
                                <div>
-                                 <h4 className="text-sm font-semibold text-zinc-800 mb-1">Datos requeridos identificados</h4>
+                                 <Label className="text-sm font-semibold text-zinc-800 mb-1">Datos requeridos identificados</Label>
                                  <ul className="list-disc list-inside text-sm text-zinc-600 pl-1 space-y-0.5">
                                    {analysisResult.action.details.requiredData.map((data, index) => (
                                      <li key={index}>{data}</li>
@@ -849,8 +949,8 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                                  </ul>
                                </div>
                              )}
-                           </div>
-                         </div>
+                           </CardContent>
+                         </Card>
                        )}
                      </CardContent>
                  </Card>
@@ -878,37 +978,81 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                   </CardHeader>
                   <CardContent className="pt-2">
                      {isLoadingTickets ? (
-                       <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-5 w-5 animate-spin text-zinc-500 mr-2" />
-                          <span className="text-sm text-zinc-500">Cargando tickets...</span>
+                       <div className="space-y-4">
+                         <div className="px-4 py-3 border rounded-md">
+                           <div className="flex items-center justify-between mb-2">
+                             <div className="flex items-center space-x-2">
+                               <Skeleton className="h-5 w-20" />
+                               <Skeleton className="h-5 w-16" />
+                             </div>
+                             <Skeleton className="h-5 w-14" />
+                           </div>
+                           <Skeleton className="h-4 w-full mb-1" />
+                           <Skeleton className="h-3 w-32" />
+                         </div>
+                         <div className="px-4 py-3 border rounded-md">
+                           <div className="flex items-center justify-between mb-2">
+                             <div className="flex items-center space-x-2">
+                               <Skeleton className="h-5 w-20" />
+                               <Skeleton className="h-5 w-16" />
+                             </div>
+                             <Skeleton className="h-5 w-14" />
+                           </div>
+                           <Skeleton className="h-4 w-5/6 mb-1" />
+                           <Skeleton className="h-3 w-28" />
+                         </div>
                        </div>
                      ) : tickets.length > 0 ? (
-                       <ul className="divide-y border rounded-md bg-white">
+                       <div className="space-y-3">
                          {tickets.map(ticket => (
-                           <li key={ticket.id} className="px-4 py-3 hover:bg-zinc-50/80 transition-colors duration-100">
-                              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                           <Card key={ticket.id} className="hover:shadow-md transition-shadow duration-200">
+                             <CardHeader className="pb-3">
+                               <div className="flex items-center justify-between">
                                  <div className="flex items-center space-x-2">
-                                    <span className="text-sm font-semibold text-zinc-800">Ticket #{ticket.id}</span>
-                                     <Badge variant="outline" className="capitalize text-xs">
-                                        Prioridad: {ticket.priority}
-                                     </Badge>
+                                   <Badge variant="outline" className="font-mono">
+                                     #{ticket.id}
+                                   </Badge>
+                                   <Badge 
+                                     variant={ticket.priority === 'high' ? 'destructive' : 
+                                             ticket.priority === 'medium' ? 'default' : 'secondary'}
+                                     className="capitalize"
+                                   >
+                                     {ticket.priority}
+                                   </Badge>
                                  </div>
-                                 <Badge variant="secondary" className="capitalize font-normal text-xs">
-                                    {ticket.status}
+                                 <Badge variant="secondary" className="capitalize">
+                                   {ticket.status}
                                  </Badge>
-                              </div>
-                              <p className="text-sm text-zinc-600 mb-1 truncate" title={ticket.description}>{ticket.description}</p>
-                               <div className="text-xs text-zinc-500">
-                                  Tipo: {formatTicketType(ticket.type as TicketActionType)}
                                </div>
-                           </li>
+                             </CardHeader>
+                             <CardContent className="pt-0">
+                               <p className="text-sm text-zinc-600 mb-2">{ticket.description}</p>
+                               <div className="flex items-center justify-between text-xs text-zinc-500">
+                                 <span>Tipo: {formatTicketType(ticket.type as TicketActionType)}</span>
+                                 <TooltipProvider>
+                                   <Tooltip>
+                                     <TooltipTrigger asChild>
+                                                                               <span className="cursor-help">
+                                          {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'N/A'}
+                                       </span>
+                                     </TooltipTrigger>
+                                     <TooltipContent>
+                                       <p>Fecha de creación</p>
+                                     </TooltipContent>
+                                   </Tooltip>
+                                 </TooltipProvider>
+                               </div>
+                             </CardContent>
+                           </Card>
                          ))}
-                       </ul>
-                     ) : (
-                       <div className="text-center py-12 border rounded-md bg-white">
-                          <CheckCircle2 className="h-10 w-10 text-zinc-300 mx-auto mb-3" />
-                          <p className="text-sm text-zinc-500">No hay tickets asociados a esta llamada.</p>
                        </div>
+                     ) : (
+                                                <Alert>
+                           <CheckCircle2 className="h-4 w-4" />
+                           <AlertDescription>
+                             No hay tickets asociados a esta llamada.
+                           </AlertDescription>
+                         </Alert>
                      )}
                   </CardContent>
                 </Card>
@@ -928,23 +1072,23 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                   <CardContent className="space-y-4 pt-2">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                         <div className="space-y-1">
-                          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Nombre</label>
+                          <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Nombre</Label>
                           <p className="text-sm text-zinc-800">Carlos Martínez</p>
                         </div>
                          <div className="space-y-1">
-                          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Póliza</label>
+                          <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Póliza</Label>
                           <p className="text-sm text-zinc-800">Adeslas Go (G-987654321)</p>
                         </div>
                          <div className="space-y-1">
-                          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Tipo de seguro</label>
+                          <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Tipo de seguro</Label>
                           <p className="text-sm text-zinc-800">Seguro de Salud</p>
                         </div>
                          <div className="space-y-1">
-                          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Teléfono</label>
+                          <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Teléfono</Label>
                           <p className="text-sm text-zinc-800">+34 600 123 456</p>
                         </div>
                          <div className="space-y-1">
-                          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Email</label>
+                          <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Email</Label>
                           <p className="text-sm text-zinc-800">c.martinez@ejemplo.com</p>
                         </div>
                       </div>

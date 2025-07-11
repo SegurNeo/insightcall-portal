@@ -382,161 +382,129 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                           </Badge>
                         </div>
                         
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                           {call.tickets.map((ticket, index) => (
-                            <Card key={ticket.id} className="border-black/10 bg-white shadow-sm">
-                              <CardHeader className="pb-3">
+                            <Card key={ticket.id} className="border-zinc-200 bg-white shadow-sm">
+                              <CardHeader className="pb-4 border-b border-zinc-100">
                                 <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-black flex items-center gap-2">
-                                    <Ticket className="h-4 w-4" />
-                                    Ticket #{index + 1}
+                                  <CardTitle className="text-base font-semibold text-zinc-900 flex items-center gap-2">
+                                    <Ticket className="h-5 w-5 text-zinc-600" />
+                                    Ticket #{ticket.id.slice(-8)}
                                   </CardTitle>
-                                  <div className="flex gap-2">
-                                    <Badge 
-                                      variant="outline" 
-                                      className="border-black/20 text-black text-xs"
-                                    >
-                                      {ticket.priority}
-                                    </Badge>
-                                    <Badge 
-                                      variant={ticket.status === 'created' ? 'default' : 'secondary'}
-                                      className={ticket.status === 'created' ? 'bg-black text-white' : ''}
-                                    >
-                                      {ticket.status}
-                                    </Badge>
-                                  </div>
                                 </div>
                               </CardHeader>
-                              <CardContent className="space-y-4">
-                                {/* Información principal del ticket */}
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <div className="text-xs font-medium text-black/70 mb-1">Tipo de incidencia</div>
-                                    <div className="text-sm text-black font-medium">{ticket.tipo_incidencia}</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-xs font-medium text-black/70 mb-1">Motivo</div>
-                                    <div className="text-sm text-black">{ticket.motivo_incidencia}</div>
-                                  </div>
-                                </div>
-
-                                {/* Estados y datos técnicos */}
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <div className="text-xs font-medium text-black/70 mb-1">ID Cliente</div>
-                                    <div className="text-sm text-black font-mono">
-                                      {ticket.metadata?.id_cliente || 
-                                       ticket.metadata?.client_data?.idCliente || 
-                                       <span className="text-red-600">No asignado</span>}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="text-xs font-medium text-black/70 mb-1">Confianza IA</div>
-                                    <div className="text-sm">
-                                      {ticket.metadata?.confidence ? (
-                                        <div className="flex items-center gap-2">
-                                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                            <div 
-                                              className={`h-2 rounded-full ${
-                                                parseFloat(ticket.metadata.confidence) >= 0.8 ? 'bg-green-500' :
-                                                parseFloat(ticket.metadata.confidence) >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'
-                                              }`}
-                                              style={{ width: `${parseFloat(ticket.metadata.confidence) * 100}%` }}
-                                            />
+                              
+                              <CardContent className="p-6">
+                                <div className="grid grid-cols-1 gap-6">
+                                  
+                                  {/* Card de Información Técnica - Compacta */}
+                                  <Card className="border border-zinc-200 bg-zinc-50/50">
+                                    <CardHeader className="pb-4">
+                                      <CardTitle className="text-sm font-semibold text-zinc-900">
+                                        Información Técnica
+                                      </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                      
+                                      {/* Layout mejorado sin confianza IA */}
+                                      <div className="space-y-3">
+                                        
+                                        {/* Tipo de incidencia */}
+                                        <div className="flex justify-between items-center p-4 bg-white rounded-lg border border-zinc-200">
+                                          <span className="text-sm font-medium text-zinc-600">Tipo de incidencia</span>
+                                          <Badge variant="outline" className="text-xs border-zinc-300 text-zinc-700 font-medium">
+                                            {ticket.tipo_incidencia}
+                                          </Badge>
+                                        </div>
+                                        
+                                        {/* Motivo */}
+                                        <div className="p-4 bg-white rounded-lg border border-zinc-200">
+                                          <div className="text-sm font-medium text-zinc-600 mb-2">Motivo</div>
+                                          <div className="text-sm text-zinc-800">
+                                            {ticket.motivo_incidencia}
                                           </div>
-                                          <span className="text-xs font-medium text-black">
-                                            {Math.round(parseFloat(ticket.metadata.confidence) * 100)}%
+                                        </div>
+
+                                        {/* ID Cliente */}
+                                        <div className="flex justify-between items-center p-4 bg-white rounded-lg border border-zinc-200">
+                                          <span className="text-sm font-medium text-zinc-600">ID Cliente</span>
+                                          <span className="text-sm font-mono text-zinc-800 bg-zinc-100 px-3 py-1 rounded">
+                                            {ticket.metadata?.id_cliente || 
+                                             ticket.metadata?.client_data?.idCliente || 
+                                             <span className="text-red-600">No asignado</span>}
                                           </span>
                                         </div>
-                                      ) : (
-                                        <span className="text-gray-500">N/A</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
 
-                                {/* Estado de envío a Segurneo Voice */}
-                                <div>
-                                  <div className="text-xs font-medium text-black/70 mb-2">Estado Segurneo Voice</div>
-                                  <div className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 bg-gray-50">
-                                    {ticket.metadata?.ticket_id || ticket.metadata?.nogal_ticket_id ? (
-                                      <>
-                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        <div className="text-sm text-black">
-                                          ✅ Enviado: <span className="font-mono text-xs">
-                                            {ticket.metadata.ticket_id || ticket.metadata.nogal_ticket_id}
-                                          </span>
-                                        </div>
-                                      </>
-                                    ) : ticket.metadata?.nogal_error ? (
-                                      <>
-                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                        <div className="text-sm text-red-600">❌ Error: {ticket.metadata.nogal_error}</div>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                        <div className="text-sm text-yellow-600">⏳ No enviado</div>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Datos extraídos */}
-                                {ticket.metadata?.datos_extraidos && Object.keys(ticket.metadata.datos_extraidos).length > 0 && (
-                                  <div>
-                                    <div className="text-xs font-medium text-black/70 mb-2">Datos extraídos</div>
-                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                                      <div className="grid grid-cols-1 gap-2 text-xs">
-                                        {Object.entries(ticket.metadata.datos_extraidos).map(([key, value]) => (
-                                          value && value !== null && value !== "" && (
-                                            <div key={key} className="flex gap-2">
-                                              <span className="font-medium text-blue-800 capitalize">{key}:</span>
-                                              <span className="text-blue-700">{String(value)}</span>
+                                        {/* Estado Segurneo Voice rediseñado */}
+                                        <div className="p-4 bg-white rounded-lg border border-zinc-200">
+                                          <div className="text-sm font-medium text-zinc-600 mb-3">Estado Segurneo Voice</div>
+                                          {ticket.metadata?.ticket_id || ticket.metadata?.nogal_ticket_id ? (
+                                            <div className="flex items-start gap-3">
+                                              <div className="w-2 h-2 bg-green-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="text-sm text-green-700 font-medium mb-1">Enviado correctamente</div>
+                                                <div className="text-xs text-zinc-600 bg-zinc-50 p-2 rounded font-mono break-all">
+                                                  {ticket.metadata.ticket_id || ticket.metadata.nogal_ticket_id}
+                                                </div>
+                                              </div>
                                             </div>
-                                          )
-                                        ))}
+                                          ) : ticket.metadata?.nogal_error ? (
+                                            <div className="flex items-start gap-3">
+                                              <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                                              <div className="flex-1">
+                                                <div className="text-sm text-red-700 font-medium mb-1">Error en envío</div>
+                                                <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                                                  {ticket.metadata.nogal_error}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center gap-3">
+                                              <div className="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></div>
+                                              <div className="text-sm text-amber-700">Pendiente de envío</div>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  </div>
-                                )}
+                                    </CardContent>
+                                  </Card>
 
-                                {/* Descripción del ticket */}
-                                <div>
-                                  <div className="text-xs font-medium text-black/70 mb-2">Descripción</div>
-                                  <div className="text-sm text-black bg-indigo-50 p-3 rounded-lg border border-indigo-200 leading-relaxed whitespace-pre-line">
-                                    {ticket.description}
-                                  </div>
-                                </div>
+                                  {/* Card de Notas */}
+                                  <Card className="border border-zinc-200 bg-white">
+                                    <CardHeader className="pb-3">
+                                      <CardTitle className="text-sm font-semibold text-zinc-900">
+                                        Notas
+                                      </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                      <div className="text-sm text-zinc-700 leading-relaxed bg-zinc-50 p-4 rounded-lg border border-zinc-200">
+                                        {ticket.description}
+                                      </div>
 
-                                {/* Información técnica expandible */}
-                                <details className="text-xs">
-                                  <summary className="cursor-pointer text-black/60 hover:text-black font-medium">
-                                    🔧 Información técnica
-                                  </summary>
-                                  <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                    <div className="grid grid-cols-1 gap-2">
-                                      <div>
-                                        <span className="font-medium">ID completo:</span> 
-                                        <span className="font-mono ml-2">{ticket.id}</span>
-                                      </div>
-                                      <div>
-                                        <span className="font-medium">Fuente:</span> 
-                                        <span className="ml-2">{ticket.metadata?.source || 'N/A'}</span>
-                                      </div>
-                                      <div>
-                                        <span className="font-medium">Creado:</span> 
-                                        <span className="ml-2">{new Date(ticket.created_at).toLocaleString('es-ES')}</span>
-                                      </div>
-                                      {ticket.metadata?.nogal_sent_at && (
-                                        <div>
-                                          <span className="font-medium">Enviado a Segurneo:</span> 
-                                          <span className="ml-2">{new Date(ticket.metadata.nogal_sent_at).toLocaleString('es-ES')}</span>
+                                      {/* Datos extraídos si existen */}
+                                      {ticket.metadata?.datos_extraidos && Object.keys(ticket.metadata.datos_extraidos).length > 0 && (
+                                        <div className="pt-4 border-t border-zinc-200">
+                                          <span className="text-xs font-medium text-zinc-600 block mb-2">Datos extraídos</span>
+                                          <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                                            <div className="grid grid-cols-1 gap-1 text-xs">
+                                              {Object.entries(ticket.metadata.datos_extraidos).map(([key, value]) => (
+                                                value && value !== null && value !== "" && (
+                                                  <div key={key} className="flex gap-2">
+                                                    <span className="font-medium text-zinc-700 capitalize">{key}:</span>
+                                                    <span className="text-zinc-600">{String(value)}</span>
+                                                  </div>
+                                                )
+                                              ))}
+                                            </div>
+                                          </div>
                                         </div>
                                       )}
-                                    </div>
-                                  </div>
-                                </details>
+                                    </CardContent>
+                                  </Card>
+                                  
+                                </div>
+
+
                               </CardContent>
                             </Card>
                           ))}

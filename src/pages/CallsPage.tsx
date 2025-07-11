@@ -1,50 +1,101 @@
 import React, { useState, useMemo } from 'react';
-import { Search, RefreshCw } from 'lucide-react';
 import { format, startOfToday, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { 
+  Search, 
+  RefreshCw, 
+  Filter, 
+  Download, 
+  Phone, 
+  Clock, 
+  Users, 
+  TrendingUp, 
+  Eye, 
+  Calendar, 
+  ChevronDown,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Activity,
+  MessageSquare
+} from 'lucide-react';
+
 import { useVoiceCallsReal } from '../hooks/useVoiceCallsReal';
 import { CallDetailsSidebar } from '../components/calls/CallDetailsSidebar';
 import { voiceCallsRealDataService, VoiceCallDetailsClean } from '../services/voiceCallsRealDataService';
 import { VoiceCallReal } from '../services/voiceCallsRealDataService';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Separator } from '../components/ui/separator';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+
+// shadcn/ui components
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+import { 
+  Popover, 
+  PopoverContent, 
+  PopoverTrigger 
+} from '@/components/ui/popover';
+import { 
+  Command, 
+  CommandEmpty, 
+  CommandGroup, 
+  CommandInput, 
+  CommandItem, 
+  CommandList 
+} from '@/components/ui/command';
+import { useToast } from '@/hooks/use-toast';
 
 type FilterStatus = 'all' | 'completed' | 'failed' | 'in_progress';
+type FilterPeriod = 'all' | 'today' | 'week' | 'month';
 
 interface FilterState {
   status: FilterStatus;
-  period: 'today' | 'week' | 'month' | 'all';
+  period: FilterPeriod;
   search: string;
 }
 
-function CallsPage() {
+export default function CallsPage() {
+  const { toast } = useToast();
   const { calls, stats, isLoading, error, lastUpdated, refresh } = useVoiceCallsReal();
+  
+  // Estados
   const [filters, setFilters] = useState<FilterState>({
     status: 'all',
     period: 'all',
     search: ''
   });
-  
-  // Estado del sidebar
   const [selectedCall, setSelectedCall] = useState<VoiceCallDetailsClean | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
-  // Calls filtradas
+  // Filtros computados
   const filteredCalls = useMemo(() => {
     if (!calls) return [];
     
     return calls.filter(call => {
-      // Filter by status
+      // Filtro por estado
       if (filters.status !== 'all') {
         if (filters.status === 'completed' && (!call.call_successful || call.status !== 'completed')) return false;
         if (filters.status === 'failed' && call.call_successful) return false;
         if (filters.status === 'in_progress' && call.status === 'completed') return false;
       }
       
-      // Filter by period
+      // Filtro por período
       if (filters.period !== 'all') {
         const callDate = new Date(call.start_time);
         const today = startOfToday();
@@ -62,7 +113,7 @@ function CallsPage() {
         }
       }
       
-      // Filter by search
+      // Filtro por búsqueda
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         return (
@@ -76,19 +127,58 @@ function CallsPage() {
     });
   }, [calls, filters]);
 
+  // Estadísticas por estado
+  const statusStats = useMemo(() => {
+    if (!calls) return { all: 0, completed: 0, failed: 0, in_progress: 0 };
+    
+    return {
+      all: calls.length,
+      completed: calls.filter(c => c.call_successful && c.status === 'completed').length,
+      failed: calls.filter(c => !c.call_successful).length,
+      in_progress: calls.filter(c => c.status !== 'completed').length
+    };
+  }, [calls]);
+
+  // Handlers
   const handleViewDetails = async (call: VoiceCallReal) => {
     setLoadingDetails(true);
     try {
       const details = await voiceCallsRealDataService.getVoiceCallDetailsClean(call.segurneo_call_id);
       setSelectedCall(details);
       setSidebarOpen(true);
+      
+      toast({
+        title: "Detalles cargados",
+        description: `Mostrando detalles para ${call.segurneo_call_id.slice(0, 8)}...`,
+      });
     } catch (error) {
       console.error('Error cargando detalles:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los detalles de la llamada",
+        variant: "destructive",
+      });
     } finally {
       setLoadingDetails(false);
     }
   };
 
+  const handleRefresh = async () => {
+    await refresh();
+    toast({
+      title: "Actualizado",
+      description: "Lista de llamadas actualizada correctamente",
+    });
+  };
+
+  const handleExport = () => {
+    toast({
+      title: "Exportando",
+      description: "Preparando archivo de exportación...",
+    });
+  };
+
+  // Utilidades
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -111,271 +201,461 @@ function CallsPage() {
 
   const getStatusConfig = (call: VoiceCallReal) => {
     if (call.call_successful && call.status === 'completed') {
-      return { color: 'bg-black text-white', label: 'Completada' };
+      return { variant: 'default' as const, label: 'Completada', icon: CheckCircle };
     } else if (!call.call_successful && call.status === 'completed') {
-      return { color: 'bg-black/20 text-black', label: 'Fallida' };
+      return { variant: 'destructive' as const, label: 'Fallida', icon: XCircle };
     } else {
-      return { color: 'bg-black/10 text-black/70', label: 'En proceso' };
+      return { variant: 'secondary' as const, label: 'En proceso', icon: Activity };
     }
   };
 
-  // Stats por estado
-  const statusStats = useMemo(() => {
-    if (!calls) return { all: 0, completed: 0, failed: 0, in_progress: 0 };
-    
-    return {
-      all: calls.length,
-      completed: calls.filter(c => c.call_successful && c.status === 'completed').length,
-      failed: calls.filter(c => !c.call_successful).length,
-      in_progress: calls.filter(c => c.status !== 'completed').length
-    };
-  }, [calls]);
+  const getSuccessRate = () => {
+    if (!calls || calls.length === 0) return 0;
+    const successful = calls.filter(c => c.call_successful).length;
+    return Math.round((successful / calls.length) * 100);
+  };
 
+  // Loading State
   if (isLoading && !calls) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border border-black/20 border-t-black mx-auto mb-4"></div>
-            <p className="text-black/60">Cargando llamadas...</p>
+      <DashboardLayout>
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+          <div className="flex items-center justify-between space-y-2">
+            <div>
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-96 mt-2" />
+            </div>
+            <Skeleton className="h-10 w-32" />
           </div>
+          
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array(4).fill(0).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-4" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-3 w-20 mt-2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Array(5).fill(0).map((_, i) => (
+                  <div key={i} className="flex items-center space-x-4">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
+  // Error State
   if (error) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <Card className="border-black/10">
-          <CardContent className="pt-6 text-center">
-            <div className="text-black/60 mb-4">Error al cargar las llamadas</div>
-            <p className="text-black/80 mb-4">{error}</p>
-            <button
-              onClick={refresh}
-              className="inline-flex items-center px-4 py-2 bg-black text-white rounded-md hover:bg-black/90 transition-colors"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Reintentar
-            </button>
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardLayout>
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+          <div className="flex items-center justify-between space-y-2">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Llamadas</h2>
+              <p className="text-muted-foreground">
+                Gestión y análisis de llamadas de voz
+              </p>
+            </div>
+          </div>
+          
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-2">
+                <p>Error al cargar las llamadas: {error}</p>
+                <Button onClick={handleRefresh} variant="outline" size="sm">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reintentar
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
+    <DashboardLayout>
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between space-y-2">
           <div>
-            <h1 className="text-3xl font-bold text-black">Llamadas</h1>
-            <p className="text-black/60">Gestión y análisis de llamadas de voz</p>
+            <h2 className="text-3xl font-bold tracking-tight">Llamadas</h2>
+            <p className="text-muted-foreground">
+              Gestión y análisis de llamadas de voz
+            </p>
           </div>
-          
-          <button
-            onClick={refresh}
-            disabled={isLoading}
-            className="inline-flex items-center px-4 py-2 bg-black text-white rounded-md hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </button>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+            <Button onClick={handleRefresh} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Actualizar
+            </Button>
+          </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <Card className="border-black/10">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-black/70">Total Llamadas</CardTitle>
+        {/* Métricas principales */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Llamadas</CardTitle>
+              <Phone className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-black">{stats?.total || 0}</div>
+              <div className="text-2xl font-bold">{stats?.total || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                {lastUpdated && `Actualizado ${format(lastUpdated, 'HH:mm')}`}
+              </p>
             </CardContent>
           </Card>
-          
-          <Card className="border-black/10">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-black/70">Duración Promedio</CardTitle>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Duración Promedio</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-black">
+              <div className="text-2xl font-bold tabular-nums">
                 {stats?.avgDuration ? formatDuration(stats.avgDuration) : '0:00'}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Por llamada
+              </p>
             </CardContent>
           </Card>
-          
-          <Card className="border-black/10">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-black/70">Última Actualización</CardTitle>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tasa de Éxito</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-black">
-                {lastUpdated ? format(lastUpdated, 'HH:mm:ss') : 'Nunca'}
+              <div className="text-2xl font-bold">{getSuccessRate()}%</div>
+              <Progress value={getSuccessRate()} className="mt-2" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Mensajes Totales</CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {calls?.reduce((sum, call) => sum + call.total_messages, 0) || 0}
               </div>
+              <p className="text-xs text-muted-foreground">
+                En conversaciones
+              </p>
             </CardContent>
           </Card>
         </div>
-      </div>
 
-      {/* Filters */}
-      <Card className="border-black/10 mb-6">
-        <CardHeader>
-          <CardTitle className="text-lg text-black">Filtros</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          
-          {/* Status Tabs */}
-          <div>
-            <div className="text-sm font-medium text-black/70 mb-3">Estado</div>
-            <Tabs value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as FilterStatus }))}>
-              <TabsList className="bg-black/5">
-                <TabsTrigger value="all" className="data-[state=active]:bg-black data-[state=active]:text-white text-black/70">
-                  Todas ({statusStats.all})
+        {/* Filtros y controles */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtros</CardTitle>
+            <CardDescription>
+              Filtra y busca llamadas específicas
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            
+            {/* Tabs de estado */}
+            <Tabs 
+              value={filters.status} 
+              onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as FilterStatus }))}
+            >
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="all">
+                  Todas <Badge variant="secondary" className="ml-1">{statusStats.all}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="completed" className="data-[state=active]:bg-black data-[state=active]:text-white text-black/70">
-                  Completadas ({statusStats.completed})
+                <TabsTrigger value="completed">
+                  Completadas <Badge variant="secondary" className="ml-1">{statusStats.completed}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="failed" className="data-[state=active]:bg-black data-[state=active]:text-white text-black/70">
-                  Fallidas ({statusStats.failed})
+                <TabsTrigger value="failed">
+                  Fallidas <Badge variant="secondary" className="ml-1">{statusStats.failed}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="in_progress" className="data-[state=active]:bg-black data-[state=active]:text-white text-black/70">
-                  En proceso ({statusStats.in_progress})
+                <TabsTrigger value="in_progress">
+                  En Proceso <Badge variant="secondary" className="ml-1">{statusStats.in_progress}</Badge>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
 
-          <Separator className="bg-black/10" />
-          
-          {/* Period and Search */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-black/70 block mb-2">Período</label>
-              <select
-                value={filters.period}
-                onChange={(e) => setFilters(prev => ({ ...prev, period: e.target.value as any }))}
-                className="w-full px-3 py-2 border border-black/20 rounded-md bg-white text-black focus:ring-2 focus:ring-black/20 focus:border-black"
-              >
-                <option value="all">Todas</option>
-                <option value="today">Hoy</option>
-                <option value="week">Última semana</option>
-                <option value="month">Último mes</option>
-              </select>
-            </div>
+            <Separator />
 
-            <div>
-              <label className="text-sm font-medium text-black/70 block mb-2">Búsqueda</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black/40" />
-                <input
-                  type="text"
-                  placeholder="ID, conversación, agente..."
-                  value={filters.search}
-                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                  className="w-full pl-10 pr-4 py-2 border border-black/20 rounded-md bg-white text-black placeholder:text-black/40 focus:ring-2 focus:ring-black/20 focus:border-black"
-                />
+            {/* Controles de filtro */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              
+              {/* Período */}
+              <div className="space-y-2">
+                <Label htmlFor="period">Período</Label>
+                <Select 
+                  value={filters.period} 
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, period: value as FilterPeriod }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las fechas</SelectItem>
+                    <SelectItem value="today">Hoy</SelectItem>
+                    <SelectItem value="week">Última semana</SelectItem>
+                    <SelectItem value="month">Último mes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Búsqueda */}
+              <div className="space-y-2">
+                <Label htmlFor="search">Búsqueda</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="search"
+                    placeholder="ID, conversación, agente..."
+                    value={filters.search}
+                    onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                    className="pl-8"
+                  />
+                </div>
+              </div>
+
+              {/* Modo de vista */}
+              <div className="space-y-2">
+                <Label>Vista</Label>
+                <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'table' | 'cards')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="table">Tabla</SelectItem>
+                    <SelectItem value="cards">Tarjetas</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-        </CardContent>
-      </Card>
+        {/* Lista de llamadas */}
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Llamadas {filters.status !== 'all' && `(${filteredCalls.length})`}
+            </CardTitle>
+            <CardDescription>
+              Lista de llamadas con detalles y acciones
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {filteredCalls.length === 0 ? (
+              <div className="text-center py-12">
+                <Phone className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No hay llamadas</h3>
+                <p className="text-muted-foreground">
+                  {filters.status !== 'all' || filters.search || filters.period !== 'all'
+                    ? 'No se encontraron llamadas con los filtros actuales.'
+                    : 'No hay llamadas disponibles en este momento.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {viewMode === 'table' ? (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Llamada</TableHead>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Duración</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Mensajes</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredCalls.map((call) => {
+                          const statusConfig = getStatusConfig(call);
+                          const StatusIcon = statusConfig.icon;
+                          
+                          return (
+                            <TableRow key={call.id}>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarFallback className="text-xs">
+                                        {call.agent_id.slice(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <div className="font-medium text-sm">
+                                        {call.segurneo_call_id.slice(0, 8)}...
+                                      </div>
+                                      <div className="text-xs text-muted-foreground font-mono">
+                                        {call.conversation_id.slice(0, 16)}...
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  {formatDate(call.start_time)}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-1">
+                                  <Clock className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-sm font-semibold tabular-nums">
+                                    {formatDuration(call.duration_seconds)}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={statusConfig.variant} className="flex items-center space-x-1">
+                                  <StatusIcon className="h-3 w-3" />
+                                  <span>{statusConfig.label}</span>
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-2 text-sm">
+                                  <div className="flex items-center space-x-1">
+                                    <Users className="h-3 w-3 text-muted-foreground" />
+                                    <span>{call.agent_messages}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                                    <span>{call.user_messages}</span>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">
+                                    {call.total_messages}
+                                  </Badge>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button 
+                                  variant="default" 
+                                  size="sm" 
+                                  onClick={() => handleViewDetails(call)}
+                                  disabled={loadingDetails}
+                                  className="h-8 px-3 text-xs"
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Ver detalles
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredCalls.map((call) => {
+                      const statusConfig = getStatusConfig(call);
+                      const StatusIcon = statusConfig.icon;
+                      
+                      return (
+                        <Card key={call.id} className="hover:shadow-md transition-shadow">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="text-xs">
+                                    {call.agent_id.slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <CardTitle className="text-sm">
+                                    {call.segurneo_call_id.slice(0, 8)}...
+                                  </CardTitle>
+                                  <p className="text-xs text-muted-foreground font-mono">
+                                    {call.conversation_id.slice(0, 16)}...
+                                  </p>
+                                </div>
+                              </div>
+                              <Badge variant={statusConfig.variant} className="flex items-center space-x-1">
+                                <StatusIcon className="h-3 w-3" />
+                                <span>{statusConfig.label}</span>
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Fecha:</span>
+                                <span>{formatDate(call.start_time)}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Duración:</span>
+                                <span className="font-semibold tabular-nums">{formatDuration(call.duration_seconds)}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Mensajes:</span>
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {call.agent_messages}A
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    {call.user_messages}U
+                                  </Badge>
+                                </div>
+                              </div>
+                              <Separator />
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                className="w-full h-8 text-xs" 
+                                onClick={() => handleViewDetails(call)}
+                                disabled={loadingDetails}
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                Ver detalles
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Table */}
-      <Card className="border-black/10">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-black/10">
-                  <th className="px-6 py-4 text-left text-xs font-medium text-black/70 uppercase tracking-wider">
-                    ID & Conversación
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-black/70 uppercase tracking-wider">
-                    Fecha
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-black/70 uppercase tracking-wider">
-                    Duración
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-black/70 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-black/70 uppercase tracking-wider">
-                    Mensajes
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-black/70 uppercase tracking-wider">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCalls.map((call) => {
-                  const statusConfig = getStatusConfig(call);
-                  
-                  return (
-                    <tr key={call.id} className="border-b border-black/5 hover:bg-black/[0.02]">
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium text-black">
-                            {call.segurneo_call_id.slice(0, 8)}...
-                          </div>
-                          <div className="text-xs text-black/60 font-mono">
-                            {call.conversation_id.slice(0, 20)}...
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-black">
-                        {formatDate(call.start_time)}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-mono text-black">
-                        {formatDuration(call.duration_seconds)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge className={`${statusConfig.color} border-0`}>
-                          {statusConfig.label}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-black">
-                        <div className="flex space-x-2">
-                          <span className="text-black/70">{call.agent_messages}A</span>
-                          <span className="text-black/70">{call.user_messages}U</span>
-                          <span className="text-black/40">({call.total_messages})</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleViewDetails(call)}
-                          disabled={loadingDetails}
-                          className="text-black hover:text-black/70 disabled:opacity-50 text-sm font-medium"
-                        >
-                          {loadingDetails ? '...' : 'Ver detalles'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredCalls.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-black/40 mb-2 text-2xl">📞</div>
-              <h3 className="text-lg font-medium text-black mb-2">No hay llamadas</h3>
-              <p className="text-black/60">
-                {filters.status !== 'all' || filters.search || filters.period !== 'all'
-                  ? 'No se encontraron llamadas con los filtros actuales.'
-                  : 'No hay llamadas disponibles en este momento.'}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Sidebar */}
+      {/* Sidebar de detalles */}
       {selectedCall && (
         <CallDetailsSidebar
           call={selectedCall}
@@ -386,8 +666,6 @@ function CallsPage() {
           }}
         />
       )}
-    </div>
+    </DashboardLayout>
   );
 }
-
-export default CallsPage;
