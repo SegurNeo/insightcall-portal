@@ -19,11 +19,11 @@ export class NogalTicketService {
       // 1. Generar ID único para el ticket
       const idTicket = await this.generateUniqueTicketId();
       
-      // 2. Completar payload con valor por defecto para NumeroPoliza
+      // 2. Completar payload con sanitización de NumeroPoliza
       const completePayload: NogalTicketPayload = {
         ...ticketData,
         IdTicket: idTicket,
-        NumeroPoliza: ticketData.NumeroPoliza || 'N/A' // ✅ Valor por defecto si no existe
+        NumeroPoliza: this.sanitizeNumeroPoliza(ticketData.NumeroPoliza) // ✅ Sanitizar formato
       };
 
       console.log(`📋 [NOGAL] Payload para Segurneo Voice:`, {
@@ -72,6 +72,8 @@ export class NogalTicketService {
     const todayPrefix = `IA-${dateStr}-`;
     
     try {
+      console.log(`🎲 [NOGAL] Generando ID con prefijo: ${todayPrefix}`);
+      
       // Buscar tickets del día en Supabase
       const { data: existingTickets, error } = await supabase
         .from('tickets')
@@ -81,8 +83,11 @@ export class NogalTicketService {
         .limit(1);
 
       if (error) {
-        console.warn(`⚠️ [NOGAL] Error buscando tickets existentes, usando secuencial 001:`, error);
-        return `${todayPrefix}001`;
+        console.error(`❌ [NOGAL] Error en consulta Supabase para ID:`, error);
+        // Fallback inmediato - no lanzar error
+        const fallbackId = `${todayPrefix}001`;
+        console.log(`🔄 [NOGAL] Usando ID fallback: ${fallbackId}`);
+        return fallbackId;
       }
 
       let nextNumber = 1;
@@ -102,14 +107,16 @@ export class NogalTicketService {
       const sequentialPart = nextNumber.toString().padStart(3, '0');
       const ticketId = `${todayPrefix}${sequentialPart}`;
       
-      console.log(`🎲 [NOGAL] ID generado: ${ticketId}`);
+      console.log(`✅ [NOGAL] ID generado exitosamente: ${ticketId}`);
       return ticketId;
       
     } catch (error) {
-      console.warn(`⚠️ [NOGAL] Error generando ID, usando timestamp:`, error);
-      // Fallback: usar timestamp
+      console.error(`❌ [NOGAL] Error crítico generando ID:`, error);
+      // Fallback super robusto - nunca fallar
       const timestamp = Date.now().toString().slice(-3);
-      return `${todayPrefix}${timestamp}`;
+      const fallbackId = `${todayPrefix}${timestamp}`;
+      console.log(`🆘 [NOGAL] Usando ID timestamp fallback: ${fallbackId}`);
+      return fallbackId;
     }
   }
 
@@ -198,6 +205,26 @@ export class NogalTicketService {
         error: error instanceof Error ? error.message : 'Error desconocido'
       };
     }
+  }
+
+  /**
+   * 🧹 Sanitizar formato de NumeroPoliza para evitar errores en Nogal
+   */
+  private sanitizeNumeroPoliza(numeroPoliza?: string): string {
+    if (!numeroPoliza || numeroPoliza.trim() === '') {
+      return 'N/A';
+    }
+    
+    // ✅ FIX: Nogal no acepta múltiples pólizas separadas por comas
+    // Convertir comas a pipes que sí acepta
+    const sanitized = numeroPoliza
+      .trim()
+      .replace(/,\s*/g, '|') // Reemplazar "," y ", " por "|"
+      .replace(/\s+/g, ' ');  // Normalizar espacios
+    
+    console.log(`🧹 [NOGAL] Sanitizando NumeroPoliza: "${numeroPoliza}" → "${sanitized}"`);
+    
+    return sanitized;
   }
 
   /**
