@@ -193,9 +193,12 @@ export class CallProcessor {
 
       console.log(`🎫 [PROCESSOR] Auto-ticket created: ${ticket.id}`);
 
-      // 📤 ENVIAR TICKET A SEGURNEO/NOGAL si tiene ID de cliente
-      if (idCliente && clientData.confidence >= 0.7) {
+      // 📤 ENVIAR TICKET A SEGURNEO/NOGAL según el tipo de incidencia
+      const shouldSend = this.shouldSendToNogal(analysis, clientData, idCliente);
+      
+      if (shouldSend) {
         console.log(`📤 [PROCESSOR] Enviando ticket a Segurneo/Nogal: ${ticket.id}`);
+        console.log(`📊 [PROCESSOR] Criterios: tipo="${analysis.incident_type}", confianza=${clientData.confidence}, cliente=${!!idCliente}`);
         
         try {
           // Preparar payload para Segurneo Voice
@@ -436,12 +439,29 @@ export class CallProcessor {
 
     // 3. Footer discreto con confianza
     if (analysis.confidence >= 0.9) {
-      sections.push(`\n[Generado automáticamente - Alta confianza]`);
+      // sections.push(`\n[Generado automáticamente - Alta confianza]`);
     } else if (analysis.confidence >= 0.7) {
-      sections.push(`\n[Generado automáticamente - Requiere revisión]`);
+      // sections.push(`\n[Generado automáticamente - Requiere revisión]`);
     }
 
     return sections.join('\n').trim();
+  }
+
+  private shouldSendToNogal(analysis: CallAnalysis, clientData: any, idCliente: string | null): boolean {
+    // Si el tipo de incidencia es "Nueva contratación de seguros" o "Nueva renovación de seguros",
+    // o si la confianza del extractor es alta, siempre enviar.
+    // En caso contrario, solo enviar si el cliente tiene un ID.
+    const isNewContractOrRenewal = 
+      analysis.incident_type === 'Nueva contratación de seguros' || 
+      analysis.incident_type === 'Nueva renovación de seguros';
+
+    const isHighConfidence = clientData.confidence >= 0.7;
+
+    if (isNewContractOrRenewal || isHighConfidence) {
+      return true;
+    }
+
+    return !!idCliente;
   }
 }
 

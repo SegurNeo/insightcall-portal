@@ -21,6 +21,11 @@ export interface VoiceCallReal {
   transcript_summary: string | null;
   created_at: string;
   received_at: string;
+  // Nueva información de tickets
+  tickets_count: number;
+  tickets_sent: number;
+  has_sent_tickets: boolean;
+  ticket_status: 'none' | 'pending' | 'sent';
 }
 
 export interface VoiceCallsStats {
@@ -129,11 +134,19 @@ class VoiceCallsRealDataService {
 
   async getRecentVoiceCalls(limit: number = 10): Promise<VoiceCallReal[]> {
     try {
-      console.log(`🔍 Obteniendo ${limit} llamadas recientes de calls...`);
+      console.log(`🔍 Obteniendo ${limit} llamadas recientes de calls con información de tickets...`);
       
+      // Consulta optimizada con información de tickets
       const { data, error } = await supabase
         .from('calls')
-        .select('*')
+        .select(`
+          *,
+          tickets_info:tickets(
+            id,
+            status,
+            metadata
+          )
+        `)
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -147,27 +160,55 @@ class VoiceCallsRealDataService {
         return [];
       }
 
-      const calls: VoiceCallReal[] = data.map(call => ({
-        id: call.id,
-        segurneo_call_id: call.segurneo_call_id,
-        conversation_id: call.conversation_id,
-        agent_id: call.agent_id,
-        start_time: call.start_time,
-        end_time: call.end_time,
-        duration_seconds: call.duration_seconds,
-        status: call.status,
-        call_successful: call.call_successful,
-        agent_messages: call.agent_messages,
-        user_messages: call.user_messages,
-        total_messages: call.total_messages,
-        audio_available: false, // La tabla calls no tiene esta columna, defaulteamos a false
-        termination_reason: call.termination_reason,
-        transcript_summary: call.transcript_summary,
-        created_at: call.created_at,
-        received_at: call.received_at
-      }));
+      const calls: VoiceCallReal[] = data.map(call => {
+        // Procesar información de tickets
+        const tickets = call.tickets_info || [];
+        const ticketsCount = tickets.length;
+        const ticketsSent = tickets.filter((ticket: any) => 
+          ticket.metadata?.nogal_ticket_id || 
+          ticket.metadata?.ticket_id ||
+          ticket.status === 'sent'
+        ).length;
+        
+        // Determinar estado de tickets
+        let ticketStatus: 'none' | 'pending' | 'sent' = 'none';
+        if (ticketsCount > 0) {
+          ticketStatus = ticketsSent > 0 ? 'sent' : 'pending';
+        }
 
-      console.log(`✅ ${calls.length} llamadas obtenidas exitosamente`);
+        return {
+          id: call.id,
+          segurneo_call_id: call.segurneo_call_id,
+          conversation_id: call.conversation_id,
+          agent_id: call.agent_id,
+          start_time: call.start_time,
+          end_time: call.end_time,
+          duration_seconds: call.duration_seconds,
+          status: call.status,
+          call_successful: call.call_successful,
+          agent_messages: call.agent_messages,
+          user_messages: call.user_messages,
+          total_messages: call.total_messages,
+          audio_available: false, // La tabla calls no tiene esta columna, defaulteamos a false
+          termination_reason: call.termination_reason,
+          transcript_summary: call.transcript_summary,
+          created_at: call.created_at,
+          received_at: call.received_at,
+          // Nueva información de tickets
+          tickets_count: ticketsCount,
+          tickets_sent: ticketsSent,
+          has_sent_tickets: ticketsSent > 0,
+          ticket_status: ticketStatus
+        };
+      });
+
+      console.log(`✅ ${calls.length} llamadas obtenidas exitosamente con información de tickets`);
+      console.log('📊 Resumen de tickets:', {
+        total_calls: calls.length,
+        calls_with_tickets: calls.filter(c => c.tickets_count > 0).length,
+        calls_with_sent_tickets: calls.filter(c => c.has_sent_tickets).length
+      });
+      
       return calls;
       
     } catch (error) {

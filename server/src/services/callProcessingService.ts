@@ -302,63 +302,98 @@ export class CallProcessingService {
 
       console.log(`🎫 [SIMPLE] Ticket interno creado: ${createdTicket.id}`);
 
-      // 5. 📤 Enviar ticket a Nogal vía Segurneo Voice
-      const nogalPayload = {
-        IdCliente: idCliente,
-        IdLlamada: callRecord.conversation_id,
-        TipoIncidencia: aiAnalysis.tipo_incidencia || aiAnalysis.incident_type || 'Consulta cliente',
-        MotivoIncidencia: aiAnalysis.motivo_gestion || aiAnalysis.management_reason || 'Consulta general',
-        NumeroPoliza: clientData.numeroPoliza || aiAnalysis.datos_extraidos?.numeroPoliza || aiAnalysis.extracted_data?.numeroPoliza,
-        Notas: aiAnalysis.notas_para_nogal || descripcionCompleta
-      };
+      // 5. 📤 Enviar ticket a Nogal vía Segurneo Voice según criterios inteligentes
+      const shouldSend = this.shouldSendToNogal(aiAnalysis, clientData, idCliente);
+      
+      if (shouldSend) {
+        console.log(`📤 [SIMPLE] Enviando a Segurneo Voice: ${createdTicket.id}`);
+        console.log(`📊 [SIMPLE] Criterios: tipo="${aiAnalysis.tipo_incidencia}", confianza=${clientData.confidence}, cliente=${!!idCliente}`);
+        
+        const nogalPayload = {
+          IdCliente: idCliente,
+          IdLlamada: callRecord.conversation_id,
+          TipoIncidencia: aiAnalysis.tipo_incidencia || aiAnalysis.incident_type || 'Consulta cliente',
+          MotivoIncidencia: aiAnalysis.motivo_gestion || aiAnalysis.management_reason || 'Consulta general',
+          NumeroPoliza: clientData.numeroPoliza || aiAnalysis.datos_extraidos?.numeroPoliza || aiAnalysis.extracted_data?.numeroPoliza,
+          Notas: aiAnalysis.notas_para_nogal || descripcionCompleta
+        };
 
-      console.log(`📤 [SIMPLE] Enviando a Segurneo Voice:`, {
-        IdCliente: nogalPayload.IdCliente,
-        IdLlamada: nogalPayload.IdLlamada,
-        TipoIncidencia: nogalPayload.TipoIncidencia,
-        hasPoliza: !!nogalPayload.NumeroPoliza
-      });
+        console.log(`📤 [SIMPLE] Enviando a Segurneo Voice:`, {
+          IdCliente: nogalPayload.IdCliente,
+          IdLlamada: nogalPayload.IdLlamada,
+          TipoIncidencia: nogalPayload.TipoIncidencia,
+          hasPoliza: !!nogalPayload.NumeroPoliza
+        });
 
-      const nogalResult = await nogalTicketService.createAndSendTicket(nogalPayload);
+        const nogalResult = await nogalTicketService.createAndSendTicket(nogalPayload);
 
-      // 6. 📊 Actualizar ticket según resultado de Nogal
-      let finalStatus: string;
-      let updatedMetadata = { ...ticketData.metadata } as any;
+        // 6. 📊 Actualizar ticket según resultado de Nogal
+        let finalStatus: string;
+        let updatedMetadata = { ...ticketData.metadata } as any;
 
-      if (nogalResult.success) {
-        console.log(`✅ [SIMPLE] Ticket enviado a Segurneo Voice: ${nogalResult.ticket_id}`);
-        finalStatus = 'sent_to_nogal';
-        updatedMetadata.ticket_id = nogalResult.ticket_id; // Campo estandarizado para búsquedas
-        updatedMetadata.nogal_ticket_id = nogalResult.ticket_id; // Mantener compatibilidad
-        updatedMetadata.nogal_sent_at = new Date().toISOString();
-        updatedMetadata.segurneo_voice_response = nogalResult.message;
+        if (nogalResult.success) {
+          console.log(`✅ [SIMPLE] Ticket enviado a Segurneo Voice: ${nogalResult.ticket_id}`);
+          finalStatus = 'sent_to_nogal';
+          updatedMetadata.ticket_id = nogalResult.ticket_id; // Campo estandarizado para búsquedas
+          updatedMetadata.nogal_ticket_id = nogalResult.ticket_id; // Mantener compatibilidad
+          updatedMetadata.nogal_sent_at = new Date().toISOString();
+          updatedMetadata.segurneo_voice_response = nogalResult.message;
+        } else {
+          console.error(`❌ [SIMPLE] Error enviando a Segurneo Voice: ${nogalResult.error}`);
+          finalStatus = 'failed_nogal';
+          updatedMetadata.nogal_error = nogalResult.error;
+          updatedMetadata.nogal_failed_at = new Date().toISOString();
+        }
+
+        // Actualizar estado del ticket
+        await supabase
+          .from('tickets')
+          .update({
+            status: finalStatus,
+            metadata: updatedMetadata
+          })
+          .eq('id', createdTicket.id);
+
+        // 7. 📊 Actualizar registro de llamada con el ticket creado
+        await supabase
+          .from('calls')
+          .update({
+            tickets_created: 1,
+            ticket_ids: [createdTicket.id],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', callRecord.id);
+
+        console.log(`🎉 [SIMPLE] Flujo de tickets completado: ${createdTicket.id} (${finalStatus})`);
+        
       } else {
-        console.error(`❌ [SIMPLE] Error enviando a Segurneo Voice: ${nogalResult.error}`);
-        finalStatus = 'failed_nogal';
-        updatedMetadata.nogal_error = nogalResult.error;
-        updatedMetadata.nogal_failed_at = new Date().toISOString();
+        console.log(`⏭️ [SIMPLE] No se envía a Segurneo Voice para este ticket: tipo=${aiAnalysis.tipo_incidencia}, confianza=${clientData.confidence}`);
+        // Solo actualizar el estado del ticket si no se envía a Nogal
+        await supabase
+          .from('tickets')
+          .update({
+            status: 'pending', // Mantener como pendiente para posible reintento manual
+            metadata: {
+              ...ticketData.metadata,
+              nogal_status: 'not_sent_low_confidence',
+              decision_reason: `No enviado - Confianza: ${clientData.confidence}, Tipo: ${aiAnalysis.tipo_incidencia}`
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', createdTicket.id);
+
+        // 7. 📊 Actualizar registro de llamada con el ticket creado
+        await supabase
+          .from('calls')
+          .update({
+            tickets_created: 1,
+            ticket_ids: [createdTicket.id],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', callRecord.id);
+
+        console.log(`🎉 [SIMPLE] Flujo de tickets completado (no enviado a Nogal): ${createdTicket.id}`);
       }
-
-      // Actualizar estado del ticket
-      await supabase
-        .from('tickets')
-        .update({
-          status: finalStatus,
-          metadata: updatedMetadata
-        })
-        .eq('id', createdTicket.id);
-
-      // 7. 📊 Actualizar registro de llamada con el ticket creado
-      await supabase
-        .from('calls')
-        .update({
-          tickets_created: 1,
-          ticket_ids: [createdTicket.id],
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', callRecord.id);
-
-      console.log(`🎉 [SIMPLE] Flujo de tickets completado: ${createdTicket.id} (${finalStatus})`);
       
     } catch (error) {
       console.error(`❌ [SIMPLE] Error en flujo de tickets:`, error);
@@ -460,12 +495,46 @@ export class CallProcessingService {
 
     // 4. Footer discreto con confianza (solo si es relevante)
     if (confidence >= 0.9) {
-      sections.push(`\n[Generado automáticamente - Alta confianza]`);
+      // sections.push(`\n[Generado automáticamente - Alta confianza]`);
     } else if (confidence >= 0.7) {
-      sections.push(`\n[Generado automáticamente - Requiere revisión]`);
+      // sections.push(`\n[Generado automáticamente - Requiere revisión]`);
     }
 
     return sections.join('\n').trim();
+  }
+
+  /**
+   * 🛠️ Determina si un ticket debe ser enviado a Nogal según criterios inteligentes
+   */
+  private shouldSendToNogal(
+    aiAnalysis: any,
+    clientData: { confidence: number; idCliente?: string; numeroPoliza?: string },
+    idCliente: string | null
+  ): boolean {
+    // 1. Para "Nueva contratación de seguros" - SIEMPRE enviar (cliente nuevo)
+    const isNewContract = aiAnalysis.tipo_incidencia === 'Nueva contratación de seguros';
+    
+    // 2. Para alta confianza del extractor - SIEMPRE enviar (cliente identificado)
+    const isHighConfidence = clientData.confidence >= 0.7;
+    
+    // 3. Para otros casos - Solo si tiene ID de cliente
+    if (isNewContract) {
+      console.log(`✅ [SIMPLE] Enviando por nueva contratación`);
+      return true;
+    }
+    
+    if (isHighConfidence) {
+      console.log(`✅ [SIMPLE] Enviando por alta confianza (${clientData.confidence})`);
+      return true;
+    }
+    
+    if (idCliente) {
+      console.log(`✅ [SIMPLE] Enviando por ID de cliente disponible`);
+      return true;
+    }
+    
+    console.log(`❌ [SIMPLE] No enviando: tipo=${aiAnalysis.tipo_incidencia}, confianza=${clientData.confidence}, cliente=${!!idCliente}`);
+    return false;
   }
 }
 

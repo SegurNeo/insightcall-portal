@@ -304,11 +304,6 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                     <p className="text-sm text-zinc-700 leading-relaxed">
                                       {ticket.description}
                                     </p>
-                                    {ticket.description.length > 200 && (
-                                      <p className="text-xs text-zinc-500 italic">
-                                        [Generado automáticamente - Alta confianza]
-                                      </p>
-                                    )}
                                   </div>
                                 ) : (
                                   <div className="text-center py-4">

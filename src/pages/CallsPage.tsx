@@ -14,10 +14,11 @@ import {
   Calendar, 
   ChevronDown,
   CheckCircle,
-  XCircle,
   AlertCircle,
   Activity,
-  MessageSquare
+  MessageSquare,
+  Send,
+  FileText
 } from 'lucide-react';
 
 import { useVoiceCallsReal } from '../hooks/useVoiceCallsReal';
@@ -59,7 +60,8 @@ import {
 } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
 
-type FilterStatus = 'all' | 'completed' | 'failed' | 'in_progress';
+// Types para filtros mejorados
+type FilterStatus = 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
 type FilterPeriod = 'all' | 'today' | 'week' | 'month';
 
 interface FilterState {
@@ -88,10 +90,11 @@ export default function CallsPage() {
     if (!calls) return [];
     
     return calls.filter(call => {
-      // Filtro por estado
+      // Filtro por estado mejorado
       if (filters.status !== 'all') {
-        if (filters.status === 'completed' && (!call.call_successful || call.status !== 'completed')) return false;
-        if (filters.status === 'failed' && call.call_successful) return false;
+        if (filters.status === 'ticket_sent' && call.ticket_status !== 'sent') return false;
+        if (filters.status === 'ticket_pending' && call.ticket_status !== 'pending') return false;
+        if (filters.status === 'ticket_unassigned' && call.ticket_status !== 'none') return false;
         if (filters.status === 'in_progress' && call.status === 'completed') return false;
       }
       
@@ -127,14 +130,15 @@ export default function CallsPage() {
     });
   }, [calls, filters]);
 
-  // Estadísticas por estado
+  // Estadísticas por estado mejoradas
   const statusStats = useMemo(() => {
-    if (!calls) return { all: 0, completed: 0, failed: 0, in_progress: 0 };
+    if (!calls) return { all: 0, ticket_sent: 0, ticket_pending: 0, ticket_unassigned: 0, in_progress: 0 };
     
     return {
       all: calls.length,
-      completed: calls.filter(c => c.call_successful && c.status === 'completed').length,
-      failed: calls.filter(c => !c.call_successful).length,
+      ticket_sent: calls.filter(c => c.ticket_status === 'sent').length,
+      ticket_pending: calls.filter(c => c.ticket_status === 'pending').length,
+      ticket_unassigned: calls.filter(c => c.ticket_status === 'none').length,
       in_progress: calls.filter(c => c.status !== 'completed').length
     };
   }, [calls]);
@@ -200,12 +204,18 @@ export default function CallsPage() {
   };
 
   const getStatusConfig = (call: VoiceCallReal) => {
-    if (call.call_successful && call.status === 'completed') {
-      return { variant: 'default' as const, label: 'Completada', icon: CheckCircle };
-    } else if (!call.call_successful && call.status === 'completed') {
-      return { variant: 'destructive' as const, label: 'Fallida', icon: XCircle };
+    // Si la llamada está en proceso
+    if (call.status !== 'completed') {
+      return { variant: 'secondary' as const, label: 'En Proceso', icon: Activity };
+    }
+    
+    // Para todas las llamadas completadas, mostrar estado de tickets
+    if (call.ticket_status === 'sent') {
+      return { variant: 'default' as const, label: 'Ticket Enviado', icon: Send };
+    } else if (call.ticket_status === 'pending') {
+      return { variant: 'secondary' as const, label: 'Ticket Pendiente', icon: FileText };
     } else {
-      return { variant: 'secondary' as const, label: 'En proceso', icon: Activity };
+      return { variant: 'outline' as const, label: 'Ticket Sin Asignar', icon: AlertCircle };
     }
   };
 
@@ -393,15 +403,18 @@ export default function CallsPage() {
               value={filters.status} 
               onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as FilterStatus }))}
             >
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="all">
                   Todas <Badge variant="secondary" className="ml-1">{statusStats.all}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="completed">
-                  Completadas <Badge variant="secondary" className="ml-1">{statusStats.completed}</Badge>
+                <TabsTrigger value="ticket_sent">
+                  Ticket Enviado <Badge variant="secondary" className="ml-1">{statusStats.ticket_sent}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="failed">
-                  Fallidas <Badge variant="secondary" className="ml-1">{statusStats.failed}</Badge>
+                <TabsTrigger value="ticket_pending">
+                  Ticket Pendiente <Badge variant="secondary" className="ml-1">{statusStats.ticket_pending}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="ticket_unassigned">
+                  Sin Asignar <Badge variant="secondary" className="ml-1">{statusStats.ticket_unassigned}</Badge>
                 </TabsTrigger>
                 <TabsTrigger value="in_progress">
                   En Proceso <Badge variant="secondary" className="ml-1">{statusStats.in_progress}</Badge>
