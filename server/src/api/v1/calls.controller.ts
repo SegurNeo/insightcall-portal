@@ -10,6 +10,7 @@ import { nogalApiService } from '../../services/nogalApiService';
 import { ticketDefinitions } from '../../utils/ticketDefinitions';
 import { v4 as uuidv4 } from 'uuid';
 import { callService } from '../../modules/calls';
+import { callProcessor } from '../../services/callProcessor';
 
 interface TranscriptMessage {
   role: string;
@@ -265,7 +266,11 @@ export class CallsController {
       } else if (isSegurneoFormat) {
         // Formato real de Segurneo Voice
         console.log('✅ Procesando llamada real de Segurneo Voice...');
-        await this.processSegurneoCall(req.body);
+        
+        // 🚀 FORZAR SIEMPRE EL NUEVO SISTEMA - ELIMINAR DETECCIÓN PROBLEMÁTICA
+        console.log('🚀 Usando SIEMPRE nuevo sistema callProcessor (con integración Segurneo)...');
+        await callProcessor.processCall(req.body);
+        
       } else {
         console.warn('❌ Formato de webhook no reconocido:', req.body);
         return res.status(400).json({ 
@@ -592,6 +597,8 @@ export class CallsController {
       throw error;
     }
   }
+
+  // Método hasToolData eliminado - todas las llamadas ahora usan el nuevo sistema
 
   /**
    * Sincronización masiva de llamadas de Eleven Labs
