@@ -52,13 +52,10 @@ export class CrearTicketController {
         IdLlamada: IdLlamada.toString().trim(),
         TipoIncidencia: TipoIncidencia.toString().trim(),
         MotivoIncidencia: MotivoIncidencia.toString().trim(),
-        Notas: Notas.toString().trim()
+        NumeroPoliza: req.body.NumeroPoliza?.toString().trim() || 'N/A', // ✅ Requerido con valor por defecto
+        Notas: Notas.toString().trim(),
+        FicheroLlamada: req.body.FicheroLlamada?.toString().trim() || ''
       };
-
-      // 3. Incluir NumeroPoliza si está presente
-      if (req.body.NumeroPoliza && req.body.NumeroPoliza.toString().trim()) {
-        ticketPayload.NumeroPoliza = req.body.NumeroPoliza.toString().trim();
-      }
 
       console.log(`📤 [ENDPOINT] Enviando ticket a Segurneo Voice:`, {
         IdCliente: ticketPayload.IdCliente,

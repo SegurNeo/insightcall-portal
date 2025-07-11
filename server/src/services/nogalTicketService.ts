@@ -19,10 +19,11 @@ export class NogalTicketService {
       // 1. Generar ID único para el ticket
       const idTicket = await this.generateUniqueTicketId();
       
-      // 2. Completar payload
+      // 2. Completar payload con valor por defecto para NumeroPoliza
       const completePayload: NogalTicketPayload = {
         ...ticketData,
-        IdTicket: idTicket
+        IdTicket: idTicket,
+        NumeroPoliza: ticketData.NumeroPoliza || 'N/A' // ✅ Valor por defecto si no existe
       };
 
       console.log(`📋 [NOGAL] Payload para Segurneo Voice:`, {

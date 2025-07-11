@@ -112,7 +112,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
             </div>
           </div>
         </div>
-
+              
         {/* Navegación de tabs estilo ElevenLabs */}
         <div className="px-8 py-4 border-b border-gray-200">
           <Tabs defaultValue="resumen" className="w-full">
