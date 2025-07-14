@@ -26,6 +26,10 @@ export interface VoiceCallReal {
   tickets_sent: number;
   has_sent_tickets: boolean;
   ticket_status: 'none' | 'pending' | 'sent';
+  // 🎵 CAMPOS DE AUDIO AÑADIDOS
+  audio_download_url: string | null;
+  audio_file_size: number | null;
+  fichero_llamada: string | null;
 }
 
 export interface VoiceCallsStats {
@@ -194,7 +198,7 @@ class VoiceCallsRealDataService {
           agent_messages: call.agent_messages,
           user_messages: call.user_messages,
           total_messages: call.total_messages,
-          audio_available: false, // La tabla calls no tiene esta columna, defaulteamos a false
+          audio_available: !!(call.audio_download_url), // ✅ True si hay URL de audio disponible
           termination_reason: call.termination_reason,
           transcript_summary: call.transcript_summary,
           created_at: call.created_at,
@@ -203,7 +207,11 @@ class VoiceCallsRealDataService {
           tickets_count: ticketsCount,
           tickets_sent: ticketsSent,
           has_sent_tickets: ticketsSent > 0,
-          ticket_status: ticketStatus
+          ticket_status: ticketStatus,
+          // 🎵 CAMPOS DE AUDIO AÑADIDOS
+          audio_download_url: call.audio_download_url || null,
+          audio_file_size: call.audio_file_size || null,
+          fichero_llamada: call.fichero_llamada || call.audio_download_url || null
         };
       });
 
@@ -503,7 +511,7 @@ class VoiceCallsRealDataService {
         translationInfo,
         hasTranscriptSummary: !!voiceCallData.transcript_summary && voiceCallData.transcript_summary.trim().length > 0,
         terminationReason: voiceCallData.termination_reason,
-        audioAvailable: false, // La tabla calls no tiene esta columna, defaulteamos a false
+        audioAvailable: !!(voiceCallData.audio_download_url), // ✅ True si hay URL de audio disponible
         
         // 🎵 NUEVOS CAMPOS DE AUDIO - desde la base de datos
         audio_download_url: voiceCallData.audio_download_url || null,
