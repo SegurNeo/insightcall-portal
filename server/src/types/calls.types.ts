@@ -117,6 +117,11 @@ export interface CallRecord {
   transcript_summary: string;          // Siempre en español (traducido)
   transcripts: CallTranscript[];       // Array con tool_calls y tool_results reales
   
+  // 🎵 Información de audio
+  audio_download_url?: string | null;
+  audio_file_size?: number | null;
+  fichero_llamada?: string | null;
+  
   // 🧠 Análisis IA (se rellena tras procesar)
   analysis_completed: boolean;
   ai_analysis: {
@@ -159,5 +164,11 @@ export interface SegurneoWebhookPayload {
   };
   audio_available: boolean;
   created_at: string;
+  
+  // 🎵 Nuevos campos de audio desde Segurneo
+  audio_download_url?: string;
+  audio_file_size?: number;
+  ficheroLlamada?: string;
+  
   transcripts: CallTranscript[]; // Usar formato real con tool_calls y tool_results
 } 

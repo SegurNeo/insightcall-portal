@@ -97,6 +97,11 @@ export class CallProcessingService {
       transcript_summary: payload.transcript_summary,
       transcripts: payload.transcripts, // Usar directamente el formato de Segurneo
       
+      // 🎵 Información de audio desde payload
+      audio_download_url: payload.audio_download_url || null,
+      audio_file_size: payload.audio_file_size || null,
+      fichero_llamada: payload.ficheroLlamada || payload.audio_download_url || null,
+      
       // Estado inicial del análisis
       analysis_completed: false,
       ai_analysis: null,
@@ -338,7 +343,8 @@ export class CallProcessingService {
           TipoIncidencia: aiAnalysis.tipo_incidencia || aiAnalysis.incident_type || 'Consulta cliente',
           MotivoIncidencia: aiAnalysis.motivo_gestion || aiAnalysis.management_reason || 'Consulta general',
           NumeroPoliza: aiAnalysis.datos_extraidos?.numeroPoliza || aiAnalysis.extracted_data?.numeroPoliza || '', // ✅ SOLO desde análisis IA
-          Notas: aiAnalysis.notas_para_nogal || descripcionCompleta
+          Notas: aiAnalysis.notas_para_nogal || descripcionCompleta,
+          FicheroLlamada: callRecord.audio_download_url || callRecord.fichero_llamada || '' // 🎵 NUEVO: URL del audio
         };
 
         console.log(`📤 [SIMPLE] Enviando a Segurneo Voice:`, {

@@ -36,6 +36,11 @@ export interface Call {
   readonly transcript_summary: string;    // Resumen SIEMPRE en español
   readonly transcripts: CallTranscript[]; // Conversación completa
   
+  // 🎵 Información de audio
+  readonly audio_download_url: string | null;
+  readonly audio_file_size: number | null;
+  readonly fichero_llamada: string | null;
+  
   // 🧠 Análisis de IA
   readonly analysis_completed: boolean;
   readonly ai_analysis: CallAnalysis | null;
@@ -134,6 +139,12 @@ export interface SegurneoWebhookPayload {
   };
   readonly audio_available: boolean;
   readonly created_at: string;
+  
+  // 🎵 Nuevos campos de audio desde Segurneo
+  readonly audio_download_url?: string;
+  readonly audio_file_size?: number;
+  readonly ficheroLlamada?: string;
+  
   readonly transcripts: readonly {
     readonly sequence: number;
     readonly speaker: 'agent' | 'user';

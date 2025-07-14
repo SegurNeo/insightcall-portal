@@ -112,6 +112,11 @@ export interface VoiceCallDetailsClean {
   terminationReason: string | null;
   audioAvailable: boolean;
   
+  // 🎵 NUEVOS CAMPOS DE AUDIO
+  audio_download_url: string | null;
+  audio_file_size: number | null;
+  ficheroLlamada: string | null;
+  
   // Transcripciones detalladas REALES
   chatMessages: ChatMessage[];
   hasChatMessages: boolean;
@@ -499,6 +504,11 @@ class VoiceCallsRealDataService {
         hasTranscriptSummary: !!voiceCallData.transcript_summary && voiceCallData.transcript_summary.trim().length > 0,
         terminationReason: voiceCallData.termination_reason,
         audioAvailable: false, // La tabla calls no tiene esta columna, defaulteamos a false
+        
+        // 🎵 NUEVOS CAMPOS DE AUDIO - desde la base de datos
+        audio_download_url: voiceCallData.audio_download_url || null,
+        audio_file_size: voiceCallData.audio_file_size || null,
+        ficheroLlamada: voiceCallData.fichero_llamada || voiceCallData.audio_download_url || null,
         
         // Transcripciones REALES
         chatMessages,

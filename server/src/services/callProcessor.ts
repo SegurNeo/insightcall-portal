@@ -13,7 +13,9 @@ import {
   CallAnalysis,
   CreateCallData,
   UpdateCallAnalysis,
-  CallStats
+  CallStats,
+  Speaker,
+  CallStatus
 } from '../types/call.types';
 import { NogalTicketPayload } from '../types/calls.types';
 
@@ -60,11 +62,27 @@ export class CallProcessor {
   }
 
   /**
-   * 📝 PASO 1: Crear registro inicial en la base de datos
+   * 🔧 PASO 1: Crear registro inicial desde webhook
    */
   private async createCall(payload: SegurneoWebhookPayload): Promise<Call> {
-    const now = new Date().toISOString();
-    
+    // Traducir resumen si viene en inglés
+    const translationResult = await translationService.translateToSpanish(
+      payload.transcript_summary
+    );
+
+    // Mapear transcripts del payload al formato interno
+    const transcripts: CallTranscript[] = payload.transcripts.map(t => ({
+      sequence: t.sequence,
+      speaker: t.speaker as Speaker,
+      message: t.message,
+      start_time: t.segment_start_time,
+      end_time: t.segment_end_time,
+      confidence: t.confidence,
+      tool_calls: t.tool_calls || [],
+      tool_results: t.tool_results || [],
+      feedback: t.feedback || null
+    }));
+
     const callData: CreateCallData = {
       segurneo_call_id: payload.call_id,
       conversation_id: payload.conversation_id,
@@ -72,26 +90,34 @@ export class CallProcessor {
       start_time: payload.start_time,
       end_time: payload.end_time,
       duration_seconds: payload.duration_seconds,
-      status: this.normalizeStatus(payload.status),
+      status: this.mapStatus(payload.status),
       call_successful: payload.call_successful,
       termination_reason: payload.termination_reason || null,
       cost_cents: payload.cost,
       agent_messages: payload.participant_count.agent_messages,
       user_messages: payload.participant_count.user_messages,
       total_messages: payload.participant_count.total_messages,
-      transcript_summary: payload.transcript_summary, // Se traducirá en siguiente paso
-      transcripts: this.normalizeTranscripts(payload.transcripts),
+      transcript_summary: translationResult.translatedText,
+      transcripts,
+      
+      // 🎵 Incluir campos de audio desde el payload
+      audio_download_url: payload.audio_download_url || null,
+      audio_file_size: payload.audio_file_size || null,
+      fichero_llamada: payload.ficheroLlamada || payload.audio_download_url || null,
+      
+      // Inicializar campos de análisis
       analysis_completed: false,
       ai_analysis: null,
       tickets_created: 0,
       ticket_ids: [],
-      received_at: now
+      received_at: new Date().toISOString()
     };
 
+    // Insertar en base de datos
     const { data, error } = await supabase
       .from('calls')
       .insert([callData])
-      .select()
+      .select('*')
       .single();
 
     if (error) {
@@ -232,7 +258,8 @@ export class CallProcessor {
             TipoIncidencia: analysis.incident_type,
             MotivoIncidencia: analysis.management_reason,
             NumeroPoliza: (analysis.extracted_data?.numeroPoliza as string) || '', // ✅ SOLO desde análisis IA
-            Notas: ticketData.description
+            Notas: ticketData.description,
+            FicheroLlamada: call.audio_download_url || call.fichero_llamada || '' // 🎵 NUEVO: URL del audio
           };
 
           const nogalResult = await nogalTicketService.createAndSendTicket(nogalPayload);
@@ -417,6 +444,23 @@ export class CallProcessor {
     if (normalized === 'completed') return 'completed';
     if (normalized === 'failed') return 'failed';
     return 'in_progress';
+  }
+
+  /**
+   * 🔄 Mapear estado de Segurneo a tipo interno
+   */
+  private mapStatus(status: string): CallStatus {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'completed';
+      case 'failed':
+        return 'failed';
+      case 'in_progress':
+      case 'processing':
+        return 'in_progress';
+      default:
+        return 'completed'; // Fallback por defecto
+    }
   }
 
   private normalizeTranscripts(transcripts: readonly any[]): CallTranscript[] {
