@@ -52,7 +52,7 @@ export class CrearTicketController {
         IdLlamada: IdLlamada.toString().trim(),
         TipoIncidencia: TipoIncidencia.toString().trim(),
         MotivoIncidencia: MotivoIncidencia.toString().trim(),
-        NumeroPoliza: req.body.NumeroPoliza?.toString().trim() || 'N/A', // ✅ Requerido con valor por defecto
+        NumeroPoliza: req.body.NumeroPoliza?.toString().trim() || '', // ✅ Opcional - vacío si no se identifica
         Notas: Notas.toString().trim(),
         FicheroLlamada: req.body.FicheroLlamada?.toString().trim() || ''
       };
@@ -134,7 +134,7 @@ export class CrearTicketController {
       IdLlamada: "call_123456789",
       TipoIncidencia: "Consulta de póliza",
       MotivoIncidencia: "Cliente solicita información sobre cobertura",
-      NumeroPoliza: "POL-123456", // Opcional
+      NumeroPoliza: "POL-123456", // Opcional - solo si se identifica en la llamada
       Notas: "Cliente satisfecho con la información"
     };
 

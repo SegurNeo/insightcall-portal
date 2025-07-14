@@ -139,6 +139,12 @@ INSTRUCCIONES:
 4. Determina si requiere creación de ticket
 5. Calcula la prioridad basada en urgencia y complejidad
 
+⚠️ IMPORTANTE - NÚMEROS DE PÓLIZA:
+- SOLO incluir numeroPoliza si el cliente menciona un número específico (ej: "POL-123456", "póliza número ABC789")
+- NO incluir si dice solo "mi póliza", "la póliza", "cambiar en mi seguro" sin especificar número
+- Debe estar 100% claro que se refiere a esa póliza específica
+- Si hay dudas, NO incluir número de póliza
+
 Responde EXACTAMENTE en este formato JSON:
 {
   "incidenciaPrincipal": {
@@ -153,7 +159,7 @@ Responde EXACTAMENTE en este formato JSON:
   "confidence": 0.95,
   "resumenLlamada": "resumen claro y conciso en español",
   "datosExtraidos": {
-    "numeroPoliza": "si se menciona exactamente",
+    "numeroPoliza": "SOLO si el cliente menciona un número específico de póliza (ej: POL-123456) y está 100% claro que se refiere a ESA póliza. Si dice 'mi póliza' sin especificar número, NO incluir",
     "numeroRecibo": "si se menciona",
     "cuentaBancaria": "nueva CCC si se proporciona",
     "direccion": "nueva dirección completa si se menciona",

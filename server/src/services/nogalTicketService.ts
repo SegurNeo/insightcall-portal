@@ -216,7 +216,7 @@ export class NogalTicketService {
    */
   private sanitizeNumeroPoliza(numeroPoliza?: string): string {
     if (!numeroPoliza || numeroPoliza.trim() === '') {
-      return 'N/A';
+      return ''; // ✅ Vacío si no hay número de póliza claro
     }
     
     // ✅ FIX: Nogal no acepta múltiples pólizas separadas por comas
@@ -230,34 +230,20 @@ export class NogalTicketService {
     const MAX_POLIZA_LENGTH = 50; // Límite conservador para BD de Nogal
     
     if (sanitized.length > MAX_POLIZA_LENGTH) {
+      // Si hay múltiples pólizas, mantener solo las primeras que quepan
       const polizas = sanitized.split('|');
+      let result = '';
       
-      if (polizas.length > 1) {
-        // Múltiples pólizas: tomar solo las primeras que quepan
-        let result = '';
-        let count = 0;
-        
-        for (const poliza of polizas) {
-          const nextResult = result ? `${result}|${poliza}` : poliza;
-          if (nextResult.length <= MAX_POLIZA_LENGTH - 5) { // -5 para "+X más"
-            result = nextResult;
-            count++;
-          } else {
-            break;
-          }
+      for (const poliza of polizas) {
+        const next = result ? `${result}|${poliza}` : poliza;
+        if (next.length <= MAX_POLIZA_LENGTH) {
+          result = next;
+        } else {
+          break;
         }
-        
-        const remaining = polizas.length - count;
-        if (remaining > 0) {
-          result += `|+${remaining}`;
-        }
-        
-        sanitized = result;
-      } else {
-        // Una sola póliza muy larga: truncar con indicador
-        sanitized = sanitized.substring(0, MAX_POLIZA_LENGTH - 3) + '...';
       }
       
+      sanitized = result;
       console.log(`⚠️ [NOGAL] NumeroPoliza truncado por longitud: ${polizas.length} pólizas → "${sanitized}"`);
     }
     

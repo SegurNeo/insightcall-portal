@@ -314,7 +314,7 @@ export class CallProcessingService {
           IdLlamada: callRecord.conversation_id,
           TipoIncidencia: aiAnalysis.tipo_incidencia || aiAnalysis.incident_type || 'Consulta cliente',
           MotivoIncidencia: aiAnalysis.motivo_gestion || aiAnalysis.management_reason || 'Consulta general',
-          NumeroPoliza: clientData.numeroPoliza || aiAnalysis.datos_extraidos?.numeroPoliza || aiAnalysis.extracted_data?.numeroPoliza,
+          NumeroPoliza: aiAnalysis.datos_extraidos?.numeroPoliza || aiAnalysis.extracted_data?.numeroPoliza || '', // ✅ SOLO desde análisis IA
           Notas: aiAnalysis.notas_para_nogal || descripcionCompleta
         };
 
@@ -508,7 +508,7 @@ export class CallProcessingService {
    */
   private shouldSendToNogal(
     aiAnalysis: any,
-    clientData: { confidence: number; idCliente?: string; numeroPoliza?: string },
+    clientData: { confidence: number; idCliente?: string },  // ❌ Removido numeroPoliza
     idCliente: string | null
   ): boolean {
     // 1. Para "Nueva contratación de seguros" - SIEMPRE enviar (cliente nuevo)

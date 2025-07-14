@@ -5,7 +5,7 @@ import { CallTranscript, ToolResult } from '../types/calls.types';
 
 export interface ExtractedClientData {
   idCliente?: string;
-  numeroPoliza?: string;
+  // numeroPoliza?: string; // ❌ REMOVIDO - La IA determinará la póliza específica
   telefono?: string;
   nombre?: string;
   email?: string;
@@ -95,7 +95,7 @@ export class ClientDataExtractor {
 
     console.log(`✅ [EXTRACTOR] Datos extraídos:`, {
       idCliente: extractedData.idCliente,
-      numeroPoliza: extractedData.numeroPoliza,
+      // numeroPoliza: ❌ REMOVIDO - La IA determinará la póliza específica
       nombre: extractedData.nombre,
       source: extractedData.extractionSource,
       confidence: extractedData.confidence,
@@ -171,28 +171,26 @@ export class ClientDataExtractor {
    */
   private extractFromAgentResponse(toolName: string, agentMessage: string): Partial<ExtractedClientData> | null {
     const extracted: Partial<ExtractedClientData> = {};
-    const message = agentMessage.toLowerCase();
 
-    // Patrones específicos para diferentes tools
-    switch (toolName.toLowerCase()) {
-      case 'identificar_cliente':
-      case 'buscar_cliente':
-        // Buscar confirmación de que el cliente fue encontrado
-        if (message.includes('veo que tienes') || 
-            message.includes('tienes contratadas') ||
-            message.includes('he encontrado') ||
-            message.includes('localizado')) {
+    switch (toolName) {
+      case 'buscar_cliente_seguros_nogal':
+        // Extraer información estructurada de respuesta del agente
+        const lines = agentMessage.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim().toLowerCase();
           
-          // Extraer nombre si está en la respuesta
-          const nombreMatch = agentMessage.match(/(?:perfecto|hola|buenos días),?\s+([A-ZÁÉÍÓÚ][a-záéíóú]+(?:\s+[A-ZÁÉÍÓÚ][a-záéíóú]+)*)/i);
-          if (nombreMatch) {
-            extracted.nombre = nombreMatch[1].trim();
+          if (trimmed.includes('cliente encontrado') || trimmed.includes('nombre:')) {
+            const nameMatch = line.match(/nombre:\s*([^,\n]+)/i);
+            if (nameMatch) {
+              extracted.nombre = nameMatch[1].trim();
+            }
           }
-
-          // Buscar menciones de pólizas
-          const polizaMatches = message.match(/pólizas?\s+de\s+([^,\.]+)/g);
-          if (polizaMatches) {
-            extracted.numeroPoliza = polizaMatches.join(', ');
+          
+          if (trimmed.includes('teléfono:')) {
+            const phoneMatch = line.match(/teléfono:\s*([0-9\s\+\-]+)/i);
+            if (phoneMatch) {
+              extracted.telefono = phoneMatch[1].trim();
+            }
           }
 
           // Generar ID de cliente temporal (se mejorará con datos reales)
@@ -206,11 +204,8 @@ export class ClientDataExtractor {
 
       case 'consultar_poliza':
       case 'buscar_poliza':
-        // Extraer número de póliza si se menciona
-        const polizaMatch = agentMessage.match(/póliza\s+(?:número\s+)?([A-Z0-9\-]+)/i);
-        if (polizaMatch) {
-          extracted.numeroPoliza = polizaMatch[1];
-        }
+        // ❌ REMOVIDO: La IA determinará si hay una póliza específica identificada
+        // No extraemos números de póliza desde el extractor
         break;
     }
 
@@ -279,31 +274,14 @@ export class ClientDataExtractor {
           extracted.email = cliente.email_cliente;
           extracted.telefono = cliente.telefono_1 || cliente.telefono_2 || cliente.telefono_3;
           
-          // Extraer números de póliza
-          if (data.detalle_polizas && data.detalle_polizas.length > 0) {
-            const polizas = data.detalle_polizas.map((p: any) => p.poliza).filter(Boolean);
-            extracted.numeroPoliza = polizas.join(', ');
-          }
+          // ❌ REMOVIDO: No extraemos números de póliza - la IA determinará si hay una específica
           
           console.log(`✅ [EXTRACTOR] Cliente identificado: ${extracted.nombre} (${extracted.idCliente})`);
-          console.log(`✅ [EXTRACTOR] Pólizas: ${extracted.numeroPoliza}`);
         }
         break;
 
       case 'consultar_poliza':
-      case 'buscar_poliza':
-        // Procesamiento específico para consultas de pólizas
-        if (data.poliza) {
-          extracted.numeroPoliza = data.poliza.numero || data.poliza;
-        }
-        if (data.titular) {
-          extracted.nombre = data.titular.nombre || data.titular;
-          extracted.idCliente = data.titular.id || data.titular_id;
-        }
-        break;
-
-      default:
-        console.log(`⚠️ [EXTRACTOR] Tool no reconocida: ${toolName}`);
+        // ❌ REMOVIDO: No extraemos números de póliza - la IA determinará si hay una específica
         break;
     }
 
@@ -335,7 +313,7 @@ export class ClientDataExtractor {
 
       case 'consultar_poliza':
       case 'buscar_poliza':
-        extracted.numeroPoliza = data.numero_poliza || data.poliza || data.policy_number;
+        // extracted.numeroPoliza = data.numero_poliza || data.poliza || data.policy_number; // ❌ REMOVIDO
         if (data.titular) {
           extracted.nombre = data.titular.nombre || data.titular;
           extracted.idCliente = data.titular.id || data.titular_id;
@@ -355,7 +333,7 @@ export class ClientDataExtractor {
       default:
         // Búsqueda genérica de campos comunes
         extracted.idCliente = data.id_cliente || data.clienteId || data.cliente_id;
-        extracted.numeroPoliza = data.numero_poliza || data.poliza;
+        // extracted.numeroPoliza = data.numero_poliza || data.poliza; // ❌ REMOVIDO
         extracted.nombre = data.nombre || data.client_name;
         extracted.telefono = data.telefono || data.phone;
         extracted.email = data.email;
@@ -382,14 +360,33 @@ export class ClientDataExtractor {
       .join(' ')
       .toLowerCase();
 
-    // Patrones regex para extracción básica
-    const patterns = {
-      numeroPoliza: /póliza\s*:?\s*([a-zA-Z0-9\-]+)/i,
+    // ⚠️ ULTRA CONSERVADOR: Solo extraer números de póliza con contexto muy específico
+    // NO usar patrones genéricos que puedan capturar referencias vagas
+    const specificPolizaPatterns = [
+      /\bla\s+póliza\s+número\s+([a-zA-Z0-9\-]+)\b/i,
+      /\bpóliza\s+([a-zA-Z0-9\-]+)\s+específicamente\b/i, 
+      /\bmodificar\s+la\s+póliza\s+([a-zA-Z0-9\-]+)\b/i,
+      /\bcambiar\s+en\s+la\s+póliza\s+([a-zA-Z0-9\-]+)\b/i
+    ];
+
+    // Solo extraer póliza si hay un patrón MUY específico
+    for (const pattern of specificPolizaPatterns) {
+      const match = fullText.match(pattern);
+      if (match && match[1] && match[1].length >= 6) { // Mínimo 6 caracteres para ser válido
+        // extracted.numeroPoliza = match[1].trim().toUpperCase(); // ❌ REMOVIDO
+        // console.log(`🎯 [EXTRACTOR] Póliza específica identificada: ${extracted.numeroPoliza}`); // ❌ REMOVIDO
+        console.log(`🎯 [EXTRACTOR] Póliza detectada pero no extraída - la IA determinará si es específica`);
+        break; // Solo tomar la primera muy específica
+      }
+    }
+
+    // Otros patrones básicos (NO pólizas)
+    const basicPatterns = {
       telefono: /teléfono\s*:?\s*([0-9\s\+\-]{9,15})/i,
       email: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i
     };
 
-    for (const [key, pattern] of Object.entries(patterns)) {
+    for (const [key, pattern] of Object.entries(basicPatterns)) {
       const match = fullText.match(pattern);
       if (match && match[1]) {
         (extracted as any)[key] = match[1].trim();
@@ -409,7 +406,6 @@ export class ClientDataExtractor {
     if (data.idCliente) confidence += 50;
     
     // Presencia de otros campos importantes
-    if (data.numeroPoliza) confidence += 30;
     if (data.nombre) confidence += 10;
     if (data.telefono) confidence += 5;
     if (data.email) confidence += 3;

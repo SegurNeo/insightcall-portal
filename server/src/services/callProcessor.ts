@@ -207,7 +207,7 @@ export class CallProcessor {
             IdLlamada: call.conversation_id,
             TipoIncidencia: analysis.incident_type,
             MotivoIncidencia: analysis.management_reason,
-            NumeroPoliza: clientData.numeroPoliza || 'N/A', // ✅ Valor por defecto requerido
+            NumeroPoliza: (analysis.extracted_data?.numeroPoliza as string) || '', // ✅ SOLO desde análisis IA
             Notas: ticketData.description
           };
 
