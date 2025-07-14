@@ -15,6 +15,13 @@ export interface ExtractedClientData {
   extractionSource: 'tools' | 'transcript_text' | 'mixed';
   confidence: number;
   toolsUsed: string[];
+  // 🧠 Nuevo: información de matching inteligente
+  clientMatchingInfo?: {
+    aiDetectedName?: string;
+    availableClients?: any[];
+    matchingScore?: number;
+    matchingMethod?: 'exact' | 'partial' | 'none' | 'single_client';
+  };
 }
 
 export class ClientDataExtractor {
@@ -99,9 +106,100 @@ export class ClientDataExtractor {
       nombre: extractedData.nombre,
       source: extractedData.extractionSource,
       confidence: extractedData.confidence,
-      toolsUsed: extractedData.toolsUsed
+      toolsUsed: extractedData.toolsUsed,
+      matchingInfo: extractedData.clientMatchingInfo
     });
 
+    return extractedData;
+  }
+
+  /**
+   * 🧠 NUEVO: Extracción inteligente con validación de análisis IA
+   * Este método permite una segunda pasada de extracción con información del análisis IA
+   */
+  extractClientDataWithAIContext(
+    transcripts: CallTranscript[], 
+    aiAnalysis?: { datosExtraidos?: { nombreCliente?: string } }
+  ): ExtractedClientData {
+    console.log(`🧠 [EXTRACTOR] Extracción inteligente con contexto IA`);
+    
+    // Primera pasada: extracción normal
+    const extractedData = this.extractClientData(transcripts);
+    
+    // Si hay análisis IA con nombre del cliente, validar matching
+    if (aiAnalysis?.datosExtraidos?.nombreCliente) {
+      console.log(`🎯 [EXTRACTOR] IA detectó cliente: "${aiAnalysis.datosExtraidos.nombreCliente}"`);
+      
+      // Buscar clientes en los tool_results para hacer matching
+      const availableClients = this.getAllClientsFromTools(transcripts);
+      
+      if (availableClients.length > 0) {
+        console.log(`🔍 [EXTRACTOR] Encontrados ${availableClients.length} clientes en herramientas, haciendo matching...`);
+        
+        const matchResult = this.findBestClientMatch(
+          aiAnalysis.datosExtraidos.nombreCliente, 
+          availableClients
+        );
+        
+        // Actualizar datos extraídos con el mejor match
+        if (matchResult) {
+          extractedData.idCliente = matchResult.cliente.codigo_cliente;
+          extractedData.nombre = matchResult.cliente.nombre_cliente;
+          extractedData.email = matchResult.cliente.email_cliente;
+          extractedData.telefono = matchResult.cliente.telefono_1 || matchResult.cliente.telefono_2 || matchResult.cliente.telefono_3;
+          
+          // Información de matching para debugging
+          extractedData.clientMatchingInfo = {
+            aiDetectedName: aiAnalysis.datosExtraidos.nombreCliente,
+            availableClients: availableClients.map(c => ({ 
+              nombre: c.nombre_cliente, 
+              codigo: c.codigo_cliente 
+            })),
+            matchingScore: matchResult.score,
+            matchingMethod: matchResult.method
+          };
+          
+          // Actualizar confianza basada en matching
+          if (matchResult.score >= 0.9) {
+            extractedData.confidence = Math.min(extractedData.confidence + 30, 100);
+          } else if (matchResult.score >= 0.7) {
+            extractedData.confidence = Math.min(extractedData.confidence + 20, 100);
+          } else if (matchResult.score >= 0.5) {
+            extractedData.confidence = Math.min(extractedData.confidence + 10, 100);
+          }
+          
+          console.log(`✅ [EXTRACTOR] Cliente validado por IA: ${matchResult.cliente.nombre_cliente} (score: ${matchResult.score}, método: ${matchResult.method})`);
+        } else {
+          console.log(`⚠️ [EXTRACTOR] No se encontró match válido para "${aiAnalysis.datosExtraidos.nombreCliente}"`);
+          
+          extractedData.clientMatchingInfo = {
+            aiDetectedName: aiAnalysis.datosExtraidos.nombreCliente,
+            availableClients: availableClients.map(c => ({ 
+              nombre: c.nombre_cliente, 
+              codigo: c.codigo_cliente 
+            })),
+            matchingScore: 0,
+            matchingMethod: 'none'
+          };
+          
+          // Si no hay match, reducir confianza si habíamos tomado un cliente automáticamente
+          if (extractedData.idCliente && extractedData.extractionSource === 'tools') {
+            extractedData.confidence = Math.max(extractedData.confidence - 20, 0);
+            console.log(`⚠️ [EXTRACTOR] Reducida confianza por mismatch entre IA y herramientas`);
+          }
+        }
+      } else if (extractedData.idCliente) {
+        // Solo hay un cliente de las herramientas, marcar como match único
+        extractedData.clientMatchingInfo = {
+          aiDetectedName: aiAnalysis.datosExtraidos.nombreCliente,
+          availableClients: [],
+          matchingScore: 0.5, // Score medio porque no podemos comparar
+          matchingMethod: 'single_client'
+        };
+        console.log(`ℹ️ [EXTRACTOR] Solo un cliente disponible, no se puede validar matching`);
+      }
+    }
+    
     return extractedData;
   }
 
@@ -434,6 +532,155 @@ export class ClientDataExtractor {
     
     // Fallback: usar hash del conversation_id
     return `CLI_${conversationId.slice(-8)}`;
+  }
+
+  /**
+   * 🔍 Extraer todos los clientes encontrados en tool_results
+   */
+  private getAllClientsFromTools(transcripts: CallTranscript[]): any[] {
+    const allClients: any[] = [];
+    
+    for (const transcript of transcripts) {
+      if (transcript.tool_results && transcript.tool_results.length > 0) {
+        for (const toolResult of transcript.tool_results) {
+          if (!toolResult.is_error && toolResult.result_value && toolResult.tool_name === 'identificar_cliente') {
+            try {
+              const parsedResult = JSON.parse(toolResult.result_value);
+              if (parsedResult.status === 'success' && parsedResult.data?.clientes) {
+                allClients.push(...parsedResult.data.clientes);
+              }
+            } catch (error) {
+              console.error(`❌ [EXTRACTOR] Error parseando clientes de ${toolResult.tool_name}:`, error);
+            }
+          }
+        }
+      }
+    }
+    
+    return allClients;
+  }
+
+  /**
+   * 🎯 Encontrar el mejor match entre el nombre de IA y los clientes disponibles
+   */
+  private findBestClientMatch(aiDetectedName: string, availableClients: any[]): {
+    cliente: any;
+    score: number;
+    method: 'exact' | 'partial';
+  } | null {
+    if (!aiDetectedName || availableClients.length === 0) {
+      return null;
+    }
+    
+    const normalizedAIName = this.normalizeName(aiDetectedName);
+    let bestMatch: { cliente: any; score: number; method: 'exact' | 'partial' } | null = null;
+    
+    for (const cliente of availableClients) {
+      const clientName = this.normalizeName(cliente.nombre_cliente);
+      const score = this.calculateNameSimilarity(normalizedAIName, clientName);
+      
+      if (score >= 0.9) {
+        // Match exacto o muy alto
+        return { cliente, score, method: 'exact' };
+      } else if (score >= 0.5 && (!bestMatch || score > bestMatch.score)) {
+        // Match parcial mejor que el anterior
+        bestMatch = { cliente, score, method: 'partial' };
+      }
+    }
+    
+    // Solo devolver matches parciales si el score es >= 0.5
+    return bestMatch && bestMatch.score >= 0.5 ? bestMatch : null;
+  }
+
+  /**
+   * 🔤 Normalizar nombre para comparación
+   */
+  private normalizeName(name: string): string {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+      .replace(/[^a-z\s]/g, '') // Solo letras y espacios
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * 📊 Calcular similitud entre nombres
+   */
+  private calculateNameSimilarity(name1: string, name2: string): number {
+    // Exact match
+    if (name1 === name2) {
+      return 1.0;
+    }
+    
+    // Split por palabras y buscar coincidencias
+    const words1 = name1.split(' ').filter(w => w.length > 1);
+    const words2 = name2.split(' ').filter(w => w.length > 1);
+    
+    if (words1.length === 0 || words2.length === 0) {
+      return 0;
+    }
+    
+    let matches = 0;
+    let totalWords = Math.max(words1.length, words2.length);
+    
+    for (const word1 of words1) {
+      for (const word2 of words2) {
+        if (word1 === word2) {
+          matches++;
+          break;
+        } else if (word1.length > 3 && word2.length > 3) {
+          // Para palabras largas, permitir similitud de Levenshtein
+          const similarity = this.levenshteinSimilarity(word1, word2);
+          if (similarity >= 0.8) {
+            matches += similarity;
+            break;
+          }
+        }
+      }
+    }
+    
+    return matches / totalWords;
+  }
+
+  /**
+   * 📏 Calcular similitud de Levenshtein
+   */
+  private levenshteinSimilarity(str1: string, str2: string): number {
+    const maxLength = Math.max(str1.length, str2.length);
+    if (maxLength === 0) return 1.0;
+    
+    const distance = this.levenshteinDistance(str1, str2);
+    return (maxLength - distance) / maxLength;
+  }
+
+  /**
+   * 📐 Distancia de Levenshtein
+   */
+  private levenshteinDistance(str1: string, str2: string): number {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i++) {
+      matrix[0][i] = i;
+    }
+    
+    for (let j = 0; j <= str2.length; j++) {
+      matrix[j][0] = j;
+    }
+    
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,
+          matrix[j - 1][i] + 1,
+          matrix[j - 1][i - 1] + indicator
+        );
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
   }
 }
 

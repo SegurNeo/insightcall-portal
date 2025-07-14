@@ -135,15 +135,22 @@ CONVERSACIÓN A ANALIZAR:
 INSTRUCCIONES:
 1. Identifica la incidencia principal que mejor describe la consulta del cliente
 2. Extrae TODOS los datos relevantes mencionados (números de póliza, cuentas, direcciones, etc.)
-3. Genera notas específicas según las consideraciones del CSV
-4. Determina si requiere creación de ticket
-5. Calcula la prioridad basada en urgencia y complejidad
+3. **IDENTIFICA EL NOMBRE DEL CLIENTE** mencionado en la conversación (si se menciona)
+4. Genera notas específicas según las consideraciones del CSV
+5. Determina si requiere creación de ticket
+6. Calcula la prioridad basada en urgencia y complejidad
 
 ⚠️ IMPORTANTE - NÚMEROS DE PÓLIZA:
 - SOLO incluir numeroPoliza si el cliente menciona un número específico (ej: "POL-123456", "póliza número ABC789")
 - NO incluir si dice solo "mi póliza", "la póliza", "cambiar en mi seguro" sin especificar número
 - Debe estar 100% claro que se refiere a esa póliza específica
 - Si hay dudas, NO incluir número de póliza
+
+⚠️ IMPORTANTE - NOMBRE DEL CLIENTE:
+- SOLO incluir nombreCliente si se menciona explícitamente en la conversación (ej: "Soy José Luis Pérez", "Mi nombre es María García")
+- Extraer el nombre completo tal como se menciona
+- Si solo se dice "soy Juan" sin apellido, extraer solo "Juan"
+- Si no se menciona el nombre explícitamente, NO incluir este campo
 
 Responde EXACTAMENTE en este formato JSON:
 {
@@ -159,6 +166,7 @@ Responde EXACTAMENTE en este formato JSON:
   "confidence": 0.95,
   "resumenLlamada": "resumen claro y conciso en español",
   "datosExtraidos": {
+    "nombreCliente": "SOLO si el cliente menciona su nombre explícitamente en la conversación (ej: 'Soy José Luis Pérez'). NO incluir si no se menciona claramente",
     "numeroPoliza": "SOLO si el cliente menciona un número específico de póliza (ej: POL-123456) y está 100% claro que se refiere a ESA póliza. Si dice 'mi póliza' sin especificar número, NO incluir",
     "numeroRecibo": "si se menciona",
     "cuentaBancaria": "nueva CCC si se proporciona",

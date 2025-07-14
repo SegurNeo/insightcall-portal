@@ -149,13 +149,23 @@ export class CallProcessor {
         feedback: t.feedback
       }));
       
-      const clientData = clientDataExtractor.extractClientData(adaptedTranscripts as any);
-      console.log(`🔍 [PROCESSOR] Datos de cliente extraídos:`, {
+      // 🧠 NUEVO: Usar extracción inteligente con contexto IA para matching
+      const clientData = clientDataExtractor.extractClientDataWithAIContext(
+        adaptedTranscripts as any,
+        {
+          datosExtraidos: {
+            nombreCliente: (analysis.extracted_data as any)?.nombreCliente
+          }
+        }
+      );
+      
+      console.log(`🔍 [PROCESSOR] Datos de cliente extraídos con IA:`, {
         idCliente: clientData.idCliente,
         nombre: clientData.nombre,
         confidence: clientData.confidence,
         source: clientData.extractionSource,
-        toolsUsed: clientData.toolsUsed
+        toolsUsed: clientData.toolsUsed,
+        aiMatchingInfo: clientData.clientMatchingInfo
       });
 
       // 🎯 Generar ID de cliente si no se encontró
@@ -174,9 +184,11 @@ export class CallProcessor {
           confidence: analysis.confidence,
           created_at: new Date().toISOString(),
           extracted_data: analysis.extracted_data,
-          // 🚀 AÑADIR DATOS DE CLIENTE EXTRAÍDOS
+          // 🚀 AÑADIR DATOS DE CLIENTE EXTRAÍDOS CON MATCHING INTELIGENTE
           client_data: clientData,
-          id_cliente: idCliente
+          id_cliente: idCliente,
+          // 🧠 Información de matching para debugging
+          client_matching_debug: clientData.clientMatchingInfo
         }
       };
 
@@ -199,6 +211,11 @@ export class CallProcessor {
       if (shouldSend) {
         console.log(`📤 [PROCESSOR] Enviando ticket a Segurneo/Nogal: ${ticket.id}`);
         console.log(`📊 [PROCESSOR] Criterios: tipo="${analysis.incident_type}", confianza=${clientData.confidence}, cliente=${!!idCliente}`);
+        
+        // 🧠 Log adicional de matching para debugging
+        if (clientData.clientMatchingInfo) {
+          console.log(`🧠 [PROCESSOR] Info matching: método=${clientData.clientMatchingInfo.matchingMethod}, score=${clientData.clientMatchingInfo.matchingScore}, IA="${clientData.clientMatchingInfo.aiDetectedName}"`);
+        }
         
         try {
           // Preparar payload para Segurneo Voice

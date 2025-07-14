@@ -250,13 +250,22 @@ export class CallProcessingService {
     
 
     try {
-      // 1. 🔍 Extraer datos de cliente de los transcripts
-      const clientData = clientDataExtractor.extractClientData(callRecord.transcripts);
-      console.log(`🔍 [SIMPLE] Datos de cliente extraídos:`, {
+      // 1. 🔍 NUEVO: Extraer datos de cliente con contexto IA para matching inteligente
+      const clientData = clientDataExtractor.extractClientDataWithAIContext(
+        callRecord.transcripts,
+        {
+          datosExtraidos: {
+            nombreCliente: aiAnalysis.datos_extraidos?.nombreCliente
+          }
+        }
+      );
+      
+      console.log(`🔍 [SIMPLE] Datos de cliente extraídos con IA:`, {
         idCliente: clientData.idCliente,
         confidence: clientData.confidence,
         source: clientData.extractionSource,
-        toolsUsed: clientData.toolsUsed
+        toolsUsed: clientData.toolsUsed,
+        aiMatchingInfo: clientData.clientMatchingInfo
       });
 
       // 2. 🎯 Generar ID de cliente si no se encontró
@@ -286,7 +295,9 @@ export class CallProcessingService {
           datos_extraidos: aiAnalysis.datos_extraidos || aiAnalysis.extracted_data || {},
           notas_nogal_originales: aiAnalysis.notas_para_nogal || 'Generado automáticamente',
           client_data: clientData,
-          id_cliente: idCliente
+          id_cliente: idCliente,
+          // 🧠 Información de matching para debugging
+          client_matching_debug: clientData.clientMatchingInfo
         }
       };
 
@@ -308,6 +319,11 @@ export class CallProcessingService {
       if (shouldSend) {
         console.log(`📤 [SIMPLE] Enviando a Segurneo Voice: ${createdTicket.id}`);
         console.log(`📊 [SIMPLE] Criterios: tipo="${aiAnalysis.tipo_incidencia}", confianza=${clientData.confidence}, cliente=${!!idCliente}`);
+        
+        // 🧠 Log adicional de matching para debugging
+        if (clientData.clientMatchingInfo) {
+          console.log(`🧠 [SIMPLE] Info matching: método=${clientData.clientMatchingInfo.matchingMethod}, score=${clientData.clientMatchingInfo.matchingScore}, IA="${clientData.clientMatchingInfo.aiDetectedName}"`);
+        }
         
         const nogalPayload = {
           IdCliente: idCliente,
