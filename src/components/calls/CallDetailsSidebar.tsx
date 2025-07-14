@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Brain, MessageSquare, Ticket, Globe, CheckCircle, AlertCircle, Clock, User, Bot, XCircle, Music, Download, Info } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Brain, MessageSquare, Ticket, Globe, CheckCircle, AlertCircle, Clock, User, Bot, XCircle, Music, Download, Info, Play, Pause, Volume2, SkipBack, SkipForward } from 'lucide-react';
 import { VoiceCallDetailsClean } from '../../services/voiceCallsRealDataService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
@@ -8,6 +8,8 @@ import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
+import { Slider } from '../ui/slider';
+import { Progress } from '../ui/progress';
 import { formatFileSize } from '../../lib/utils';
 
 interface CallDetailsSidebarProps {
@@ -21,6 +23,71 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
   isOpen, 
   onClose 
 }) => {
+  // Estado para el reproductor de audio avanzado
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Funciones del reproductor
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+      setIsLoading(false);
+    }
+  };
+
+  const handleProgressChange = (value: number[]) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = value[0];
+      setCurrentTime(value[0]);
+    }
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    if (audioRef.current) {
+      audioRef.current.volume = value[0];
+      setVolume(value[0]);
+    }
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const skipBackward = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+    }
+  };
+
+  const skipForward = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+    }
+  };
+
   // 🐛 DEBUG TEMPORAL - Verificar qué datos llegan
   console.log('🎵 CallDetailsSidebar (src) - DEBUG:', {
     conversationId: call.conversationId,
@@ -207,70 +274,190 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                       )}
                     </div>
 
-                    {/* 🎵 REPRODUCTOR DE AUDIO - Después del resumen */}
+                    {/* 🎵 REPRODUCTOR DE AUDIO AVANZADO - Estilo ElevenLabs */}
                     {call.audio_download_url && (
                       <div className="space-y-6">
-                        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                          <Music className="h-5 w-5 mr-2 text-gray-600" />
-                          Grabación de Audio
-                        </h2>
-                        
-                        <Card className="shadow-sm border border-gray-200">
-                          <CardHeader className="pb-3">
-                            <CardDescription className="text-sm text-gray-600">
-                              Audio de la llamada • {call.audio_file_size ? formatFileSize(call.audio_file_size) : 'Tamaño desconocido'}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            {/* Reproductor HTML5 nativo */}
-                            <div className="w-full">
-                              <audio 
-                                controls 
-                                className="w-full"
-                                preload="metadata"
-                                style={{ height: '40px' }}
-                              >
-                                <source src={call.audio_download_url} type="audio/mpeg" />
-                                Tu navegador no soporta el elemento de audio.
-                              </audio>
+                        {/* Header elegante */}
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center mr-3">
+                              <Music className="h-4 w-4 text-white" />
                             </div>
-                            
-                            <Separator />
-                            
-                            {/* Botón de descarga */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <Label className="text-sm text-gray-600">Archivo de audio</Label>
+                            Grabación de Audio
+                          </h2>
+                          <Badge variant="secondary" className="text-xs font-medium">
+                            {call.audio_file_size ? formatFileSize(call.audio_file_size) : 'Tamaño desconocido'}
+                          </Badge>
+                        </div>
+                        
+                        {/* Reproductor principal */}
+                        <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-slate-50 via-white to-slate-50">
+                          <CardContent className="p-8">
+                            {/* Audio element oculto */}
+                            <audio
+                              ref={audioRef}
+                              src={call.audio_download_url}
+                              onTimeUpdate={handleTimeUpdate}
+                              onLoadedMetadata={handleLoadedMetadata}
+                              onLoadStart={() => setIsLoading(true)}
+                              onCanPlay={() => setIsLoading(false)}
+                              onPlay={() => setIsPlaying(true)}
+                              onPause={() => setIsPlaying(false)}
+                              preload="metadata"
+                            />
+
+                            {/* Visualizador de ondas simulado */}
+                            <div className="relative h-20 mb-8 bg-gray-100 rounded-lg overflow-hidden">
+                              <div className="absolute inset-0 flex items-center justify-center space-x-1 p-4">
+                                {Array.from({ length: 60 }).map((_, i) => (
+                                  <div
+                                    key={i}
+                                    className={`flex-1 bg-gradient-to-t rounded-full transition-all duration-300 ${
+                                      i < (currentTime / duration) * 60
+                                        ? 'from-blue-400 to-blue-600'
+                                        : 'from-gray-300 to-gray-400'
+                                    }`}
+                                    style={{
+                                      height: `${Math.random() * 60 + 20}%`,
+                                      maxHeight: '100%',
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                              
+                              {/* Overlay de progreso */}
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent opacity-30" />
+                            </div>
+
+                            {/* Controles principales */}
+                            <div className="flex items-center justify-center space-x-6 mb-6">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={skipBackward}
+                                className="w-10 h-10 rounded-full hover:bg-gray-100 transition-colors"
+                              >
+                                <SkipBack className="h-4 w-4" />
+                              </Button>
+                              
+                              <Button
+                                onClick={togglePlayPause}
+                                disabled={isLoading}
+                                className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg transition-all duration-200 hover:scale-105"
+                              >
+                                {isLoading ? (
+                                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : isPlaying ? (
+                                  <Pause className="h-6 w-6 text-white" />
+                                ) : (
+                                  <Play className="h-6 w-6 text-white ml-1" />
+                                )}
+                              </Button>
+                              
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={skipForward}
+                                className="w-10 h-10 rounded-full hover:bg-gray-100 transition-colors"
+                              >
+                                <SkipForward className="h-4 w-4" />
+                              </Button>
+                            </div>
+
+                            {/* Progress bar y tiempo */}
+                            <div className="space-y-4">
+                              <div className="flex items-center space-x-4">
+                                <span className="text-sm font-medium text-gray-600 w-12 text-right">
+                                  {formatTime(currentTime)}
+                                </span>
+                                <div className="flex-1">
+                                  <Slider
+                                    value={[currentTime]}
+                                    max={duration || 100}
+                                    step={1}
+                                    onValueChange={handleProgressChange}
+                                    className="w-full"
+                                  />
+                                </div>
+                                <span className="text-sm font-medium text-gray-600 w-12">
+                                  {formatTime(duration)}
+                                </span>
+                              </div>
+
+                              {/* Control de volumen */}
+                              <div className="flex items-center justify-center space-x-3">
+                                <Volume2 className="h-4 w-4 text-gray-500" />
+                                <div className="w-24">
+                                  <Slider
+                                    value={[volume]}
+                                    max={1}
+                                    step={0.1}
+                                    onValueChange={handleVolumeChange}
+                                    className="w-full"
+                                  />
+                                </div>
+                                <span className="text-xs text-gray-500 w-8">
+                                  {Math.round(volume * 100)}%
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Información y acciones */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Información técnica */}
+                          <Card className="border border-gray-200">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-sm flex items-center">
+                                <Info className="h-4 w-4 mr-2 text-blue-500" />
+                                Información técnica
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2 text-sm text-gray-600">
+                              <div className="flex justify-between">
+                                <span>Formato:</span>
                                 <Badge variant="outline" className="text-xs">MP3</Badge>
                               </div>
+                              <div className="flex justify-between">
+                                <span>Duración:</span>
+                                <span className="font-medium">{call.formattedDuration}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Disponibilidad:</span>
+                                <span className="font-medium">60 días</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Acciones */}
+                          <Card className="border border-gray-200">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-sm flex items-center">
+                                <Download className="h-4 w-4 mr-2 text-green-500" />
+                                Descargar audio
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
                               <Button 
-                                variant="outline" 
-                                size="sm"
                                 asChild
+                                className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-md transition-all duration-200"
                               >
                                 <a 
                                   href={call.audio_download_url} 
                                   download
-                                  className="flex items-center space-x-2"
+                                  className="flex items-center justify-center space-x-2"
                                 >
                                   <Download className="h-4 w-4" />
-                                  <span>Descargar</span>
+                                  <span>Descargar MP3</span>
                                 </a>
                               </Button>
-                            </div>
-                            
-                            {/* Información adicional */}
-                            <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-                              <div className="flex items-center space-x-1 mb-1">
-                                <Info className="h-3 w-3" />
-                                <span className="font-medium">Información técnica</span>
-                              </div>
-                              <p>• El audio estará disponible por 60 días</p>
-                              <p>• Formato MP3 compatible con todos los dispositivos</p>
-                              <p>• Duración: {call.formattedDuration}</p>
-                            </div>
-                          </CardContent>
-                        </Card>
+                              <p className="text-xs text-gray-500 mt-2 text-center">
+                                Compatible con todos los dispositivos
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </div>
                       </div>
                     )}
 
