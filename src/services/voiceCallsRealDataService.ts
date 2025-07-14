@@ -479,7 +479,11 @@ class VoiceCallsRealDataService {
         chat_messages: chatMessages.length,
         has_analysis: !!analysisResult,
         tickets_count: tickets.length,
-        total_messages: voiceCallData.total_messages
+        total_messages: voiceCallData.total_messages,
+        // 🐛 DEBUG TEMPORAL - Verificar campos de audio
+        audio_download_url: voiceCallData.audio_download_url,
+        audio_file_size: voiceCallData.audio_file_size,
+        fichero_llamada: voiceCallData.fichero_llamada
       });
 
       const details: VoiceCallDetailsClean = {
@@ -544,7 +548,12 @@ class VoiceCallsRealDataService {
         hasAnalysis: details.hasAnalysis,
         hasTickets: details.hasTickets,
         chatMessages: details.chatMessages.length,
-        tickets: details.tickets.length
+        tickets: details.tickets.length,
+        // 🐛 DEBUG TEMPORAL - Verificar campos de audio en objeto final
+        audio_download_url: details.audio_download_url,
+        audio_file_size: details.audio_file_size,
+        ficheroLlamada: details.ficheroLlamada,
+        audioAvailable: details.audioAvailable
       });
 
       return details;

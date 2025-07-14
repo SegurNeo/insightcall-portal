@@ -26,6 +26,16 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
   isOpen,
   onClose
 }) => {
+  // 🐛 DEBUG TEMPORAL - Verificar qué datos llegan
+  console.log('🎵 CallDetailsSidebar - DEBUG:', {
+    conversationId: call.conversationId,
+    audio_download_url: call.audio_download_url,
+    audio_file_size: call.audio_file_size,
+    ficheroLlamada: call.ficheroLlamada,
+    hasAudioUrl: !!call.audio_download_url,
+    audioAvailable: call.audioAvailable
+  });
+
   if (!isOpen) return null;
 
   const formatDuration = (seconds: number): string => {

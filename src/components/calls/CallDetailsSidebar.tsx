@@ -1,11 +1,14 @@
 import React from 'react';
-import { X, Brain, MessageSquare, Ticket, Globe, CheckCircle, AlertCircle, Clock, User, Bot, XCircle } from 'lucide-react';
+import { X, Brain, MessageSquare, Ticket, Globe, CheckCircle, AlertCircle, Clock, User, Bot, XCircle, Music, Download, Info } from 'lucide-react';
 import { VoiceCallDetailsClean } from '../../services/voiceCallsRealDataService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
+import { Button } from '../ui/button';
+import { Label } from '../ui/label';
+import { formatFileSize } from '../../lib/utils';
 
 interface CallDetailsSidebarProps {
   call: VoiceCallDetailsClean;
@@ -18,6 +21,15 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
   isOpen, 
   onClose 
 }) => {
+  // 🐛 DEBUG TEMPORAL - Verificar qué datos llegan
+  console.log('🎵 CallDetailsSidebar (src) - DEBUG:', {
+    conversationId: call.conversationId,
+    audio_download_url: call.audio_download_url,
+    audio_file_size: call.audio_file_size,
+    ficheroLlamada: call.ficheroLlamada,
+    hasAudioUrl: !!call.audio_download_url,
+    audioAvailable: call.audioAvailable
+  });
   if (!isOpen) return null;
 
   const getStatusConfig = () => {
@@ -193,11 +205,76 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                           </p>
                         </div>
                       )}
-                          </div>
-                          
+                    </div>
 
-
+                    {/* 🎵 REPRODUCTOR DE AUDIO - Después del resumen */}
+                    {call.audio_download_url && (
+                      <div className="space-y-6">
+                        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                          <Music className="h-5 w-5 mr-2 text-gray-600" />
+                          Grabación de Audio
+                        </h2>
+                        
+                        <Card className="shadow-sm border border-gray-200">
+                          <CardHeader className="pb-3">
+                            <CardDescription className="text-sm text-gray-600">
+                              Audio de la llamada • {call.audio_file_size ? formatFileSize(call.audio_file_size) : 'Tamaño desconocido'}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {/* Reproductor HTML5 nativo */}
+                            <div className="w-full">
+                              <audio 
+                                controls 
+                                className="w-full"
+                                preload="metadata"
+                                style={{ height: '40px' }}
+                              >
+                                <source src={call.audio_download_url} type="audio/mpeg" />
+                                Tu navegador no soporta el elemento de audio.
+                              </audio>
                             </div>
+                            
+                            <Separator />
+                            
+                            {/* Botón de descarga */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Label className="text-sm text-gray-600">Archivo de audio</Label>
+                                <Badge variant="outline" className="text-xs">MP3</Badge>
+                              </div>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                asChild
+                              >
+                                <a 
+                                  href={call.audio_download_url} 
+                                  download
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Download className="h-4 w-4" />
+                                  <span>Descargar</span>
+                                </a>
+                              </Button>
+                            </div>
+                            
+                            {/* Información adicional */}
+                            <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+                              <div className="flex items-center space-x-1 mb-1">
+                                <Info className="h-3 w-3" />
+                                <span className="font-medium">Información técnica</span>
+                              </div>
+                              <p>• El audio estará disponible por 60 días</p>
+                              <p>• Formato MP3 compatible con todos los dispositivos</p>
+                              <p>• Duración: {call.formattedDuration}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+
+                  </div>
                 </ScrollArea>
               </TabsContent>
 
