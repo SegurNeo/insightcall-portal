@@ -172,6 +172,13 @@ export class CallProcessor {
       const idCliente = clientData.idCliente || 
         clientDataExtractor.generateFallbackClientId(call.conversation_id, clientData.telefono);
 
+      // 📋 Log detallado del ID de cliente final
+      if (clientData.idCliente) {
+        console.log(`✅ [PROCESSOR] Usando idCliente de herramientas: ${idCliente}`);
+      } else {
+        console.log(`🔄 [PROCESSOR] Generando idCliente fallback: ${idCliente} (sin datos de herramientas)`);
+      }
+
       const ticketData = {
         call_id: call.id, // Actualizado para usar call_id en lugar de conversation_id
         tipo_incidencia: analysis.incident_type,

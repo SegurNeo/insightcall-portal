@@ -272,6 +272,13 @@ export class CallProcessingService {
       const idCliente = clientData.idCliente || 
         clientDataExtractor.generateFallbackClientId(callRecord.conversation_id, clientData.telefono);
 
+      // 📋 Log detallado del ID de cliente final
+      if (clientData.idCliente) {
+        console.log(`✅ [SIMPLE] Usando idCliente de herramientas: ${idCliente}`);
+      } else {
+        console.log(`🔄 [SIMPLE] Generando idCliente fallback: ${idCliente} (sin datos de herramientas)`);
+      }
+
       // 3. Generar descripción profesional y concisa
       const descripcionCompleta = this.generateProfessionalTicketDescription(
         aiAnalysis.notas_para_nogal || aiAnalysis.notes || '',

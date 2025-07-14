@@ -20,7 +20,7 @@ export interface ExtractedClientData {
     aiDetectedName?: string;
     availableClients?: any[];
     matchingScore?: number;
-    matchingMethod?: 'exact' | 'partial' | 'none' | 'single_client';
+    matchingMethod?: 'exact' | 'partial' | 'none' | 'single_client' | 'fallback_first_available' | 'no_ai_name_first_available' | 'no_tools_data';
   };
 }
 
@@ -126,77 +126,91 @@ export class ClientDataExtractor {
     // Primera pasada: extracción normal
     const extractedData = this.extractClientData(transcripts);
     
-    // Si hay análisis IA con nombre del cliente, validar matching
-    if (aiAnalysis?.datosExtraidos?.nombreCliente) {
-      console.log(`🎯 [EXTRACTOR] IA detectó cliente: "${aiAnalysis.datosExtraidos.nombreCliente}"`);
+    // Buscar TODOS los clientes disponibles en herramientas
+    const availableClients = this.getAllClientsFromTools(transcripts);
+    
+    if (availableClients.length > 0) {
+      console.log(`🔍 [EXTRACTOR] Encontrados ${availableClients.length} clientes en herramientas`);
       
-      // Buscar clientes en los tool_results para hacer matching
-      const availableClients = this.getAllClientsFromTools(transcripts);
+      let selectedClient: any = null;
+      let matchInfo: any = {
+        availableClients: availableClients.map(c => ({ 
+          nombre: c.nombre_cliente, 
+          codigo: c.codigo_cliente 
+        })),
+        matchingScore: 0,
+        matchingMethod: 'none'
+      };
       
-      if (availableClients.length > 0) {
-        console.log(`🔍 [EXTRACTOR] Encontrados ${availableClients.length} clientes en herramientas, haciendo matching...`);
+      // Si hay análisis IA con nombre del cliente, intentar matching
+      if (aiAnalysis?.datosExtraidos?.nombreCliente) {
+        console.log(`🎯 [EXTRACTOR] IA detectó cliente: "${aiAnalysis.datosExtraidos.nombreCliente}"`);
+        matchInfo.aiDetectedName = aiAnalysis.datosExtraidos.nombreCliente;
         
         const matchResult = this.findBestClientMatch(
           aiAnalysis.datosExtraidos.nombreCliente, 
           availableClients
         );
         
-        // Actualizar datos extraídos con el mejor match
-        if (matchResult) {
-          extractedData.idCliente = matchResult.cliente.codigo_cliente;
-          extractedData.nombre = matchResult.cliente.nombre_cliente;
-          extractedData.email = matchResult.cliente.email_cliente;
-          extractedData.telefono = matchResult.cliente.telefono_1 || matchResult.cliente.telefono_2 || matchResult.cliente.telefono_3;
+        if (matchResult && matchResult.score >= 0.5) {
+          // ✅ HAY MATCH VÁLIDO - usar cliente matched
+          selectedClient = matchResult.cliente;
+          matchInfo.matchingScore = matchResult.score;
+          matchInfo.matchingMethod = matchResult.method;
           
-          // Información de matching para debugging
-          extractedData.clientMatchingInfo = {
-            aiDetectedName: aiAnalysis.datosExtraidos.nombreCliente,
-            availableClients: availableClients.map(c => ({ 
-              nombre: c.nombre_cliente, 
-              codigo: c.codigo_cliente 
-            })),
-            matchingScore: matchResult.score,
-            matchingMethod: matchResult.method
-          };
-          
-          // Actualizar confianza basada en matching
-          if (matchResult.score >= 0.9) {
-            extractedData.confidence = Math.min(extractedData.confidence + 30, 100);
-          } else if (matchResult.score >= 0.7) {
-            extractedData.confidence = Math.min(extractedData.confidence + 20, 100);
-          } else if (matchResult.score >= 0.5) {
-            extractedData.confidence = Math.min(extractedData.confidence + 10, 100);
-          }
-          
-          console.log(`✅ [EXTRACTOR] Cliente validado por IA: ${matchResult.cliente.nombre_cliente} (score: ${matchResult.score}, método: ${matchResult.method})`);
+          console.log(`✅ [EXTRACTOR] Match válido encontrado: ${selectedClient.nombre_cliente} (score: ${matchResult.score})`);
         } else {
-          console.log(`⚠️ [EXTRACTOR] No se encontró match válido para "${aiAnalysis.datosExtraidos.nombreCliente}"`);
+          // ⚠️ NO HAY MATCH VÁLIDO pero HAY CLIENTES - usar el primero como fallback
+          selectedClient = availableClients[0];
+          matchInfo.matchingScore = 0.3; // Score bajo pero válido
+          matchInfo.matchingMethod = 'fallback_first_available';
           
-          extractedData.clientMatchingInfo = {
-            aiDetectedName: aiAnalysis.datosExtraidos.nombreCliente,
-            availableClients: availableClients.map(c => ({ 
-              nombre: c.nombre_cliente, 
-              codigo: c.codigo_cliente 
-            })),
-            matchingScore: 0,
-            matchingMethod: 'none'
-          };
-          
-          // Si no hay match, reducir confianza si habíamos tomado un cliente automáticamente
-          if (extractedData.idCliente && extractedData.extractionSource === 'tools') {
-            extractedData.confidence = Math.max(extractedData.confidence - 20, 0);
-            console.log(`⚠️ [EXTRACTOR] Reducida confianza por mismatch entre IA y herramientas`);
-          }
+          console.log(`⚠️ [EXTRACTOR] Sin match válido para "${aiAnalysis.datosExtraidos.nombreCliente}", usando primer cliente disponible: ${selectedClient.nombre_cliente}`);
         }
-      } else if (extractedData.idCliente) {
-        // Solo hay un cliente de las herramientas, marcar como match único
+      } else {
+        // 📝 NO HAY NOMBRE DE IA pero HAY CLIENTES - usar el primero
+        selectedClient = availableClients[0];
+        matchInfo.matchingScore = 0.4; // Score medio porque no hay contexto IA
+        matchInfo.matchingMethod = 'no_ai_name_first_available';
+        
+        console.log(`📝 [EXTRACTOR] Sin nombre de IA, usando primer cliente disponible: ${selectedClient.nombre_cliente}`);
+      }
+      
+      // 🎯 ASIGNAR DATOS DEL CLIENTE SELECCIONADO (siempre que haya clientes disponibles)
+      if (selectedClient) {
+        extractedData.idCliente = selectedClient.codigo_cliente;
+        extractedData.nombre = selectedClient.nombre_cliente;
+        extractedData.email = selectedClient.email_cliente;
+        extractedData.telefono = selectedClient.telefono_1 || selectedClient.telefono_2 || selectedClient.telefono_3;
+        
+        // Actualizar confianza basada en método de matching
+        if (matchInfo.matchingScore >= 0.9) {
+          extractedData.confidence = Math.min(extractedData.confidence + 30, 100);
+        } else if (matchInfo.matchingScore >= 0.7) {
+          extractedData.confidence = Math.min(extractedData.confidence + 20, 100);
+        } else if (matchInfo.matchingScore >= 0.5) {
+          extractedData.confidence = Math.min(extractedData.confidence + 10, 100);
+        } else if (matchInfo.matchingMethod.includes('fallback') || matchInfo.matchingMethod.includes('no_ai')) {
+          // Para fallbacks, mantener confianza base pero no reducir demasiado
+          extractedData.confidence = Math.max(extractedData.confidence, 40); // Mínimo 40% para fallbacks
+        }
+        
+        extractedData.clientMatchingInfo = matchInfo;
+        
+        console.log(`🎯 [EXTRACTOR] Cliente final asignado: ${selectedClient.nombre_cliente} (${selectedClient.codigo_cliente}) via ${matchInfo.matchingMethod}`);
+      }
+    } else {
+      // 📭 NO HAY CLIENTES EN HERRAMIENTAS
+      if (aiAnalysis?.datosExtraidos?.nombreCliente) {
         extractedData.clientMatchingInfo = {
           aiDetectedName: aiAnalysis.datosExtraidos.nombreCliente,
           availableClients: [],
-          matchingScore: 0.5, // Score medio porque no podemos comparar
-          matchingMethod: 'single_client'
+          matchingScore: 0,
+          matchingMethod: 'no_tools_data'
         };
-        console.log(`ℹ️ [EXTRACTOR] Solo un cliente disponible, no se puede validar matching`);
+        console.log(`📭 [EXTRACTOR] IA detectó "${aiAnalysis.datosExtraidos.nombreCliente}" pero no hay datos de herramientas`);
+      } else {
+        console.log(`📭 [EXTRACTOR] Sin datos de herramientas ni nombre de IA`);
       }
     }
     
@@ -365,7 +379,9 @@ export class ClientDataExtractor {
       case 'identificar_cliente':
         // Formato real: { clientes: [...], detalle_polizas: [...], vtos_polizas: [...] }
         if (data.clientes && data.clientes.length > 0) {
-          const cliente = data.clientes[0]; // Tomar primer cliente
+          // 🎯 SIEMPRE tomar el primer cliente cuando hay clientes disponibles
+          // Es mejor tener un cliente aproximado que no tener ninguno
+          const cliente = data.clientes[0];
           
           extracted.idCliente = cliente.codigo_cliente;
           extracted.nombre = cliente.nombre_cliente;
@@ -374,7 +390,11 @@ export class ClientDataExtractor {
           
           // ❌ REMOVIDO: No extraemos números de póliza - la IA determinará si hay una específica
           
-          console.log(`✅ [EXTRACTOR] Cliente identificado: ${extracted.nombre} (${extracted.idCliente})`);
+          if (data.clientes.length > 1) {
+            console.log(`✅ [EXTRACTOR] Cliente identificado: ${extracted.nombre} (${extracted.idCliente}) - Nota: ${data.clientes.length} clientes disponibles, tomando el primero`);
+          } else {
+            console.log(`✅ [EXTRACTOR] Cliente identificado: ${extracted.nombre} (${extracted.idCliente})`);
+          }
         }
         break;
 
