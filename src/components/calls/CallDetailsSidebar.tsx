@@ -274,191 +274,113 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                       )}
                     </div>
 
-                    {/* 🎵 REPRODUCTOR DE AUDIO AVANZADO - Estilo ElevenLabs */}
+                    {/* 🎵 REPRODUCTOR DE AUDIO PROFESIONAL - Sistema de Spacing Consistente */}
                     {call.audio_download_url && (
-                      <div className="space-y-6">
-                        {/* Header elegante */}
-                        <div className="flex items-center justify-between">
-                          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center mr-3">
-                              <Music className="h-4 w-4 text-white" />
-                            </div>
-                            Grabación de Audio
-                          </h2>
-                          <Badge variant="secondary" className="text-xs font-medium">
-                            {call.audio_file_size ? formatFileSize(call.audio_file_size) : 'Tamaño desconocido'}
-                          </Badge>
-                        </div>
-                        
-                        {/* Reproductor principal */}
-                        <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-slate-50 via-white to-slate-50">
-                          <CardContent className="p-8">
-                            {/* Audio element oculto */}
-                            <audio
-                              ref={audioRef}
-                              src={call.audio_download_url}
-                              onTimeUpdate={handleTimeUpdate}
-                              onLoadedMetadata={handleLoadedMetadata}
-                              onLoadStart={() => setIsLoading(true)}
-                              onCanPlay={() => setIsLoading(false)}
-                              onPlay={() => setIsPlaying(true)}
-                              onPause={() => setIsPlaying(false)}
-                              preload="metadata"
+                      <Card className="border border-gray-200 bg-white">
+                        <CardHeader className="px-6 py-3">
+                          <CardTitle className="text-base font-semibold text-gray-900">
+                            Grabación de audio
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="px-6 pb-6">
+                          {/* Audio oculto */}
+                          <audio
+                            ref={audioRef}
+                            src={call.audio_download_url}
+                            onTimeUpdate={handleTimeUpdate}
+                            onLoadedMetadata={handleLoadedMetadata}
+                            onLoadStart={() => setIsLoading(true)}
+                            onCanPlay={() => setIsLoading(false)}
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            preload="metadata"
+                          />
+
+                          {/* Barra de progreso - Arriba */}
+                          <div className="mt-2">
+                            <Slider
+                              value={[currentTime]}
+                              max={duration || 100}
+                              step={1}
+                              onValueChange={handleProgressChange}
+                              className="w-full"
                             />
+                          </div>
 
-                            {/* Visualizador de ondas simulado */}
-                            <div className="relative h-20 mb-8 bg-gray-100 rounded-lg overflow-hidden">
-                              <div className="absolute inset-0 flex items-center justify-center space-x-1 p-4">
-                                {Array.from({ length: 60 }).map((_, i) => (
-                                  <div
-                                    key={i}
-                                    className={`flex-1 bg-gradient-to-t rounded-full transition-all duration-300 ${
-                                      i < (currentTime / duration) * 60
-                                        ? 'from-blue-400 to-blue-600'
-                                        : 'from-gray-300 to-gray-400'
-                                    }`}
-                                    style={{
-                                      height: `${Math.random() * 60 + 20}%`,
-                                      maxHeight: '100%',
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                              
-                              {/* Overlay de progreso */}
-                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent opacity-30" />
-                            </div>
-
-                            {/* Controles principales */}
-                            <div className="flex items-center justify-center space-x-6 mb-6">
+                          {/* Controles y tiempo - Izquierda y derecha */}
+                          <div className="flex items-center justify-between mt-3">
+                            <div className="flex items-center space-x-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={skipBackward}
-                                className="w-10 h-10 rounded-full hover:bg-gray-100 transition-colors"
+                                className="p-1 text-gray-600 hover:text-gray-900"
                               >
                                 <SkipBack className="h-4 w-4" />
                               </Button>
-                              
                               <Button
                                 onClick={togglePlayPause}
                                 disabled={isLoading}
-                                className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg transition-all duration-200 hover:scale-105"
+                                className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-900"
                               >
                                 {isLoading ? (
-                                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  <div className="h-4 w-4 animate-spin rounded-full border border-gray-400 border-t-transparent" />
                                 ) : isPlaying ? (
-                                  <Pause className="h-6 w-6 text-white" />
+                                  <Pause className="h-4 w-4" />
                                 ) : (
-                                  <Play className="h-6 w-6 text-white ml-1" />
+                                  <Play className="h-4 w-4" />
                                 )}
                               </Button>
-                              
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={skipForward}
-                                className="w-10 h-10 rounded-full hover:bg-gray-100 transition-colors"
+                                className="p-1 text-gray-600 hover:text-gray-900"
                               >
                                 <SkipForward className="h-4 w-4" />
                               </Button>
                             </div>
-
-                            {/* Progress bar y tiempo */}
-                            <div className="space-y-4">
-                              <div className="flex items-center space-x-4">
-                                <span className="text-sm font-medium text-gray-600 w-12 text-right">
-                                  {formatTime(currentTime)}
-                                </span>
-                                <div className="flex-1">
-                                  <Slider
-                                    value={[currentTime]}
-                                    max={duration || 100}
-                                    step={1}
-                                    onValueChange={handleProgressChange}
-                                    className="w-full"
-                                  />
-                                </div>
-                                <span className="text-sm font-medium text-gray-600 w-12">
-                                  {formatTime(duration)}
-                                </span>
-                              </div>
-
-                              {/* Control de volumen */}
-                              <div className="flex items-center justify-center space-x-3">
-                                <Volume2 className="h-4 w-4 text-gray-500" />
-                                <div className="w-24">
-                                  <Slider
-                                    value={[volume]}
-                                    max={1}
-                                    step={0.1}
-                                    onValueChange={handleVolumeChange}
-                                    className="w-full"
-                                  />
-                                </div>
-                                <span className="text-xs text-gray-500 w-8">
-                                  {Math.round(volume * 100)}%
-                                </span>
-                              </div>
+                            <div className="flex items-center space-x-2 text-sm text-gray-600">
+                              <span>{formatTime(currentTime)}</span>
+                              <span>/</span>
+                              <span>{formatTime(duration)}</span>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
 
-                        {/* Información y acciones */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Información técnica */}
-                          <Card className="border border-gray-200">
-                            <CardHeader className="pb-3">
-                              <CardTitle className="text-sm flex items-center">
-                                <Info className="h-4 w-4 mr-2 text-blue-500" />
-                                Información técnica
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2 text-sm text-gray-600">
-                              <div className="flex justify-between">
-                                <span>Formato:</span>
-                                <Badge variant="outline" className="text-xs">MP3</Badge>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Duración:</span>
-                                <span className="font-medium">{call.formattedDuration}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Disponibilidad:</span>
-                                <span className="font-medium">60 días</span>
-                              </div>
-                            </CardContent>
-                          </Card>
+                          {/* Volumen - Abajo */}
+                          <div className="flex items-center space-x-2 mt-3">
+                            <Volume2 className="h-4 w-4 text-gray-600" />
+                            <Slider
+                              value={[volume]}
+                              max={1}
+                              step={0.1}
+                              onValueChange={handleVolumeChange}
+                              className="flex-1"
+                            />
+                            <span className="text-sm text-gray-600">{Math.round(volume * 100)}%</span>
+                          </div>
 
-                          {/* Acciones */}
-                          <Card className="border border-gray-200">
-                            <CardHeader className="pb-3">
-                              <CardTitle className="text-sm flex items-center">
-                                <Download className="h-4 w-4 mr-2 text-green-500" />
-                                Descargar audio
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <Button 
-                                asChild
-                                className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-md transition-all duration-200"
-                              >
-                                <a 
-                                  href={call.audio_download_url} 
-                                  download
-                                  className="flex items-center justify-center space-x-2"
-                                >
-                                  <Download className="h-4 w-4" />
-                                  <span>Descargar MP3</span>
-                                </a>
-                              </Button>
-                              <p className="text-xs text-gray-500 mt-2 text-center">
-                                Compatible con todos los dispositivos
-                              </p>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      </div>
+                          {/* Info y descarga - Sección separada */}
+                          <div className="flex items-center justify-between text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200 mt-4 mb-6">
+                            <div className="flex space-x-4">
+                              <span>Formato: MP3</span>
+                              <span>Duración: {formatTime(duration)}</span>
+                              <span>Disponible: 60 días</span>
+                            </div>
+                            <Button 
+                              asChild 
+                              variant="outline" 
+                              size="sm"
+                              className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                            >
+                              <a href={call.audio_download_url} download className="flex items-center space-x-1">
+                                <Download className="h-3 w-3" />
+                                <span>Descargar</span>
+                              </a>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     )}
 
                   </div>
