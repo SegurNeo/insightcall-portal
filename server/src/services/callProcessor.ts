@@ -195,17 +195,18 @@ export class CallProcessor {
         aiMatchingInfo: clientData.clientMatchingInfo
       });
 
-      // 🆕 NUEVO: Lógica de creación de clientes
+      // 🆕 CRÍTICO: Lógica de creación de clientes - PRIMERO CLIENTE, DESPUÉS TICKET
       let idCliente: string;
       let clientCreated = false;
       
       if (clientData.idCliente) {
-        // Cliente existente encontrado
+        // ✅ CASO 1: Cliente existente encontrado
         idCliente = clientData.idCliente;
         console.log(`✅ [PROCESSOR] Cliente existente encontrado: ${idCliente}`);
         
       } else if (clientData.leadInfo?.isLead) {
-        // Es un lead - crear cliente con IdLead
+        // 🚨 CASO 2: ES UN LEAD - CREAR CLIENTE PRIMERO
+        console.log(`🚨 [PROCESSOR] ¡LEAD DETECTADO! Creando cliente PRIMERO antes del ticket`);
         console.log(`🆕 [PROCESSOR] Creando cliente desde lead: ${clientData.leadInfo.selectedLead?.nombre}`);
         
         const clientCreationResult = await this.createClientFromLead(
@@ -217,15 +218,19 @@ export class CallProcessor {
         if (clientCreationResult.success && clientCreationResult.clientId) {
           idCliente = clientCreationResult.clientId;
           clientCreated = true;
-          console.log(`✅ [PROCESSOR] Cliente creado exitosamente desde lead: ${idCliente}`);
+          console.log(`✅ [PROCESSOR] ¡CLIENTE CREADO EXITOSAMENTE DESDE LEAD!`);
+          console.log(`🔑 [PROCESSOR] ID del cliente nuevo: ${idCliente}`);
+          console.log(`🎫 [PROCESSOR] Ahora se procederá a crear el ticket con este ID`);
         } else {
-          console.error(`❌ [PROCESSOR] Error creando cliente desde lead: ${clientCreationResult.error}`);
-          // Usar fallback
-          idCliente = clientDataExtractor.generateFallbackClientId(call.conversation_id, clientData.telefono);
+          console.error(`❌ [PROCESSOR] ERROR CRÍTICO: No se pudo crear cliente desde lead: ${clientCreationResult.error}`);
+          console.error(`❌ [PROCESSOR] Esto impedirá la creación correcta del ticket`);
+          // NO usar fallback para leads - es mejor fallar que crear datos incorrectos
+          throw new Error(`Error crítico: No se pudo crear cliente desde lead: ${clientCreationResult.error}`);
         }
         
       } else if (this.shouldCreateClientFromScratch(analysis, clientData)) {
-        // No existe cliente ni lead - crear cliente nuevo
+        // 🚨 CASO 3: Cliente nuevo (no lead) - CREAR CLIENTE PRIMERO
+        console.log(`🚨 [PROCESSOR] Creando cliente NUEVO - PRIMERO cliente, DESPUÉS ticket`);
         console.log(`🆕 [PROCESSOR] Creando cliente desde cero para: ${analysis.incident_type}`);
         
         const clientCreationResult = await this.createClientFromScratch(
@@ -237,18 +242,30 @@ export class CallProcessor {
         if (clientCreationResult.success && clientCreationResult.clientId) {
           idCliente = clientCreationResult.clientId;
           clientCreated = true;
-          console.log(`✅ [PROCESSOR] Cliente creado exitosamente desde cero: ${idCliente}`);
+          console.log(`✅ [PROCESSOR] ¡CLIENTE CREADO EXITOSAMENTE DESDE CERO!`);
+          console.log(`🔑 [PROCESSOR] ID del cliente nuevo: ${idCliente}`);
+          console.log(`🎫 [PROCESSOR] Ahora se procederá a crear el ticket con este ID`);
         } else {
-          console.error(`❌ [PROCESSOR] Error creando cliente desde cero: ${clientCreationResult.error}`);
-          // Usar fallback
+          console.error(`❌ [PROCESSOR] ERROR: No se pudo crear cliente desde cero: ${clientCreationResult.error}`);
+          console.error(`❌ [PROCESSOR] Usando fallback para continuar el flujo`);
+          // Para clientes desde cero, sí usar fallback
           idCliente = clientDataExtractor.generateFallbackClientId(call.conversation_id, clientData.telefono);
         }
         
       } else {
-        // Usar fallback
+        // ✅ CASO 4: Usar fallback cuando no hay información suficiente
         idCliente = clientDataExtractor.generateFallbackClientId(call.conversation_id, clientData.telefono);
         console.log(`🔄 [PROCESSOR] Usando idCliente fallback: ${idCliente}`);
       }
+
+      // 🚨 VALIDACIÓN CRÍTICA: Asegurar que tenemos ID válido antes de crear ticket
+      if (!idCliente || idCliente.trim() === '') {
+        throw new Error('ERROR CRÍTICO: No se pudo obtener ID de cliente válido para crear ticket');
+      }
+
+      console.log(`🔑 [PROCESSOR] FLUJO CORRECTO: Cliente procesado - ID: ${idCliente}`);
+      console.log(`🎫 [PROCESSOR] Procediendo a crear ticket con ID de cliente: ${idCliente}`);
+      console.log(`📊 [PROCESSOR] Estado: clientCreated=${clientCreated}, isLead=${clientData.leadInfo?.isLead || false}`);
 
       const ticketData = {
         call_id: call.id, // Actualizado para usar call_id en lugar de conversation_id
@@ -266,9 +283,26 @@ export class CallProcessor {
           client_data: clientData,
           id_cliente: idCliente,
           // 🧠 Información de matching para debugging
-          client_matching_debug: clientData.clientMatchingInfo
+          client_matching_debug: clientData.clientMatchingInfo,
+          // 🚨 AÑADIR INFORMACIÓN CRÍTICA DEL FLUJO
+          client_creation_flow: {
+            was_lead: clientData.leadInfo?.isLead || false,
+            client_created_new: clientCreated,
+            lead_id: clientData.leadInfo?.leadId,
+            client_source: clientData.idCliente ? 'existing' : (clientCreated ? 'newly_created' : 'fallback'),
+            flow_timestamp: new Date().toISOString()
+          }
         }
       };
+
+      console.log(`🎫 [PROCESSOR] Creando ticket con datos:`, {
+        call_id: ticketData.call_id,
+        id_cliente: idCliente,
+        tipo_incidencia: ticketData.tipo_incidencia,
+        client_source: ticketData.metadata.client_creation_flow.client_source,
+        was_lead: ticketData.metadata.client_creation_flow.was_lead,
+        client_created_new: ticketData.metadata.client_creation_flow.client_created_new
+      });
 
       const { data: ticket, error } = await supabase
         .from('tickets')
@@ -281,7 +315,20 @@ export class CallProcessor {
         return [];
       }
 
-      console.log(`🎫 [PROCESSOR] Auto-ticket created: ${ticket.id}`);
+      // 🚨 VALIDACIÓN FINAL: Confirmar que el flujo se completó correctamente
+      console.log(`✅ [PROCESSOR] TICKET CREADO EXITOSAMENTE: ${ticket.id}`);
+      
+      if (clientData.leadInfo?.isLead && clientCreated) {
+        console.log(`🎉 [PROCESSOR] ¡FLUJO CRÍTICO COMPLETADO EXITOSAMENTE!`);
+        console.log(`🔑 [PROCESSOR] Cliente creado desde lead: ${idCliente}`);
+        console.log(`🎫 [PROCESSOR] Ticket creado con ID de cliente: ${ticket.id}`);
+        console.log(`📊 [PROCESSOR] Lead ID: ${clientData.leadInfo.leadId}`);
+        console.log(`📊 [PROCESSOR] Campaña: ${clientData.leadInfo.campaña}`);
+      } else if (clientCreated) {
+        console.log(`🎉 [PROCESSOR] Cliente nuevo creado y ticket generado: ${ticket.id}`);
+      } else {
+        console.log(`🎫 [PROCESSOR] Ticket creado con cliente existente: ${ticket.id}`);
+      }
 
       // 📤 ENVIAR TICKET A SEGURNEO/NOGAL según el tipo de incidencia
       const shouldSend = this.shouldSendToNogal(analysis, clientData, idCliente);
@@ -578,20 +625,39 @@ export class CallProcessor {
   }
 
   /**
-   * 🆕 NUEVO: Crear cliente desde lead
+   * 🚨 CRÍTICO: Crear cliente desde lead
+   * 
+   * ⚠️ FLUJO OBLIGATORIO PARA LEADS:
+   * 1. PRIMERO: Crear cliente en Nogal
+   * 2. DESPUÉS: Usar el ID devuelto para crear ticket
+   * 
+   * Este método es CRÍTICO porque si falla, el ticket no se puede crear correctamente
    */
   private async createClientFromLead(
     clientData: any, 
     conversationId: string, 
     analysis: any
   ): Promise<{ success: boolean; clientId?: string; error?: string }> {
+    console.log(`🚨 [PROCESSOR] INICIANDO CREACIÓN DE CLIENTE DESDE LEAD`);
+    console.log(`🔄 [PROCESSOR] Conversation ID: ${conversationId}`);
+    
     try {
       const leadInfo = clientData.leadInfo;
       const selectedLead = leadInfo.selectedLead;
       
       if (!selectedLead) {
-        throw new Error('No hay lead seleccionado');
+        const error = 'ERROR CRÍTICO: No hay lead seleccionado para crear cliente';
+        console.error(`❌ [PROCESSOR] ${error}`);
+        throw new Error(error);
       }
+
+      console.log(`🔍 [PROCESSOR] Lead seleccionado:`, {
+        nombre: selectedLead.nombre,
+        telefono: selectedLead.telefono,
+        email: selectedLead.email,
+        idLead: leadInfo.leadId,
+        campaña: leadInfo.campaña
+      });
 
       // Extraer nombre y apellidos del lead
       const fullName = selectedLead.nombre || '';
@@ -599,6 +665,14 @@ export class CallProcessor {
       const nombre = nameParts[0] || '';
       const primerApellido = nameParts[1] || '';
       const segundoApellido = nameParts.slice(2).join(' ') || '';
+
+      console.log(`📝 [PROCESSOR] Datos procesados:`, {
+        nombre,
+        primerApellido,
+        segundoApellido,
+        telefono: selectedLead.telefono || clientData.telefono,
+        email: selectedLead.email || clientData.email
+      });
 
       // Preparar datos para crear cliente
       const clientDataFromCall = {
@@ -614,26 +688,44 @@ export class CallProcessor {
         recomendadoPor: analysis.extracted_data?.recomendadoPor
       };
 
+      console.log(`📤 [PROCESSOR] Enviando datos a Nogal para crear cliente...`);
+      
       const result = await nogalClientService.createClientFromCall(
         clientDataFromCall,
         conversationId
       );
 
+      console.log(`📥 [PROCESSOR] Respuesta de Nogal:`, {
+        success: result.success,
+        client_id: result.client_id,
+        message: result.message
+      });
+
       if (result.success && result.client_id) {
+        console.log(`✅ [PROCESSOR] ¡CLIENTE CREADO EXITOSAMENTE EN NOGAL!`);
+        console.log(`🔑 [PROCESSOR] ID del cliente nuevo: ${result.client_id}`);
+        console.log(`🎫 [PROCESSOR] Este ID se usará para crear el ticket`);
+        
         return {
           success: true,
           clientId: result.client_id as string
         };
       } else {
+        const error = result.message || 'Error creando cliente desde lead';
+        console.error(`❌ [PROCESSOR] Error en creación de cliente: ${error}`);
+        
         return {
           success: false,
-          error: result.message || 'Error creando cliente desde lead'
+          error: error
         };
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      console.error(`❌ [PROCESSOR] Excepción en creación de cliente desde lead: ${errorMessage}`);
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido'
+        error: errorMessage
       };
     }
   }
