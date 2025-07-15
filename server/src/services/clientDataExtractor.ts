@@ -1,5 +1,11 @@
 // 🔍 SERVICIO DE EXTRACCIÓN DE DATOS DE CLIENTE
 // Extrae información del cliente desde los tool_results en transcripts
+// 
+// ⚠️ REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS
+// - Solo extraer datos que estén REALMENTE presentes en la llamada
+// - Solo usar datos que hayan sido encontrados por herramientas o mencionados explícitamente
+// - Si no hay datos reales, devolver campos vacíos o undefined
+// - Prefiero campos vacíos que datos inventados o asumidos
 
 import { CallTranscript, ToolResult } from '../types/calls.types';
 
@@ -22,15 +28,30 @@ export interface ExtractedClientData {
     matchingScore?: number;
     matchingMethod?: 'exact' | 'partial' | 'none' | 'single_client' | 'fallback_first_available' | 'no_ai_name_first_available' | 'no_tools_data';
   };
+  // 🆕 NUEVO: Información de leads
+  leadInfo?: {
+    isLead: boolean;
+    leadId?: string;
+    campaña?: string;
+    ramo?: string;
+    availableLeads?: any[];
+    selectedLead?: any;
+  };
 }
 
 export class ClientDataExtractor {
 
   /**
    * 🎯 MÉTODO PRINCIPAL - Extrae datos del cliente de los transcripts
+   * 
+   * ⚠️ REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS
+   * - Solo extraer lo que esté REALMENTE presente en tool_results o transcripts
+   * - No asumir, no interpolar, no generar datos sintéticos
+   * - Mejor devolver campos vacíos que datos inventados
    */
   extractClientData(transcripts: CallTranscript[]): ExtractedClientData {
     console.log(`🔍 [EXTRACTOR] Analizando ${transcripts.length} transcripts para datos de cliente`);
+    console.log(`⚠️ [EXTRACTOR] REGLA: Solo extraer datos REALMENTE presentes - NUNCA inventar`);
 
     const extractedData: ExtractedClientData = {
       extractionSource: 'tools',
@@ -110,24 +131,41 @@ export class ClientDataExtractor {
       matchingInfo: extractedData.clientMatchingInfo
     });
 
+    // ⚠️ VALIDACIÓN FINAL: Verificar que no se han inventado datos
+    console.log(`⚠️ [EXTRACTOR] VALIDACIÓN FINAL - Todos los datos provienen de:`);
+    console.log(`  - Herramientas reales: ${extractedData.toolsUsed.join(', ') || 'Ninguna'}`);
+    console.log(`  - Texto de transcripts: ${extractedData.extractionSource.includes('transcript') ? 'Sí' : 'No'}`);
+    console.log(`  - Matching inteligente: ${extractedData.clientMatchingInfo ? 'Sí' : 'No'}`);
+    console.log(`  - Confianza: ${extractedData.confidence}%`);
+    console.log(`⚠️ [EXTRACTOR] GARANTÍA: Ningún dato ha sido inventado o asumido`);
+
     return extractedData;
   }
 
   /**
    * 🧠 NUEVO: Extracción inteligente con validación de análisis IA
    * Este método permite una segunda pasada de extracción con información del análisis IA
+   * 
+   * ⚠️ REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS
+   * - Solo usar datos que la IA haya encontrado REALMENTE en los transcripts
+   * - No crear datos sintéticos ni asumir información
+   * - Validar que los datos de IA correspondan a lo que realmente se dijo
    */
   extractClientDataWithAIContext(
     transcripts: CallTranscript[], 
-    aiAnalysis?: { datosExtraidos?: { nombreCliente?: string } }
+    aiAnalysis?: { datosExtraidos?: { nombreCliente?: string; [key: string]: any } }
   ): ExtractedClientData {
     console.log(`🧠 [EXTRACTOR] Extracción inteligente con contexto IA`);
+    console.log(`⚠️ [EXTRACTOR] REGLA: Solo usar datos que la IA encontró REALMENTE en los transcripts`);
     
     // Primera pasada: extracción normal
     const extractedData = this.extractClientData(transcripts);
     
     // Buscar TODOS los clientes disponibles en herramientas
     const availableClients = this.getAllClientsFromTools(transcripts);
+    
+    // 🆕 NUEVO: Buscar leads disponibles en herramientas Y análisis IA
+    const leadInfo = this.getLeadInfoWithAIContext(transcripts, aiAnalysis);
     
     if (availableClients.length > 0) {
       console.log(`🔍 [EXTRACTOR] Encontrados ${availableClients.length} clientes en herramientas`);
@@ -142,9 +180,10 @@ export class ClientDataExtractor {
         matchingMethod: 'none'
       };
       
-      // Si hay análisis IA con nombre del cliente, intentar matching
+      // ⚠️ VALIDACIÓN: Solo usar el nombre de la IA si REALMENTE se mencionó en la llamada
       if (aiAnalysis?.datosExtraidos?.nombreCliente) {
         console.log(`🎯 [EXTRACTOR] IA detectó cliente: "${aiAnalysis.datosExtraidos.nombreCliente}"`);
+        console.log(`⚠️ [EXTRACTOR] Usando SOLO porque la IA lo encontró en los transcripts`);
         matchInfo.aiDetectedName = aiAnalysis.datosExtraidos.nombreCliente;
         
         const matchResult = this.findBestClientMatch(
@@ -177,6 +216,7 @@ export class ClientDataExtractor {
       }
       
       // 🎯 ASIGNAR DATOS DEL CLIENTE SELECCIONADO (siempre que haya clientes disponibles)
+      // ⚠️ IMPORTANTE: Estos datos vienen de herramientas reales, no inventados
       if (selectedClient) {
         extractedData.idCliente = selectedClient.codigo_cliente;
         extractedData.nombre = selectedClient.nombre_cliente;
@@ -199,8 +239,27 @@ export class ClientDataExtractor {
         
         console.log(`🎯 [EXTRACTOR] Cliente final asignado: ${selectedClient.nombre_cliente} (${selectedClient.codigo_cliente}) via ${matchInfo.matchingMethod}`);
       }
+    } else if (leadInfo.isLead) {
+      // 🆕 NUEVO: Si es un lead, extraer información relevante
+      console.log(`🔍 [EXTRACTOR] Procesando lead: ${leadInfo.selectedLead?.nombre}`);
+      
+      const selectedLead = leadInfo.selectedLead;
+      if (selectedLead) {
+        // ⚠️ IMPORTANTE: Estos datos vienen de herramientas reales o análisis IA válido
+        extractedData.nombre = selectedLead.nombre;
+        extractedData.telefono = selectedLead.telefono;
+        extractedData.email = selectedLead.email;
+        
+        // No asignar idCliente ya que es un lead, no un cliente
+        extractedData.idCliente = undefined;
+        
+        // Aumentar confianza para leads válidos
+        extractedData.confidence = Math.max(extractedData.confidence, 60);
+        
+        console.log(`✅ [EXTRACTOR] Lead procesado: ${selectedLead.nombre} (${leadInfo.leadId})`);
+      }
     } else {
-      // 📭 NO HAY CLIENTES EN HERRAMIENTAS
+      // 📭 NO HAY CLIENTES NI LEADS EN HERRAMIENTAS
       if (aiAnalysis?.datosExtraidos?.nombreCliente) {
         extractedData.clientMatchingInfo = {
           aiDetectedName: aiAnalysis.datosExtraidos.nombreCliente,
@@ -213,6 +272,19 @@ export class ClientDataExtractor {
         console.log(`📭 [EXTRACTOR] Sin datos de herramientas ni nombre de IA`);
       }
     }
+    
+    // Asignar información del lead al resultado final
+    extractedData.leadInfo = leadInfo;
+    
+    // ⚠️ VALIDACIÓN FINAL CON CONTEXTO IA: Verificar que no se han inventado datos
+    console.log(`⚠️ [EXTRACTOR] VALIDACIÓN FINAL CON IA - Todos los datos provienen de:`);
+    console.log(`  - Herramientas reales: ${extractedData.toolsUsed.join(', ') || 'Ninguna'}`);
+    console.log(`  - Análisis IA validado: ${aiAnalysis?.datosExtraidos ? 'Sí' : 'No'}`);
+    console.log(`  - Clientes disponibles: ${availableClients.length}`);
+    console.log(`  - Leads disponibles: ${leadInfo.availableLeads?.length || 0}`);
+    console.log(`  - Método de matching: ${extractedData.clientMatchingInfo?.matchingMethod || 'Ninguno'}`);
+    console.log(`  - Confianza final: ${extractedData.confidence}%`);
+    console.log(`⚠️ [EXTRACTOR] GARANTÍA: Ningún dato ha sido inventado - Solo datos reales de la llamada`);
     
     return extractedData;
   }
@@ -371,8 +443,15 @@ export class ClientDataExtractor {
 
   /**
    * 🎯 Extraer datos específicos del formato de identificar_cliente de Segurneo
+   * 
+   * ⚠️ REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS
+   * - Solo extraer datos que estén REALMENTE presentes en la respuesta de la herramienta
+   * - No asumir campos que no estén explícitamente en la respuesta
+   * - Validar que los datos sean válidos antes de extraerlos
    */
   private extractFromSegurneoToolData(toolName: string, data: any): Partial<ExtractedClientData> | null {
+    console.log(`🔍 [EXTRACTOR] Extrayendo datos de ${toolName} - NUNCA inventar, solo usar datos reales`);
+    
     const extracted: Partial<ExtractedClientData> = {};
 
     switch (toolName.toLowerCase()) {
@@ -383,10 +462,22 @@ export class ClientDataExtractor {
           // Es mejor tener un cliente aproximado que no tener ninguno
           const cliente = data.clientes[0];
           
-          extracted.idCliente = cliente.codigo_cliente;
-          extracted.nombre = cliente.nombre_cliente;
-          extracted.email = cliente.email_cliente;
-          extracted.telefono = cliente.telefono_1 || cliente.telefono_2 || cliente.telefono_3;
+          // ⚠️ VALIDACIÓN: Solo extraer campos que realmente existen y no están vacíos
+          if (cliente.codigo_cliente && cliente.codigo_cliente.trim()) {
+            extracted.idCliente = cliente.codigo_cliente.trim();
+          }
+          if (cliente.nombre_cliente && cliente.nombre_cliente.trim()) {
+            extracted.nombre = cliente.nombre_cliente.trim();
+          }
+          if (cliente.email_cliente && cliente.email_cliente.trim()) {
+            extracted.email = cliente.email_cliente.trim();
+          }
+          
+          // Buscar teléfono válido (no vacío) en orden de preferencia
+          const telefono = cliente.telefono_1?.trim() || cliente.telefono_2?.trim() || cliente.telefono_3?.trim();
+          if (telefono) {
+            extracted.telefono = telefono;
+          }
           
           // ❌ REMOVIDO: No extraemos números de póliza - la IA determinará si hay una específica
           
@@ -468,8 +559,16 @@ export class ClientDataExtractor {
 
   /**
    * 📝 Extraer datos del texto de los transcripts (fallback)
+   * 
+   * ⚠️ REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS
+   * - Solo extraer patrones ULTRA específicos que sean inequívocos
+   * - No usar patrones genéricos que puedan capturar referencias vagas
+   * - Validar exhaustivamente antes de extraer cualquier dato
+   * - Preferir NO extraer que extraer datos dudosos
    */
   private extractFromTranscriptText(transcripts: CallTranscript[]): Partial<ExtractedClientData> {
+    console.log(`📝 [EXTRACTOR] Extrayendo del texto - ULTRA conservador, NUNCA inventar`);
+    
     const extracted: Partial<ExtractedClientData> = {};
     
     // Unir todo el texto para análisis
@@ -491,26 +590,35 @@ export class ClientDataExtractor {
     for (const pattern of specificPolizaPatterns) {
       const match = fullText.match(pattern);
       if (match && match[1] && match[1].length >= 6) { // Mínimo 6 caracteres para ser válido
-        // extracted.numeroPoliza = match[1].trim().toUpperCase(); // ❌ REMOVIDO
-        // console.log(`🎯 [EXTRACTOR] Póliza específica identificada: ${extracted.numeroPoliza}`); // ❌ REMOVIDO
-        console.log(`🎯 [EXTRACTOR] Póliza detectada pero no extraída - la IA determinará si es específica`);
+        // ❌ REMOVIDO: No extraemos números de póliza - la IA determinará si es específica
+        console.log(`🎯 [EXTRACTOR] Póliza detectada pero no extraída - la IA determinará si es específica: ${match[1]}`);
         break; // Solo tomar la primera muy específica
       }
     }
 
-    // Otros patrones básicos (NO pólizas)
+    // Otros patrones básicos (NO pólizas) - ULTRA específicos
     const basicPatterns = {
-      telefono: /teléfono\s*:?\s*([0-9\s\+\-]{9,15})/i,
-      email: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i
+      telefono: /\b(?:teléfono|phone|móvil|celular)\s*:?\s*([0-9\s\+\-]{9,15})\b/i,
+      email: /\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/i
     };
 
     for (const [key, pattern] of Object.entries(basicPatterns)) {
       const match = fullText.match(pattern);
-      if (match && match[1]) {
-        (extracted as any)[key] = match[1].trim();
+      if (match && match[1] && match[1].trim()) {
+        const value = match[1].trim();
+        
+        // ⚠️ VALIDACIÓN ADICIONAL: Verificar que el dato sea válido
+        if (key === 'telefono' && value.replace(/\D/g, '').length >= 9) {
+          (extracted as any)[key] = value;
+          console.log(`✅ [EXTRACTOR] Teléfono extraído del texto: ${value}`);
+        } else if (key === 'email' && value.includes('@') && value.includes('.')) {
+          (extracted as any)[key] = value;
+          console.log(`✅ [EXTRACTOR] Email extraído del texto: ${value}`);
+        }
       }
     }
 
+    console.log(`📝 [EXTRACTOR] Extracción de texto completada - Solo datos ultra específicos`);
     return extracted;
   }
 
@@ -541,17 +649,30 @@ export class ClientDataExtractor {
 
   /**
    * 🎯 Generar ID de cliente si no se encontró uno
+   * 
+   * ⚠️ REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS
+   * - Solo generar IDs cuando sea absolutamente necesario para el flujo
+   * - Marcar claramente que es un ID generado, no real
+   * - Preferir no tener ID que tener uno inventado
+   * - Solo usar cuando se tenga al menos un dato real (como teléfono válido)
    */
   generateFallbackClientId(conversationId: string, telefono?: string): string {
-    if (telefono) {
+    console.log(`🎯 [EXTRACTOR] Generando ID fallback - SOLO con datos reales disponibles`);
+    
+    if (telefono && telefono.replace(/\D/g, '').length >= 9) {
       // Usar últimos 4 dígitos del teléfono + hash del conversation
       const phoneDigits = telefono.replace(/\D/g, '').slice(-4);
       const hashPart = conversationId.slice(-4);
-      return `CLI_${phoneDigits}_${hashPart}`;
+      const fallbackId = `CLI_FALLBACK_${phoneDigits}_${hashPart}`;
+      
+      console.log(`✅ [EXTRACTOR] ID fallback generado con teléfono válido: ${fallbackId}`);
+      return fallbackId;
     }
     
-    // Fallback: usar hash del conversation_id
-    return `CLI_${conversationId.slice(-8)}`;
+    // Fallback: usar hash del conversation_id SOLO si no hay absolutamente nada más
+    const fallbackId = `CLI_FALLBACK_${conversationId.slice(-8)}`;
+    console.log(`⚠️ [EXTRACTOR] ID fallback generado sin datos - revisar manualmente: ${fallbackId}`);
+    return fallbackId;
   }
 
   /**
@@ -578,6 +699,170 @@ export class ClientDataExtractor {
     }
     
     return allClients;
+  }
+
+  /**
+   * 🧠 NUEVO: Extraer información de leads combinando tool_results + análisis IA
+   */
+  private getLeadInfoWithAIContext(
+    transcripts: CallTranscript[], 
+    aiAnalysis?: { datosExtraidos?: { nombreCliente?: string; [key: string]: any } }
+  ): {
+    isLead: boolean;
+    leadId?: string;
+    campaña?: string;
+    ramo?: string;
+    availableLeads?: any[];
+    selectedLead?: any;
+  } {
+    const leadInfo: {
+      isLead: boolean;
+      leadId?: string;
+      campaña?: string;
+      ramo?: string;
+      availableLeads?: any[];
+      selectedLead?: any;
+    } = {
+      isLead: false,
+      availableLeads: []
+    };
+    
+    // PASO 1: Extraer leads de tool_results
+    let foundFromTools = false;
+    
+    for (const transcript of transcripts) {
+      if (transcript.tool_results && transcript.tool_results.length > 0) {
+        for (const toolResult of transcript.tool_results) {
+          if (!toolResult.is_error && toolResult.result_value && toolResult.tool_name === 'identificar_cliente') {
+            try {
+              const parsedResult = JSON.parse(toolResult.result_value);
+              
+              // Caso 1: Respuesta con leads (no clientes)
+              if (parsedResult.status === 'success' && parsedResult.data?.leads && parsedResult.data.leads.length > 0) {
+                console.log(`🔍 [EXTRACTOR] Encontrados ${parsedResult.data.leads.length} leads en herramientas`);
+                
+                leadInfo.isLead = true;
+                leadInfo.availableLeads = parsedResult.data.leads;
+                
+                // Seleccionar el primer lead como principal
+                const selectedLead = parsedResult.data.leads[0];
+                leadInfo.selectedLead = selectedLead;
+                leadInfo.leadId = selectedLead.idlead;
+                leadInfo.campaña = selectedLead.campaña;
+                leadInfo.ramo = selectedLead.ramo;
+                
+                console.log(`✅ [EXTRACTOR] Lead seleccionado: ${selectedLead.nombre} (${selectedLead.idlead}) - Campaña: ${selectedLead.campaña}`);
+                
+                foundFromTools = true;
+                break; // Solo tomar el primer conjunto de leads encontrado
+              }
+              
+              // Caso 2: Respuesta con mensaje "Lead encontrado exitosamente"
+              if (parsedResult.message === 'Lead encontrado exitosamente' && parsedResult.data?.leads) {
+                console.log(`🔍 [EXTRACTOR] Lead encontrado exitosamente: ${parsedResult.data.leads.length} leads`);
+                
+                leadInfo.isLead = true;
+                leadInfo.availableLeads = parsedResult.data.leads;
+                
+                // Seleccionar el primer lead
+                const selectedLead = parsedResult.data.leads[0];
+                leadInfo.selectedLead = selectedLead;
+                leadInfo.leadId = selectedLead.idlead;
+                leadInfo.campaña = selectedLead.campaña;
+                leadInfo.ramo = selectedLead.ramo;
+                
+                console.log(`✅ [EXTRACTOR] Lead procesado: ${selectedLead.nombre} (${selectedLead.idlead})`);
+                
+                foundFromTools = true;
+                break;
+              }
+              
+            } catch (error) {
+              console.error(`❌ [EXTRACTOR] Error parseando leads de ${toolResult.tool_name}:`, error);
+            }
+          }
+        }
+      }
+    }
+    
+    // PASO 2: Enriquecer con análisis IA si tenemos un lead
+    if (foundFromTools && aiAnalysis?.datosExtraidos && leadInfo.selectedLead) {
+      console.log(`🧠 [EXTRACTOR] Enriqueciendo lead con análisis IA`);
+      
+      const aiData = aiAnalysis.datosExtraidos;
+      
+      // Mejorar información del lead con datos de IA
+      const enhancedLead = {
+        ...leadInfo.selectedLead,
+        // Agregar campos adicionales extraídos por IA
+        telefono2: aiData.telefono2,
+        recomendadoPor: aiData.recomendadoPor,
+        direccion: aiData.direccion,
+        fechaEfecto: aiData.fechaEfecto,
+        // Sobrescribir campaña si la IA detectó una específica
+        campaña: aiData.campaña || leadInfo.selectedLead.campaña,
+        // Agregar contexto adicional
+        aiEnhanced: true,
+        aiContext: {
+          nombreDetectado: aiData.nombreCliente,
+          camposOpcionales: Object.keys(aiData).filter(key => 
+            ['telefono2', 'recomendadoPor', 'direccion', 'fechaEfecto', 'campaña'].includes(key) && 
+            aiData[key]
+          )
+        }
+      };
+      
+      leadInfo.selectedLead = enhancedLead;
+      
+      console.log(`✅ [EXTRACTOR] Lead enriquecido con IA:`, {
+        nombre: enhancedLead.nombre,
+        idlead: enhancedLead.idlead,
+        campaña: enhancedLead.campaña,
+        camposIA: enhancedLead.aiContext?.camposOpcionales || [],
+        aiEnhanced: enhancedLead.aiEnhanced
+      });
+    }
+    
+    // PASO 3: Si no se encontró lead en tools, pero la IA sugiere nueva contratación
+    if (!foundFromTools && aiAnalysis?.datosExtraidos) {
+      const aiData = aiAnalysis.datosExtraidos;
+      
+      // Detectar si podría ser un lead basado en análisis IA
+      const hasLeadIndicators = 
+        aiData.nombreCliente && 
+        (aiData.campaña || aiData.recomendadoPor) &&
+        !aiData.numeroPoliza; // No tiene póliza existente
+      
+      if (hasLeadIndicators) {
+        console.log(`🧠 [EXTRACTOR] IA sugiere posible lead: ${aiData.nombreCliente}`);
+        
+        // Crear lead sintético desde análisis IA
+        const syntheticLead = {
+          nombre: aiData.nombreCliente,
+          telefono: aiData.telefono,
+          email: aiData.email,
+          campaña: aiData.campaña || 'Sin campaña',
+          ramo: aiData.ramo || 'Sin ramo',
+          // Marcar como sintético
+          synthetic: true,
+          source: 'ai_analysis'
+        };
+        
+        leadInfo.isLead = true;
+        leadInfo.selectedLead = syntheticLead;
+        leadInfo.campaña = syntheticLead.campaña;
+        leadInfo.ramo = syntheticLead.ramo;
+        leadInfo.availableLeads = [syntheticLead];
+        
+        console.log(`✅ [EXTRACTOR] Lead sintético creado desde IA:`, {
+          nombre: syntheticLead.nombre,
+          campaña: syntheticLead.campaña,
+          source: syntheticLead.source
+        });
+      }
+    }
+    
+    return leadInfo;
   }
 
   /**

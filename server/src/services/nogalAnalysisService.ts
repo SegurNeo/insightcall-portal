@@ -140,6 +140,13 @@ INSTRUCCIONES:
 5. Determina si requiere creación de ticket
 6. Calcula la prioridad basada en urgencia y complejidad
 
+⚠️ REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS
+- SOLO extraer información que se mencione EXPLÍCITAMENTE en la conversación
+- NO asumir, NO interpretar, NO deducir información que no esté clara
+- Si hay dudas sobre cualquier dato, NO incluirlo
+- Preferir campos vacíos que datos inventados o asumidos
+- Validar EXHAUSTIVAMENTE antes de extraer cualquier información
+
 ⚠️ IMPORTANTE - NÚMEROS DE PÓLIZA:
 - SOLO incluir numeroPoliza si el cliente menciona un número específico (ej: "POL-123456", "póliza número ABC789")
 - NO incluir si dice solo "mi póliza", "la póliza", "cambiar en mi seguro" sin especificar número
@@ -151,6 +158,12 @@ INSTRUCCIONES:
 - Extraer el nombre completo tal como se menciona
 - Si solo se dice "soy Juan" sin apellido, extraer solo "Juan"
 - Si no se menciona el nombre explícitamente, NO incluir este campo
+
+⚠️ IMPORTANTE - TODOS LOS DEMÁS DATOS:
+- SOLO incluir datos que se mencionen EXPLÍCITAMENTE y sin ambigüedad
+- NO asumir información basada en el contexto del tipo de incidencia
+- Cada campo debe tener una mención clara y específica en la conversación
+- Si no se menciona explícitamente un dato, NO incluirlo
 
 Responde EXACTAMENTE en este formato JSON:
 {
@@ -169,11 +182,17 @@ Responde EXACTAMENTE en este formato JSON:
     "nombreCliente": "SOLO si el cliente menciona su nombre explícitamente en la conversación (ej: 'Soy José Luis Pérez'). NO incluir si no se menciona claramente",
     "numeroPoliza": "SOLO si el cliente menciona un número específico de póliza (ej: POL-123456) y está 100% claro que se refiere a ESA póliza. Si dice 'mi póliza' sin especificar número, NO incluir",
     "numeroRecibo": "si se menciona",
+    "telefono": "teléfono principal si se menciona",
+    "telefono2": "teléfono secundario si se menciona",
+    "email": "email si se menciona",
     "cuentaBancaria": "nueva CCC si se proporciona",
     "direccion": "nueva dirección completa si se menciona",
     "fechaEfecto": "fecha de inicio del cambio si se menciona",
     "asegurados": "datos de asegurados a incluir/excluir",
     "prestamo": "datos del préstamo hipotecario si aplica",
+    "recomendadoPor": "SOLO si el cliente menciona explícitamente que fue recomendado por alguien (ej: 'Me recomendó Juan', 'Vengo de parte de María'). Incluir nombre completo del recomendante",
+    "campaña": "SOLO si el cliente menciona una campaña específica (ej: 'Vi el anuncio de verano', 'Llamé por la oferta navideña'). Incluir nombre de la campaña",
+    "ramo": "tipo de seguro si se menciona específicamente (hogar, auto, vida, decesos, salud)",
     "otros": "cualquier otro dato específico relevante"
   },
   "notasParaNogal": "información específica que debe ir en el campo Notas del ticket según las reglas del CSV",
@@ -185,6 +204,7 @@ Responde EXACTAMENTE en este formato JSON:
   async analyzeCallForNogal(messages: TranscriptMessage[], conversationId?: string): Promise<NogalAnalysisResult> {
     try {
       console.log(`[NogalAnalysis] [DEBUG] Analizando conversación ${conversationId || 'unknown'} con ${messages.length} mensajes`);
+      console.log(`⚠️ [NogalAnalysis] [DEBUG] REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS - Solo extraer lo que se mencione explícitamente`);
       console.log(`[NogalAnalysis] [DEBUG] Mensajes recibidos:`, messages);
       
       // Formatear la conversación
@@ -211,6 +231,9 @@ Responde EXACTAMENTE en este formato JSON:
 
         console.log(`[NogalAnalysis] [DEBUG] Respuesta válida recibida, procesando...`);
 
+        // ⚠️ VALIDACIÓN DE DATOS EXTRAÍDOS: Verificar que no se hayan inventado datos
+        const validatedDatosExtraidos = this.validateExtractedData(response.datosExtraidos || {}, conversation);
+
         // Normalizar y validar
         const result: NogalAnalysisResult = {
           incidenciaPrincipal: {
@@ -224,7 +247,7 @@ Responde EXACTAMENTE en este formato JSON:
           incidenciasSecundarias: response.incidenciasSecundarias || [],
           confidence: Math.max(0, Math.min(1, response.confidence || 0.8)),
           resumenLlamada: response.resumenLlamada || 'Llamada procesada sin resumen disponible',
-          datosExtraidos: response.datosExtraidos || {},
+          datosExtraidos: validatedDatosExtraidos,
           notasParaNogal: response.notasParaNogal,
           requiereTicket: response.requiereTicket !== false, // Default true
           prioridad: this.normalizePriority(response.prioridad)
@@ -235,7 +258,8 @@ Responde EXACTAMENTE en este formato JSON:
           motivo: result.incidenciaPrincipal.motivo,
           confidence: result.confidence,
           requiereTicket: result.requiereTicket,
-          prioridad: result.prioridad
+          prioridad: result.prioridad,
+          datosValidados: Object.keys(result.datosExtraidos).length
         });
 
         return result;
@@ -307,6 +331,165 @@ Responde EXACTAMENTE en este formato JSON:
     
     // Crear ticket si la confianza es alta y se requiere
     return analysis.requiereTicket && analysis.confidence >= 0.7;
+  }
+
+  /**
+   * ⚠️ VALIDACIÓN DE DATOS EXTRAÍDOS: Verificar que no se hayan inventado datos
+   * - Valida que cada dato extraído se mencione realmente en la conversación
+   * - Remueve datos que no tengan una mención explícita
+   * - Aplica validaciones específicas por tipo de dato
+   */
+  private validateExtractedData(datosExtraidos: any, conversation: string): any {
+    console.log(`⚠️ [NogalAnalysis] [DEBUG] Validando datos extraídos - NUNCA permitir datos inventados`);
+    
+    const validatedData: any = {};
+    const conversationLower = conversation.toLowerCase();
+
+    // Validar cada campo específicamente
+    if (datosExtraidos.nombreCliente) {
+      if (this.isNameMentionedInConversation(datosExtraidos.nombreCliente, conversationLower)) {
+        validatedData.nombreCliente = datosExtraidos.nombreCliente;
+        console.log(`✅ [NogalAnalysis] [DEBUG] Nombre validado: ${datosExtraidos.nombreCliente}`);
+      } else {
+        console.log(`❌ [NogalAnalysis] [DEBUG] Nombre NO encontrado en conversación, removiendo: ${datosExtraidos.nombreCliente}`);
+      }
+    }
+
+    if (datosExtraidos.numeroPoliza) {
+      if (this.isPolizaMentionedInConversation(datosExtraidos.numeroPoliza, conversationLower)) {
+        validatedData.numeroPoliza = datosExtraidos.numeroPoliza;
+        console.log(`✅ [NogalAnalysis] [DEBUG] Número de póliza validado: ${datosExtraidos.numeroPoliza}`);
+      } else {
+        console.log(`❌ [NogalAnalysis] [DEBUG] Número de póliza NO encontrado en conversación, removiendo: ${datosExtraidos.numeroPoliza}`);
+      }
+    }
+
+    if (datosExtraidos.telefono) {
+      if (this.isPhoneMentionedInConversation(datosExtraidos.telefono, conversationLower)) {
+        validatedData.telefono = datosExtraidos.telefono;
+        console.log(`✅ [NogalAnalysis] [DEBUG] Teléfono validado: ${datosExtraidos.telefono}`);
+      } else {
+        console.log(`❌ [NogalAnalysis] [DEBUG] Teléfono NO encontrado en conversación, removiendo: ${datosExtraidos.telefono}`);
+      }
+    }
+
+    if (datosExtraidos.email) {
+      if (this.isEmailMentionedInConversation(datosExtraidos.email, conversationLower)) {
+        validatedData.email = datosExtraidos.email;
+        console.log(`✅ [NogalAnalysis] [DEBUG] Email validado: ${datosExtraidos.email}`);
+      } else {
+        console.log(`❌ [NogalAnalysis] [DEBUG] Email NO encontrado en conversación, removiendo: ${datosExtraidos.email}`);
+      }
+    }
+
+    // Validar otros campos con validación genérica
+    const otherFields = ['cuentaBancaria', 'direccion', 'fechaEfecto', 'recomendadoPor', 'campaña', 'ramo'];
+    for (const field of otherFields) {
+      if (datosExtraidos[field]) {
+        if (this.isFieldMentionedInConversation(datosExtraidos[field], conversationLower)) {
+          validatedData[field] = datosExtraidos[field];
+          console.log(`✅ [NogalAnalysis] [DEBUG] ${field} validado: ${datosExtraidos[field]}`);
+        } else {
+          console.log(`❌ [NogalAnalysis] [DEBUG] ${field} NO encontrado en conversación, removiendo: ${datosExtraidos[field]}`);
+        }
+      }
+    }
+
+    // Mantener campos estructurados sin validación textual
+    if (datosExtraidos.asegurados) {
+      validatedData.asegurados = datosExtraidos.asegurados;
+    }
+    if (datosExtraidos.prestamo) {
+      validatedData.prestamo = datosExtraidos.prestamo;
+    }
+    if (datosExtraidos.otros) {
+      validatedData.otros = datosExtraidos.otros;
+    }
+
+    console.log(`⚠️ [NogalAnalysis] [DEBUG] Validación completada: ${Object.keys(validatedData).length} campos validados de ${Object.keys(datosExtraidos).length} originales`);
+    return validatedData;
+  }
+
+  /**
+   * Verificar si un nombre se menciona en la conversación
+   */
+  private isNameMentionedInConversation(name: string, conversation: string): boolean {
+    const nameParts = name.toLowerCase().split(' ').filter(part => part.length > 2);
+    
+    // Buscar patrones específicos de presentación
+    const patterns = [
+      `soy ${name.toLowerCase()}`,
+      `me llamo ${name.toLowerCase()}`,
+      `mi nombre es ${name.toLowerCase()}`,
+      `${name.toLowerCase()} soy`
+    ];
+    
+    for (const pattern of patterns) {
+      if (conversation.includes(pattern)) {
+        return true;
+      }
+    }
+    
+    // Verificar que al menos la mayoría de las partes del nombre estén presentes
+    const foundParts = nameParts.filter(part => conversation.includes(part));
+    return foundParts.length >= Math.ceil(nameParts.length * 0.7);
+  }
+
+  /**
+   * Verificar si un número de póliza se menciona en la conversación
+   */
+  private isPolizaMentionedInConversation(poliza: string, conversation: string): boolean {
+    const patterns = [
+      `póliza ${poliza.toLowerCase()}`,
+      `poliza ${poliza.toLowerCase()}`,
+      `número ${poliza.toLowerCase()}`,
+      `numero ${poliza.toLowerCase()}`,
+      poliza.toLowerCase()
+    ];
+    
+    return patterns.some(pattern => conversation.includes(pattern));
+  }
+
+  /**
+   * Verificar si un teléfono se menciona en la conversación
+   */
+  private isPhoneMentionedInConversation(phone: string, conversation: string): boolean {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const phonePatterns = [
+      phone,
+      cleanPhone,
+      phone.replace(/\s/g, ''),
+      phone.replace(/-/g, '')
+    ];
+    
+    return phonePatterns.some(pattern => conversation.includes(pattern));
+  }
+
+  /**
+   * Verificar si un email se menciona en la conversación
+   */
+  private isEmailMentionedInConversation(email: string, conversation: string): boolean {
+    return conversation.includes(email.toLowerCase());
+  }
+
+  /**
+   * Verificar si un campo genérico se menciona en la conversación
+   */
+  private isFieldMentionedInConversation(value: string, conversation: string): boolean {
+    if (!value || value.length < 3) return false;
+    
+    const valueLower = value.toLowerCase();
+    
+    // Para valores cortos, buscar exacto
+    if (valueLower.length <= 10) {
+      return conversation.includes(valueLower);
+    }
+    
+    // Para valores largos, buscar partes significativas
+    const words = valueLower.split(' ').filter(word => word.length > 3);
+    const foundWords = words.filter(word => conversation.includes(word));
+    
+    return foundWords.length >= Math.ceil(words.length * 0.6);
   }
 }
 
