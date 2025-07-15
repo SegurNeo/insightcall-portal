@@ -230,10 +230,10 @@ export class CallProcessingService {
   }
 
   /**
-   * 🎫 Crear tickets automáticos si cumple criterios y enviarlos a Nogal
+   * 🎫 Crear tickets automáticos si cumple criterios INTELIGENTES y enviarlos a Nogal
    */
   private async createTicketsIfNeeded(callRecord: CallRecord): Promise<void> {
-    // Solo crear tickets si hay análisis IA, requiere ticket y confianza alta
+    // Solo crear tickets si hay análisis IA
     const aiAnalysis = callRecord.ai_analysis as any; // Cast to allow new fields
     
     // 🔍 Verificar formato y validez del análisis
@@ -242,16 +242,15 @@ export class CallProcessingService {
       return;
     }
 
-    // 🔄 Normalizar campo requiere_ticket (soportar formatos legacy)
-    const requiereTicket = aiAnalysis.requiere_ticket ?? aiAnalysis.requires_ticket ?? true; // Default true para compatibilidad
-    const confidence = aiAnalysis.confidence || 0;
-
-    if (!requiereTicket || confidence < 0.7) {
-      console.log(`⏭️ [SIMPLE] No se crean tickets: requiere=${requiereTicket}, confianza=${confidence}`);
+    // 🧠 NUEVA LÓGICA INTELIGENTE: Evaluar si procesar basado en contexto
+    const shouldProcessTicket = this.shouldProcessTicketIntelligently(aiAnalysis);
+    
+    if (!shouldProcessTicket.process) {
+      console.log(`⏭️ [SIMPLE] No se crean tickets: ${shouldProcessTicket.reason}`);
       return;
     }
     
-    console.log(`✅ [SIMPLE] Creando ticket automático: confianza=${confidence}, requiere=${requiereTicket}`);
+    console.log(`✅ [SIMPLE] Creando ticket automático con lógica inteligente: ${shouldProcessTicket.reason}`);
     
 
     try {
@@ -289,7 +288,7 @@ export class CallProcessingService {
         aiAnalysis.notas_para_nogal || aiAnalysis.notes || '',
         aiAnalysis.datos_extraidos || aiAnalysis.extracted_data || {},
         aiAnalysis.resumen_analisis || aiAnalysis.summary || 'Análisis no disponible',
-        confidence
+        aiAnalysis.confidence || 0
       );
 
       // 4. 📝 Crear ticket interno en Supabase
@@ -302,14 +301,21 @@ export class CallProcessingService {
         description: descripcionCompleta.trim(),
         metadata: {
           source: 'ai-analysis-auto',
-          confidence: confidence,
+          confidence: aiAnalysis.confidence || 0,
           analysis_timestamp: new Date().toISOString(),
           datos_extraidos: aiAnalysis.datos_extraidos || aiAnalysis.extracted_data || {},
           notas_nogal_originales: aiAnalysis.notas_para_nogal || 'Generado automáticamente',
           client_data: clientData,
           id_cliente: idCliente,
           // 🧠 Información de matching para debugging
-          client_matching_debug: clientData.clientMatchingInfo
+          client_matching_debug: clientData.clientMatchingInfo,
+          // 🧠 NUEVA: Información de decisión inteligente
+          intelligent_decision: {
+            processed_reason: shouldProcessTicket.reason,
+            original_confidence: aiAnalysis.confidence || 0,
+            decision_score: shouldProcessTicket.score,
+            decision_factors: shouldProcessTicket.factors
+          }
         }
       };
 
@@ -361,25 +367,23 @@ export class CallProcessingService {
         let updatedMetadata = { ...ticketData.metadata } as any;
 
         if (nogalResult.success) {
-          console.log(`✅ [SIMPLE] Ticket enviado a Segurneo Voice: ${nogalResult.ticket_id}`);
           finalStatus = 'sent_to_nogal';
-          updatedMetadata.ticket_id = nogalResult.ticket_id; // Campo estandarizado para búsquedas
-          updatedMetadata.nogal_ticket_id = nogalResult.ticket_id; // Mantener compatibilidad
-          updatedMetadata.nogal_sent_at = new Date().toISOString();
-          updatedMetadata.segurneo_voice_response = nogalResult.message;
+          updatedMetadata.nogal_ticket_id = nogalResult.ticket_id;
+          updatedMetadata.nogal_response = nogalResult.message;
+          console.log(`✅ [SIMPLE] Ticket enviado exitosamente a Segurneo/Nogal: ${nogalResult.ticket_id}`);
         } else {
-          console.error(`❌ [SIMPLE] Error enviando a Segurneo Voice: ${nogalResult.error}`);
-          finalStatus = 'failed_nogal';
+          finalStatus = 'failed_to_send';
           updatedMetadata.nogal_error = nogalResult.error;
-          updatedMetadata.nogal_failed_at = new Date().toISOString();
+          console.error(`❌ [SIMPLE] Error enviando ticket a Segurneo/Nogal: ${nogalResult.error}`);
         }
 
-        // Actualizar estado del ticket
+        // Actualizar el ticket con el resultado
         await supabase
           .from('tickets')
           .update({
             status: finalStatus,
-            metadata: updatedMetadata
+            metadata: updatedMetadata,
+            updated_at: new Date().toISOString()
           })
           .eq('id', createdTicket.id);
 
@@ -393,7 +397,7 @@ export class CallProcessingService {
           })
           .eq('id', callRecord.id);
 
-        console.log(`🎉 [SIMPLE] Flujo de tickets completado: ${createdTicket.id} (${finalStatus})`);
+        console.log(`🎉 [SIMPLE] Flujo de tickets completado exitosamente: ${createdTicket.id} (${finalStatus})`);
         
       } else {
         console.log(`⏭️ [SIMPLE] No se envía a Segurneo Voice para este ticket: tipo=${aiAnalysis.tipo_incidencia}, confianza=${clientData.confidence}`);
@@ -427,6 +431,127 @@ export class CallProcessingService {
     } catch (error) {
       console.error(`❌ [SIMPLE] Error en flujo de tickets:`, error);
     }
+  }
+
+  /**
+   * 🧠 FUNCIÓN PÚBLICA: Lógica inteligente para decidir si procesar ticket
+   * No se basa solo en confianza, sino en contexto y valor de la información
+   */
+  public shouldProcessTicketIntelligently(aiAnalysis: any): {
+    process: boolean;
+    reason: string;
+    score: number;
+    factors: string[];
+  } {
+    const factors: string[] = [];
+    let score = 0;
+    let reason = '';
+
+    // 🔥 FACTOR 1: Tipos de incidencia críticos (SIEMPRE procesar)
+    const criticalIncidents = [
+      'Nueva contratación de seguros',
+      'Contratación Póliza',
+      'Retención cliente',
+      'Retención de Cliente Cartera Llamada',
+      'Siniestros'
+    ];
+
+    const isCriticalIncident = criticalIncidents.some(incident => 
+      aiAnalysis.tipo_incidencia?.includes(incident) || 
+      aiAnalysis.incident_type?.includes(incident)
+    );
+
+    if (isCriticalIncident) {
+      score += 100; // Máxima puntuación
+      factors.push(`Incidencia crítica: ${aiAnalysis.tipo_incidencia || aiAnalysis.incident_type}`);
+      reason = `Incidencia crítica que requiere procesamiento: ${aiAnalysis.tipo_incidencia || aiAnalysis.incident_type}`;
+    }
+
+    // 🔥 FACTOR 2: Información valiosa del cliente detectada
+    const hasClientName = aiAnalysis.datos_extraidos?.nombreCliente || aiAnalysis.extracted_data?.nombreCliente;
+    const hasClientInfo = aiAnalysis.datos_extraidos?.telefono || aiAnalysis.extracted_data?.telefono || 
+                         aiAnalysis.datos_extraidos?.email || aiAnalysis.extracted_data?.email;
+    
+    if (hasClientName) {
+      score += 30;
+      factors.push(`Nombre de cliente detectado: ${hasClientName}`);
+    }
+    
+    if (hasClientInfo) {
+      score += 20;
+      factors.push('Información de contacto detectada');
+    }
+
+    // 🔥 FACTOR 3: Resumen de llamada coherente y útil
+    const summary = aiAnalysis.resumen_analisis || aiAnalysis.summary || '';
+    const hasMeaningfulSummary = summary && 
+      summary.length > 50 && 
+      !summary.includes('Error en análisis');
+    
+    if (hasMeaningfulSummary) {
+      score += 25;
+      factors.push('Resumen de llamada coherente');
+    }
+
+    // 🔥 FACTOR 4: Confianza alta (factor tradicional)
+    const confidence = aiAnalysis.confidence || 0;
+    if (confidence >= 0.7) {
+      score += 40;
+      factors.push(`Alta confianza: ${confidence}`);
+    } else if (confidence >= 0.5) {
+      score += 20;
+      factors.push(`Confianza media: ${confidence}`);
+    } else if (confidence >= 0.3) {
+      score += 10;
+      factors.push(`Confianza baja pero procesable: ${confidence}`);
+    }
+
+    // 🔥 FACTOR 5: Tipo de incidencia que requiere seguimiento
+    const needsFollowUp = [
+      'Consulta cliente',
+      'Pago de Recibo',
+      'Duplicado',
+      'Cambio'
+    ];
+
+    const needsFollowUpDetected = needsFollowUp.some(type => 
+      aiAnalysis.tipo_incidencia?.includes(type) || 
+      aiAnalysis.incident_type?.includes(type) ||
+      aiAnalysis.motivo_gestion?.includes(type) ||
+      aiAnalysis.management_reason?.includes(type)
+    );
+
+    if (needsFollowUpDetected) {
+      score += 15;
+      factors.push('Incidencia que requiere seguimiento');
+    }
+
+    // 🚨 DECISIÓN FINAL
+    const shouldProcess = score >= 30; // Umbral mucho más flexible
+
+    if (!reason) {
+      if (shouldProcess) {
+        reason = `Procesamiento aprobado por múltiples factores (score: ${score})`;
+      } else {
+        reason = `Procesamiento rechazado por falta de información valiosa (score: ${score})`;
+      }
+    }
+
+    console.log(`🧠 [SIMPLE] Evaluación inteligente:`, {
+      score,
+      shouldProcess,
+      reason,
+      factors,
+      confidence: aiAnalysis.confidence || 0,
+      incident_type: aiAnalysis.tipo_incidencia || aiAnalysis.incident_type
+    });
+
+    return {
+      process: shouldProcess,
+      reason,
+      score,
+      factors
+    };
   }
 
   /**

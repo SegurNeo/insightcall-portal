@@ -153,14 +153,24 @@ export class CallProcessor {
   }
 
   /**
-   * 🎫 PASO 3: Crear tickets automáticos si cumple criterios
+   * 🎫 PASO 3: Crear tickets automáticos si cumple criterios INTELIGENTES
    */
   private async createAutoTickets(call: Call, analysis: CallAnalysis | null): Promise<string[]> {
-    // Solo crear tickets si hay análisis y confianza alta
-    if (!analysis || analysis.confidence < 0.7) {
-      console.log(`⏭️ [PROCESSOR] No auto-tickets: confianza ${analysis?.confidence || 0}`);
+    // Verificar que tenemos análisis básico
+    if (!analysis) {
+      console.log(`⏭️ [PROCESSOR] No auto-tickets: sin análisis`);
       return [];
     }
+
+    // 🧠 NUEVA LÓGICA INTELIGENTE: Evaluar si procesar basado en contexto
+    const shouldProcessTicket = this.shouldProcessTicketIntelligently(analysis);
+    
+    if (!shouldProcessTicket.process) {
+      console.log(`⏭️ [PROCESSOR] No auto-tickets: ${shouldProcessTicket.reason}`);
+      return [];
+    }
+
+    console.log(`✅ [PROCESSOR] Procesando ticket con lógica inteligente: ${shouldProcessTicket.reason}`);
 
     try {
       // 🔍 EXTRAER DATOS DE CLIENTE de los transcripts estructurados
@@ -291,6 +301,13 @@ export class CallProcessor {
             lead_id: clientData.leadInfo?.leadId,
             client_source: clientData.idCliente ? 'existing' : (clientCreated ? 'newly_created' : 'fallback'),
             flow_timestamp: new Date().toISOString()
+          },
+          // 🧠 NUEVA: Información de decisión inteligente
+          intelligent_decision: {
+            processed_reason: shouldProcessTicket.reason,
+            original_confidence: analysis.confidence,
+            decision_score: shouldProcessTicket.score,
+            decision_factors: shouldProcessTicket.factors
           }
         }
       };
@@ -301,7 +318,8 @@ export class CallProcessor {
         tipo_incidencia: ticketData.tipo_incidencia,
         client_source: ticketData.metadata.client_creation_flow.client_source,
         was_lead: ticketData.metadata.client_creation_flow.was_lead,
-        client_created_new: ticketData.metadata.client_creation_flow.client_created_new
+        client_created_new: ticketData.metadata.client_creation_flow.client_created_new,
+        decision_reason: shouldProcessTicket.reason
       });
 
       const { data: ticket, error } = await supabase
@@ -361,46 +379,39 @@ export class CallProcessor {
           const updatedMetadata = { ...ticketData.metadata } as any;
 
           if (nogalResult.success) {
-            console.log(`✅ [PROCESSOR] Ticket enviado a Segurneo/Nogal: ${nogalResult.ticket_id}`);
-            finalStatus = 'completed'; // ✅ Estado válido en BD
-            updatedMetadata.ticket_id = nogalResult.ticket_id;
+            finalStatus = 'sent_to_nogal';
             updatedMetadata.nogal_ticket_id = nogalResult.ticket_id;
-            updatedMetadata.nogal_sent_at = new Date().toISOString();
-            updatedMetadata.segurneo_voice_response = nogalResult.message;
-            updatedMetadata.nogal_status = 'sent_to_nogal';
+            updatedMetadata.nogal_response = nogalResult.message;
+            console.log(`✅ [PROCESSOR] Ticket enviado exitosamente a Segurneo/Nogal: ${nogalResult.ticket_id}`);
           } else {
-            console.error(`❌ [PROCESSOR] Error enviando a Segurneo/Nogal: ${nogalResult.error}`);
-            finalStatus = 'pending'; // ✅ Estado válido en BD - mantener pendiente para reintento
+            finalStatus = 'failed_to_send';
             updatedMetadata.nogal_error = nogalResult.error;
-            updatedMetadata.nogal_failed_at = new Date().toISOString();
-            updatedMetadata.nogal_status = 'failed_send';
+            console.error(`❌ [PROCESSOR] Error enviando ticket a Segurneo/Nogal: ${nogalResult.error}`);
           }
 
-          // Actualizar ticket con resultado del envío
+          // Actualizar el ticket con el resultado
           await supabase
             .from('tickets')
             .update({
               status: finalStatus,
-              metadata: updatedMetadata
+              metadata: updatedMetadata,
+              updated_at: new Date().toISOString()
             })
             .eq('id', ticket.id);
 
-          console.log(`🎉 [PROCESSOR] Ticket ${ticket.id} finalizado con estado: ${finalStatus}`);
-
-        } catch (error) {
-          console.error(`❌ [PROCESSOR] Error en envío a Segurneo/Nogal:`, error);
+        } catch (nogalError) {
+          console.error(`❌ [PROCESSOR] Error en envío a Segurneo/Nogal:`, nogalError);
           
-          // Marcar como fallido pero mantener pendiente para reintento
+          // Actualizar ticket con error
           await supabase
             .from('tickets')
             .update({
-              status: 'pending', // ✅ Estado válido en BD
+              status: 'failed_to_send',
               metadata: {
                 ...ticketData.metadata,
-                nogal_error: error instanceof Error ? error.message : 'Error desconocido',
-                nogal_failed_at: new Date().toISOString(),
-                nogal_status: 'failed_send'
-              }
+                nogal_error: nogalError instanceof Error ? nogalError.message : 'Error desconocido'
+              },
+              updated_at: new Date().toISOString()
             })
             .eq('id', ticket.id);
         }
@@ -414,6 +425,121 @@ export class CallProcessor {
       console.error(`❌ [PROCESSOR] Ticket creation failed:`, error);
       return [];
     }
+  }
+
+  /**
+   * 🧠 FUNCIÓN PÚBLICA: Lógica inteligente para decidir si procesar ticket
+   * No se basa solo en confianza, sino en contexto y valor de la información
+   */
+  public shouldProcessTicketIntelligently(analysis: CallAnalysis): {
+    process: boolean;
+    reason: string;
+    score: number;
+    factors: string[];
+  } {
+    const factors: string[] = [];
+    let score = 0;
+    let reason = '';
+
+    // 🔥 FACTOR 1: Tipos de incidencia críticos (SIEMPRE procesar)
+    const criticalIncidents = [
+      'Nueva contratación de seguros',
+      'Contratación Póliza',
+      'Retención cliente',
+      'Retención de Cliente Cartera Llamada',
+      'Siniestros'
+    ];
+
+    const isCriticalIncident = criticalIncidents.some(incident => 
+      analysis.incident_type?.includes(incident)
+    );
+
+    if (isCriticalIncident) {
+      score += 100; // Máxima puntuación
+      factors.push(`Incidencia crítica: ${analysis.incident_type}`);
+      reason = `Incidencia crítica que requiere procesamiento: ${analysis.incident_type}`;
+    }
+
+    // 🔥 FACTOR 2: Información valiosa del cliente detectada
+    const hasClientName = analysis.extracted_data?.nombreCliente;
+    const hasClientInfo = analysis.extracted_data?.telefono || analysis.extracted_data?.email;
+    
+    if (hasClientName) {
+      score += 30;
+      factors.push(`Nombre de cliente detectado: ${hasClientName}`);
+    }
+    
+    if (hasClientInfo) {
+      score += 20;
+      factors.push('Información de contacto detectada');
+    }
+
+    // 🔥 FACTOR 3: Resumen de llamada coherente y útil
+    const hasMeaningfulSummary = analysis.summary && 
+      analysis.summary.length > 50 && 
+      !analysis.summary.includes('Error en análisis');
+    
+    if (hasMeaningfulSummary) {
+      score += 25;
+      factors.push('Resumen de llamada coherente');
+    }
+
+    // 🔥 FACTOR 4: Confianza alta (factor tradicional)
+    if (analysis.confidence >= 0.7) {
+      score += 40;
+      factors.push(`Alta confianza: ${analysis.confidence}`);
+    } else if (analysis.confidence >= 0.5) {
+      score += 20;
+      factors.push(`Confianza media: ${analysis.confidence}`);
+    } else if (analysis.confidence >= 0.3) {
+      score += 10;
+      factors.push(`Confianza baja pero procesable: ${analysis.confidence}`);
+    }
+
+    // 🔥 FACTOR 5: Tipo de incidencia que requiere seguimiento
+    const needsFollowUp = [
+      'Consulta cliente',
+      'Pago de Recibo',
+      'Duplicado',
+      'Cambio'
+    ];
+
+    const needsFollowUpDetected = needsFollowUp.some(type => 
+      analysis.incident_type?.includes(type) || 
+      analysis.management_reason?.includes(type)
+    );
+
+    if (needsFollowUpDetected) {
+      score += 15;
+      factors.push('Incidencia que requiere seguimiento');
+    }
+
+    // 🚨 DECISIÓN FINAL
+    const shouldProcess = score >= 30; // Umbral mucho más flexible
+
+    if (!reason) {
+      if (shouldProcess) {
+        reason = `Procesamiento aprobado por múltiples factores (score: ${score})`;
+      } else {
+        reason = `Procesamiento rechazado por falta de información valiosa (score: ${score})`;
+      }
+    }
+
+    console.log(`🧠 [PROCESSOR] Evaluación inteligente:`, {
+      score,
+      shouldProcess,
+      reason,
+      factors,
+      confidence: analysis.confidence,
+      incident_type: analysis.incident_type
+    });
+
+    return {
+      process: shouldProcess,
+      reason,
+      score,
+      factors
+    };
   }
 
   /**
@@ -529,7 +655,7 @@ export class CallProcessor {
     };
   }
 
-  // 🔧 MÉTODOS AUXILIARES PRIVADOS
+  // �� MÉTODOS AUXILIARES PRIVADOS
 
   private normalizeStatus(status: string): 'completed' | 'failed' | 'in_progress' {
     const normalized = status.toLowerCase();
