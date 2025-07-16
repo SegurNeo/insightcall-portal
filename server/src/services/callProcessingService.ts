@@ -967,13 +967,33 @@ export class CallProcessingService {
       analysis.tipo_incidencia === 'Nueva contratación de seguros' ||
       analysis.incident_type === 'Nueva contratación de seguros';
     
-    // Crear cliente si tenemos información suficiente
+    // Para nuevas contrataciones, solo necesitamos el nombre del cliente
     const extractedData = analysis.datos_extraidos || analysis.extracted_data || {};
+    const hasClientName = extractedData.nombreCliente;
+    
+    // Log para debugging
+    console.log(`🔍 [SIMPLE] shouldCreateClientFromScratch:`, {
+      isNewContract,
+      hasClientName,
+      nombreCliente: extractedData.nombreCliente,
+      telefono: clientData.telefono || extractedData.telefono,
+      email: clientData.email || extractedData.email
+    });
+    
+    // Para nuevas contrataciones, crear cliente si tenemos nombre
+    if (isNewContract && hasClientName) {
+      console.log(`✅ [SIMPLE] Debe crear cliente desde cero: Nueva contratación con nombre detectado`);
+      return true;
+    }
+    
+    // Para otros casos, verificar si tenemos información suficiente
     const hasSufficientData = 
-      extractedData.nombreCliente && 
+      hasClientName && 
       (clientData.telefono || clientData.email || extractedData.telefono || extractedData.email);
     
-    return isNewContract && hasSufficientData;
+    const result = isNewContract && hasSufficientData;
+    console.log(`🔍 [SIMPLE] shouldCreateClientFromScratch result:`, result);
+    return result;
   }
 }
 
