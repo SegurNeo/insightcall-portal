@@ -170,6 +170,25 @@ REGLAS ESPECIALES:
 - Para "Exclusiva IA": solo crear automáticamente con alta confianza
 - Para "Manual / Automática": se puede crear tanto manual como automáticamente
 
+⚠️ REGLA CRÍTICA - DETECCIÓN DE DATOS INCOMPLETOS:
+SIEMPRE usar motivo "Datos incompletos" cuando:
+1. El cliente solicita una modificación/gestión específica PERO no tiene los datos necesarios
+2. El agente le dice que necesita más información
+3. El cliente indica que "no tiene", "no sabe", "no recuerda" datos específicos
+4. El agente sugiere que "vuelva a llamar cuando tenga la información"
+5. La conversación termina sin completar la gestión por falta de datos
+
+EJEMPLOS ESPECÍFICOS:
+- Cliente: "Quiero cambiar el DNI de un asegurado" + "No tengo el DNI ahora mismo" → "Datos incompletos"
+- Cliente: "Quiero cambiar la cuenta bancaria" + "No sé el número de cuenta" → "Datos incompletos"  
+- Cliente: "Necesito cesión de derechos" + "No tengo los datos del préstamo" → "Cesión de derechos datos incompletos"
+- Cliente: "Quiero modificar la dirección" + "No recuerdo la dirección completa" → "Datos incompletos"
+
+PROCESO DE DECISIÓN:
+1. ¿Qué gestión quiere hacer el cliente? → Identifica la intención original
+2. ¿Tiene todos los datos necesarios? → Si NO → Usar "Datos incompletos"
+3. ¿La llamada se completa exitosamente? → Si NO por falta de datos → Usar "Datos incompletos"
+
 CONVERSACIÓN A ANALIZAR:
 {{conversation}}
 
@@ -178,8 +197,10 @@ INSTRUCCIONES:
 2. Extrae TODOS los datos relevantes mencionados (números de póliza, cuentas, direcciones, etc.)
 3. **IDENTIFICA EL NOMBRE DEL CLIENTE** mencionado en la conversación (si se menciona)
 4. Genera notas específicas según las consideraciones del CSV
-5. Determina si requiere creación de ticket
-6. Calcula la prioridad basada en urgencia y complejidad
+5. **EVALÚA SI EL CLIENTE TIENE TODOS LOS DATOS NECESARIOS** para completar la gestión solicitada
+6. Si la gestión no se puede completar por falta de datos → usar "Datos incompletos"
+7. Determina si requiere creación de ticket
+8. Calcula la prioridad basada en urgencia y complejidad
 
 ⚠️ REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS
 - SOLO extraer información que se mencione EXPLÍCITAMENTE en la conversación
