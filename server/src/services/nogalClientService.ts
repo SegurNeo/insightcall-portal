@@ -12,7 +12,7 @@ export interface CreateClientRequest {
   IdLlamada: string;
   Nombre: string;
   PrimerApellido: string;
-  SegundoApellido: string;
+  SegundoApellido?: string; // ✅ OPCIONAL: Segundo apellido no siempre disponible
   Telefono: string;
   Email: string;
   // Campos opcionales
@@ -43,7 +43,7 @@ export interface CreateClientResponse {
 export interface ClientDataFromCall {
   nombre: string;
   primerApellido: string;
-  segundoApellido: string;
+  segundoApellido?: string; // ✅ OPCIONAL: Segundo apellido no siempre disponible
   telefono: string;
   email: string;
   telefono2?: string;
@@ -166,7 +166,7 @@ export class NogalClientService {
       IdLlamada: conversationId,
       Nombre: clientData.nombre,
       PrimerApellido: clientData.primerApellido,
-      SegundoApellido: clientData.segundoApellido,
+      SegundoApellido: clientData.segundoApellido || '', // ✅ OPCIONAL: Usar cadena vacía si no existe
       Telefono: clientData.telefono,
       Email: clientData.email,
       ...(clientData.telefono2 && { Telefono2: clientData.telefono2 }),
@@ -189,7 +189,7 @@ export class NogalClientService {
    * 🛡️ Validar campos requeridos
    */
   private validateRequiredFields(clientData: CreateClientRequest): void {
-    const required = ['IdCliente', 'IdLlamada', 'Nombre', 'PrimerApellido', 'SegundoApellido', 'Telefono', 'Email'];
+    const required = ['IdCliente', 'IdLlamada', 'Nombre', 'PrimerApellido', 'Telefono', 'Email']; // ✅ REMOVIDO: SegundoApellido (opcional)
     const missing = required.filter(field => !clientData[field as keyof CreateClientRequest]);
     
     if (missing.length > 0) {
@@ -218,7 +218,7 @@ export class NogalClientService {
       IdLlamada: clientData.IdLlamada,
       Nombre: clientData.Nombre.trim(),
       PrimerApellido: clientData.PrimerApellido.trim(),
-      SegundoApellido: clientData.SegundoApellido.trim(),
+      SegundoApellido: clientData.SegundoApellido?.trim() || '', // ✅ OPCIONAL: Usar cadena vacía si no existe
       Telefono: clientData.Telefono.replace(/\s/g, ''), // Remover espacios
       Email: clientData.Email.toLowerCase().trim(),
       ...(clientData.Telefono2 && { Telefono2: clientData.Telefono2.replace(/\s/g, '') }),
