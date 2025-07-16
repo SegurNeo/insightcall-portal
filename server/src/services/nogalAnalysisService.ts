@@ -178,6 +178,30 @@ SIEMPRE usar motivo "Datos incompletos" cuando:
 4. El agente sugiere que "vuelva a llamar cuando tenga la información"
 5. La conversación termina sin completar la gestión por falta de datos
 
+⚠️ REGLA CRÍTICA - SOLICITUDES DE ANULACIÓN DE PÓLIZAS:
+Para solicitudes de anulación/cancelación de pólizas, evaluar el final de la llamada:
+
+ESCENARIO 1 - FINALIZACIÓN DIRECTA:
+- El agente finaliza la llamada indicando que "se pondrán en contacto con el cliente"
+- El agente dice que "llamarán para gestionar la anulación"
+- No hay transferencia a cola de humanos
+→ USAR: "Retención cliente" - "Retención cliente"
+
+ESCENARIO 2 - TRANSFERENCIA A HUMANOS:
+- El agente transfiere/deriva la llamada a la cola de humanos
+- Se usa [Tool Call: transfer_to_human] o similar
+- La llamada se pasa a agentes humanos para gestionar la anulación
+- Frases como "te voy a pasar con un compañero", "transferir a un agente humano"
+- Final de llamada con tool calls de transferencia
+→ USAR: "Llamada gestión comercial" - "Reenvío agentes humanos"
+
+IMPORTANTE: SIEMPRE generar ticket en solicitudes de anulación, NUNCA dejar sin ticket.
+
+SEÑALES DE TRANSFERENCIA A DETECTAR:
+- [Tool Call: transfer_to_human], [Tool Call: transfer_to_queue], [Tool Call: escalate_to_human]
+- Frases: "te paso con un compañero", "derivar a un agente humano", "transferir la llamada"
+- Mensajes: "un agente humano se pondrá en contacto contigo", "te van a atender desde la cola de humanos"
+
 EJEMPLOS ESPECÍFICOS:
 - Cliente: "Quiero cambiar el DNI de un asegurado" + "No tengo el DNI ahora mismo" → "Datos incompletos"
 - Cliente: "Quiero cambiar la cuenta bancaria" + "No sé el número de cuenta" → "Datos incompletos"  
@@ -199,8 +223,11 @@ INSTRUCCIONES:
 4. Genera notas específicas según las consideraciones del CSV
 5. **EVALÚA SI EL CLIENTE TIENE TODOS LOS DATOS NECESARIOS** para completar la gestión solicitada
 6. Si la gestión no se puede completar por falta de datos → usar "Datos incompletos"
-7. Determina si requiere creación de ticket
-8. Calcula la prioridad basada en urgencia y complejidad
+7. **EVALÚA EL FINAL DE LA LLAMADA** para solicitudes de anulación/cancelación:
+   - Finalización directa + agente promete contacto → "Retención cliente"
+   - Transferencia a humanos → "Llamada gestión comercial - Reenvío agentes humanos"
+8. Determina si requiere creación de ticket
+9. Calcula la prioridad basada en urgencia y complejidad
 
 ⚠️ REGLA FUNDAMENTAL: NUNCA INVENTAR DATOS
 - SOLO extraer información que se mencione EXPLÍCITAMENTE en la conversación
