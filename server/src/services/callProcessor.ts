@@ -379,18 +379,20 @@ export class CallProcessor {
           const updatedMetadata = { ...ticketData.metadata } as any;
 
           if (nogalResult.success) {
-            finalStatus = 'sent_to_nogal';
+            finalStatus = 'completed'; // ✅ ARREGLO: Usar valor permitido por constraint
             updatedMetadata.nogal_ticket_id = nogalResult.ticket_id;
             updatedMetadata.nogal_response = nogalResult.message;
+            updatedMetadata.nogal_status = 'sent_to_nogal'; // Info específica en metadata
             console.log(`✅ [PROCESSOR] Ticket enviado exitosamente a Segurneo/Nogal: ${nogalResult.ticket_id}`);
           } else {
-            finalStatus = 'failed_to_send';
+            finalStatus = 'pending'; // ✅ ARREGLO: Usar valor permitido por constraint
             updatedMetadata.nogal_error = nogalResult.error;
+            updatedMetadata.nogal_status = 'failed_to_send'; // Info específica en metadata
             console.error(`❌ [PROCESSOR] Error enviando ticket a Segurneo/Nogal: ${nogalResult.error}`);
           }
 
           // Actualizar el ticket con el resultado
-          console.log(`🔄 [PROCESSOR] Actualizando ticket ${ticket.id} a estado: ${finalStatus}`);
+          console.log(`🔄 [PROCESSOR] Actualizando ticket ${ticket.id} a estado: ${finalStatus} (${updatedMetadata.nogal_status || 'sin estado específico'})`);
           
           const { error: updateError } = await supabase
             .from('tickets')
@@ -404,22 +406,23 @@ export class CallProcessor {
           if (updateError) {
             console.error(`❌ [PROCESSOR] Error actualizando estado del ticket:`, updateError);
           } else {
-            console.log(`✅ [PROCESSOR] Ticket actualizado exitosamente a estado: ${finalStatus}`);
+            console.log(`✅ [PROCESSOR] Ticket actualizado exitosamente a estado: ${finalStatus} (${updatedMetadata.nogal_status || 'sin estado específico'})`);
           }
 
         } catch (nogalError) {
           console.error(`❌ [PROCESSOR] Error en envío a Segurneo/Nogal:`, nogalError);
           
           // Actualizar ticket con error
-          console.log(`🔄 [PROCESSOR] Actualizando ticket ${ticket.id} a estado: failed_to_send (por error)`);
+          console.log(`🔄 [PROCESSOR] Actualizando ticket ${ticket.id} a estado: pending (por error)`);
           
           const { error: updateError } = await supabase
             .from('tickets')
             .update({
-              status: 'failed_to_send',
+              status: 'pending', // ✅ ARREGLO: Usar valor permitido por constraint
               metadata: {
                 ...ticketData.metadata,
-                nogal_error: nogalError instanceof Error ? nogalError.message : 'Error desconocido'
+                nogal_error: nogalError instanceof Error ? nogalError.message : 'Error desconocido',
+                nogal_status: 'failed_to_send' // Info específica en metadata
               },
               updated_at: new Date().toISOString()
             })
@@ -428,7 +431,7 @@ export class CallProcessor {
           if (updateError) {
             console.error(`❌ [PROCESSOR] Error actualizando estado del ticket (catch):`, updateError);
           } else {
-            console.log(`✅ [PROCESSOR] Ticket actualizado exitosamente a estado: failed_to_send`);
+            console.log(`✅ [PROCESSOR] Ticket actualizado exitosamente a estado: pending (con error)`);
           }
         }
       } else {

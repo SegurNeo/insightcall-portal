@@ -450,18 +450,20 @@ export class CallProcessingService {
         let updatedMetadata = { ...ticketData.metadata } as any;
 
         if (nogalResult.success) {
-          finalStatus = 'sent_to_nogal';
+          finalStatus = 'completed'; // ✅ ARREGLO: Usar valor permitido por constraint
           updatedMetadata.nogal_ticket_id = nogalResult.ticket_id;
           updatedMetadata.nogal_response = nogalResult.message;
+          updatedMetadata.nogal_status = 'sent_to_nogal'; // Info específica en metadata
           console.log(`✅ [SIMPLE] Ticket enviado exitosamente a Segurneo/Nogal: ${nogalResult.ticket_id}`);
         } else {
-          finalStatus = 'failed_to_send';
+          finalStatus = 'pending'; // ✅ ARREGLO: Usar valor permitido por constraint
           updatedMetadata.nogal_error = nogalResult.error;
+          updatedMetadata.nogal_status = 'failed_to_send'; // Info específica en metadata
           console.error(`❌ [SIMPLE] Error enviando ticket a Segurneo/Nogal: ${nogalResult.error}`);
         }
 
         // Actualizar el ticket con el resultado
-        console.log(`🔄 [SIMPLE] Actualizando ticket ${createdTicket.id} a estado: ${finalStatus}`);
+        console.log(`🔄 [SIMPLE] Actualizando ticket ${createdTicket.id} a estado: ${finalStatus} (${updatedMetadata.nogal_status || 'sin estado específico'})`);
         
         const { error: updateError } = await supabase
           .from('tickets')
@@ -475,7 +477,7 @@ export class CallProcessingService {
         if (updateError) {
           console.error(`❌ [SIMPLE] Error actualizando estado del ticket:`, updateError);
         } else {
-          console.log(`✅ [SIMPLE] Ticket actualizado exitosamente a estado: ${finalStatus}`);
+          console.log(`✅ [SIMPLE] Ticket actualizado exitosamente a estado: ${finalStatus} (${updatedMetadata.nogal_status || 'sin estado específico'})`);
         }
 
         // 7. 📊 Actualizar registro de llamada con el ticket creado
