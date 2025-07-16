@@ -139,11 +139,12 @@ export class NogalTicketService {
         timeout: this.TIMEOUT_MS
       });
 
-      if (response.status === 200) {
-        console.log(`✅ [NOGAL] Respuesta exitosa de Segurneo Voice:`, response.data);
+      // ✅ ARREGLO: Aceptar cualquier código de estado 2xx como exitoso
+      if (response.status >= 200 && response.status < 300) {
+        console.log(`✅ [NOGAL] Respuesta exitosa de Segurneo Voice (${response.status}):`, response.data);
         return {
           success: true,
-          message: 'Ticket enviado exitosamente via Segurneo Voice',
+          message: `Ticket enviado exitosamente via Segurneo Voice (HTTP ${response.status})`,
           ticket_id: payload.IdTicket
         };
       } else {
