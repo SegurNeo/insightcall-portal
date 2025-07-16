@@ -1,5 +1,6 @@
 import { generateStructuredResponse } from '../lib/gemini';
 import type { TranscriptMessage } from '../types/common.types';
+import type { NogalTipoCreacion } from '../types/nogal_tickets.types';
 
 export interface NogalIncidencia {
   tipo: string;
@@ -7,7 +8,7 @@ export interface NogalIncidencia {
   ramo?: string;
   consideraciones?: string;
   necesidadCliente?: string;
-  tipoCreacion: 'Manual' | 'Automática' | 'Exclusiva IA';
+  tipoCreacion: NogalTipoCreacion;
 }
 
 export interface NogalAnalysisResult {
@@ -29,105 +30,145 @@ class NogalAnalysisService {
 Eres un experto en seguros y atención al cliente de la Correduría de Seguros Nogal. 
 Analiza la siguiente conversación telefónica y clasifícala según los tipos de incidencia exactos de Nogal.
 
-TIPOS DE INCIDENCIA DISPONIBLES (CSV oficial actualizado de Nogal):
+TIPOS DE INCIDENCIA DISPONIBLES (CSV oficial actualizado de Nogal - 15.07.25):
 
 1. **Nueva contratación de seguros**
    - "Contratación Póliza" (ramo: hogar/auto/vida/decesos/Salud/otros)
-     • Consideración: Si el cliente no existe se crea y sobre esa ficha se crea la incidencia
-     • Necesidad: Cliente quiere contratar un seguro y no tiene incidencia de vencimiento pendiente
+     • Consideración: Si el cliente no existe se crea y sobre esa ficha se crea la incidencia => entramos en creación de clientes, puede ser recomendado de cliente, sin referencias. Puede haber creado por una campaña de referimiento actualmente no muy activas salvo la del metro
+     • Necesidad: Cliente llama porque quiere contratar un seguro y no tiene incidencia de vencimiento pendiente de contratar en nuestro sistema
+     • Tipo creación: Manual / Automática
    - "Póliza anterior suspensión de garantías"
-     • Consideración: debe tener la póliza el check de suspensión de garantías "sí"
-     • Necesidad: Cliente quiere contratar un seguro y tiene una reserva de prima en cia
+     • Consideración: debe de tener la póliza el check de suspensión de garantias "si"
+     • Necesidad: Cliente llama porque quiere contratar un seguro y tiene una reserva de prima en cia
+     • Tipo creación: Manual / Automática
 
 2. **Modificación póliza emitida**
    - "Atención al cliente - Modif datos póliza"
      • Consideración: rellenamos datos en notas
-     • Necesidad: Cliente quiere hacer modificación que no varía prima (nombre, apellido...)
+     • Necesidad: Cliente llama porque quiere hacer alguna modificación que no varía prima (nombre o apellido…) y nos facilita directamente el dato correcto
+     • Tipo creación: Manual / Automática
    - "Cambio nº de cuenta"
      • Consideración: rellenamos datos en notas
-     • Necesidad: Cliente quiere cambiar la CCC en las pólizas y facilita la nueva cuenta
+     • Necesidad: Cliente llama porque quiere cambiar la ccc en las pólizas y nos facilita la nueva cuenta
+     • Tipo creación: Manual / Automática
    - "Cambio fecha de efecto"
      • Consideración: metemos en notas este dato
-     • Necesidad: Cliente solicita cambio de fecha de efecto/entrada en vigor del seguro
+     • Necesidad: Cliente solicita el cambio de la fecha de efecto de la póliza, el cambio de la entrada en vigor de su seguro
+     • Tipo creación: Manual / Automática
    - "Cambio forma de pago"
      • Consideración: metemos en notas este dato
-     • Necesidad: Cliente solicita cambio de peridicidad (sin que fuera anual la forma anterior)
+     • Necesidad: Cliente solicita el cambio de la forma de pago, de la peridicidad del pago de su póliza sin que fuera anual la forma de pago que tenia y que quiere modificar
+     • Tipo creación: Manual / Automática
    - "Modificación nº asegurados"
-     • Consideración: metemos en notas asegurado a incluir/excluir (nombre, apellidos, DNI, fecha nacimiento) y fecha de vigor
-     • Necesidad: Cliente solicita incluir nuevo asegurado o eliminar uno existente
+     • Consideración: metemos en notas este dato. Metemos en notas asegurado a incluir o excluir. Nombre apellidos DNI si lo tuviera y fecha de nacimiento- Nombre y apellidos del asegurado a excluir. Metemos en notas desde que fecha quiere el cliente que entre en vigor el cambio
+     • Necesidad: Cliente solicita que se incluya a un nuevo asegurado o bien que se elimine a alguno de los que tiene inluidos en póliza. Hay que preguntarle desde que que fecha quiere que aplique el cambio
+     • Tipo creación: Manual / Automática
    - "Cambio dirección postal"
      • Consideración: metemos en notas la nueva dirección
-     • Necesidad: Cliente solicita modificar dirección postal de sus pólizas
+     • Necesidad: Cliente solitica que se modifique la dirección postal de sus pólizas
+     • Tipo creación: Manual / Automática
    - "Modificación coberturas"
-     • Consideración: metemos en notas la cobertura a modificar y fecha de vigor
-     • Necesidad: Cliente solicita modificar cobertura (ej: todo riesgo a terceros, electrodomésticos...)
-   - "Cesión de derechos datos incompletos" (Exclusiva IA)
-     • Consideración: Cliente no tiene datos completos del préstamo hipotecario
-     • Necesidad: Cliente solicita cesión pero falta Nº préstamo, banco, fechas
+     • Consideración: metemos en notas lo que nos indiquen respecto a la cobertura amodificar, ejemplo: de todo riesgo a terceros en coche, quitar o incluir reparación de electrodomésticos... Metemos en notas desde que fecha quiere el cliente que entre en vigor el cambio
+     • Necesidad: Cliente solicita modificación de cobertura de su póliza, ejemplo: de todo riesgo a terceros en coche, quitar o incluir reparación de electrodomésticos... Hay que preguntarle desde que que fecha quiere que aplique el cambio
+     • Tipo creación: Manual / Automática
+   - "Cesión de derechos datos incompletos"
+     • Consideración: Cliente solicita una cesión de derechos para un préstamo hiptecario, pero no tienen los datos para darnoslos en la llamada. Hay que indicarle que los busque y nos vuelva a llamar cuando los tenga disponibles inciandole que necesitamos Nº de préstamo; banco (entidad y oficina) / Fecha inicio y fin del préstamo
+     • Necesidad: Cliente solicita una cesión de derechos para un préstamo hiptecario, pero no tienen los datos para darnoslos en la llamada
+     • Tipo creación: exclusiva IA
    - "Cesión de derechos"
-     • Consideración: metemos en notas Nº préstamo, banco (entidad y oficina), fecha inicio y fin
-     • Necesidad: Cliente solicita cesión de derechos y dispone de todos los datos
+     • Consideración: metemos en notas Nº de préstamo; banco (entidad y oficina) / Fecha inicio y fin del préstamo
+     • Necesidad: Cliente solicita una cesión de derechos para un préstamo hipotecario y dispone de los datos requeridos, Nº de préstamo; banco (entidad y oficina) / Fecha inicio y fin del préstamo
+     • Tipo creación: Manual / Automática
    - "Corrección datos erróneos en póliza"
-     • Consideración: metemos en notas los datos a corregir y valores correctos
-     • Necesidad: Cliente solicita corregir errores detectados en su póliza
-   - "Datos incompletos" (Exclusiva IA)
-     • Consideración: metemos en notas los campos que quería modificar señalando que no tenía datos completos
+     • Consideración: metemos en notas los datos a corregir y los valores correctos
+     • Necesidad: Cliente solicita corregir errores que ha detectado en su póliza. Nos debe indicar los datos a corregir así como los valores correctos
+     • Tipo creación: Manual / Automática
+   - "Datos incompletos"
+     • Consideración: metemos en notas los campos que quería modificar el cliente señalando que no tenia los datos completos en el momento de la llamada
      • Necesidad: Cliente solicita cambios pero no dispone de los nuevos datos
+     • Tipo creación: Exclusiva IA
 
 3. **Llamada asistencia en carretera**
    - "Siniestros"
-     • Necesidad: Cliente necesita una grúa. Pasamos directamente con asistencia de cia
+     • Consideración: Cliente llama porque necesita una grúa. Pasamos directamente con asistencia de cia
+     • Necesidad: Cliente llama porque necesita una grúa. Pasamos directamente con asistencia de cia
+     • Tipo creación: Manual / Automática
 
-4. **Retención de Cliente Cartera**
-   - "Retención de Cliente Cartera Llamada"
-     • Necesidad: Cliente llama para ver renovación o anular una póliza de cartera
-
-5. **Cancelación antes de efecto**
-   - "Cancelación antes de efecto llamada"
-     • Necesidad: Cliente llama para cancelar una póliza de NP
-
-6. **Retención cliente**
+4. **Retención cliente**
    - "Retención cliente"
+     • Consideración: Cliente llama para ver renovación o anular una póliza
      • Necesidad: Cliente llama para ver renovación o anular una póliza
+     • Tipo creación: Manual / Automática
 
-7. **Llamada gestión comercial**
+5. **Llamada gestión comercial**
    - "LLam gestión comerc"
-     • Necesidad: Cliente solicita gestión sobre póliza contratada que no es renovación ni anulación
+     • Consideración: Cliente solicita alguna gestión sobre una póliza ya contratada que no es ni renovación ni anulación
+     • Necesidad: Cliente solicita alguna gestión sobre una póliza ya contratada que no es ni renovación ni anulación
+     • Tipo creación: Manual / Automática
    - "Pago de Recibo"
-     • Necesidad: Cliente llama para realizar un pago pendiente de recibo
+     • Consideración: Cliente llama para realizar un pago pendiente de recibo. Se puede crear sobre una póliza contratada o cancelada
+     • Necesidad: Cliente llama para realizar un pago pendiente de recibo. Se puede crear sobre una póliza contratada o cancelada
+     • Tipo creación: Manual / Automática
    - "Consulta cliente"
-     • Consideración: los gestores de att al cliente dan respuesta al cliente en línea, la incidencia se les genera y se debe cerrar siempre
-     • Necesidad: Cliente llama para consulta resoluble desde att cliente (fechas efecto, formas pago, cias...)
+     • Consideración: los gestores de att al cliente dan respuesta al cliente en línea , la incidencia se les genera a ellos y se debe cerrar siempre
+     • Necesidad: Cliente llama para realiza consulta y se puede resolver desde att cliente (info fechas de efecto, formas de pago, cias contratadas…)
+     • Tipo creación: Manual / Automática
    - "Cambio forma de pago"
      • Consideración: metemos en notas este dato
-     • Necesidad: Cliente tiene forma de pago anual y quiere fraccionar
-   - "Reenvío siniestros" (Exclusiva IA)
-     • Consideración: Siempre que se pase la llamada a la cola de siniestros
-   - "Reenvío agentes humanos" (Exclusiva IA)
-     • Consideración: Siempre que se pase la llamada a la cola de humanos
+     • Necesidad: Cliente solicita el cambio de la forma de pago, tiene forma de pago anual y quiere fraccionar
+     • Tipo creación: Manual / Automática
+   - "Reenvío siniestros"
+     • Consideración: Siempre que se pase la llamada a la cola de siniestros el ticket a crear debe tener el tipo "LLamada gestión comercial" y el motivo "Reenvío siniestros"
+     • Necesidad: Cliente necesita ser transferido a la cola de siniestros
+     • Tipo creación: Exclusiva IA
+   - "Reenvío agentes humanos"
+     • Consideración: Cuando se pase la llamada a la cola de humanos el ticket a crear debe tener el tipo "LLamada gestión comercial" y el motivo "Reenvío agentes humanos", siempre que no sea porque el cliente no quiere hablar con la IA o porque la persona que llama no es el tomador de la póliza de referencia
+     • Necesidad: Cliente necesita ser transferido a agentes humanos
+     • Tipo creación: Exclusiva IA
+   - "Reenvío agentes humanos no quiere IA"
+     • Consideración: El cliente indica que quiere hablar con un agente humano
+     • Necesidad: El cliente indica que quiere hablar con un agente humano
+     • Tipo creación: Exclusiva IA
+   - "Reenvío agentes humanos no tomador"
+     • Consideración: La persona que llama no se corresponde con el tomador de la póliza
+     • Necesidad: La persona que llama no se corresponde con el tomador de la póliza
+     • Tipo creación: Exclusiva IA
 
-8. **Baja cliente en BBDD**
+6. **Baja cliente en BBDD**
    - "Baja Cliente BBDD"
-     • Necesidad: Cliente solicita baja en la base de datos porque no quiere que le llamen más
+     • Consideración: Cliente llama solicitando baja en la base de datos de sus datos porque no quiere que le llamen más
+     • Necesidad: Cliente llama solicitando baja en la base de datos de sus datos porque no quiere que le llamen más
+     • Tipo creación: Manual / Automática
 
-9. **Reclamación cliente regalo**
+7. **Reclamación cliente regalo**
    - "Reclamación atención al cliente"
-     • Necesidad: Cliente indica que no ha recibido regalo ofrecido por comercial o por recomendar
+     • Consideración: Cliente llama indicando que no ha recibido regalo ofrecido por comercial, por recomendar a otro cliente...
+     • Necesidad: Cliente llama indicando que no ha recibido regalo ofrecido por comercial, por recomendar a otro cliente...
+     • Tipo creación: Manual / Automática
 
-10. **Solicitud duplicado póliza**
-    - "Correo ordinario"
-      • Necesidad: Cliente solicita envío de duplicado de póliza por correo ordinario
-    - "Duplicado Tarjeta"
-      • Necesidad: Cliente solicita envío de duplicado de tarjetas de seguro de decesos o salud
-    - "Email"
-      • Necesidad: Cliente solicita envío de duplicado de póliza por email
-    - "Información recibos declaración renta"
-      • Necesidad: Cliente solicita envío de recibos de ejercicio fiscal anterior para declaración renta
+8. **Solicitud duplicado póliza**
+   - "Correo ordinario"
+     • Consideración: Cliente solicita envío de duplicado de póliza por correo ordinario
+     • Necesidad: Cliente solicita envío de duplicado de póliza por correo ordinario
+     • Tipo creación: Manual / Automática
+   - "Duplicado Tarjeta"
+     • Consideración: Cliente solicita envío de duplicado de las tarjetas de seguro de decesos o salud
+     • Necesidad: Cliente solicita envío de duplicado de las tarjetas de seguro de decesos o salud
+     • Tipo creación: Manual / Automática
+   - "Email"
+     • Consideración: Cliente solicita envío de duplicado de póliza por email
+     • Necesidad: Cliente solicita envío de duplicado de póliza por email
+     • Tipo creación: Manual / Automática
+   - "Información recibos declaración renta"
+     • Consideración: Cliente solicita envío de recibos de ejercicio fiscal anterior para incorporar los datos a su declaración de la renta
+     • Necesidad: Cliente solicita envío de recibos de ejercicio fiscal anterior para incorporar los datos a su declaración de la renta
+     • Tipo creación: Manual / Automática
 
 REGLAS ESPECIALES:
 - En modificaciones: SIEMPRE preguntar fecha de inicio (hoy, renovación póliza...)
 - Si existe incidencia pendiente de vencimiento: crear rellamada sobre esa incidencia
 - Para "Exclusiva IA": solo crear automáticamente con alta confianza
+- Para "Manual / Automática": se puede crear tanto manual como automáticamente
 
 CONVERSACIÓN A ANALIZAR:
 {{conversation}}
@@ -242,7 +283,7 @@ Responde EXACTAMENTE en este formato JSON:
             ramo: response.incidenciaPrincipal.ramo,
             consideraciones: response.incidenciaPrincipal.consideraciones,
             necesidadCliente: response.incidenciaPrincipal.necesidadCliente,
-            tipoCreacion: response.incidenciaPrincipal.tipoCreacion || 'Manual'
+            tipoCreacion: response.incidenciaPrincipal.tipoCreacion || 'Manual / Automática'
           },
           incidenciasSecundarias: response.incidenciasSecundarias || [],
           confidence: Math.max(0, Math.min(1, response.confidence || 0.8)),
@@ -283,7 +324,7 @@ Responde EXACTAMENTE en este formato JSON:
         incidenciaPrincipal: {
           tipo: 'Llamada gestión comercial',
           motivo: 'Consulta cliente',
-          tipoCreacion: 'Manual' as const,
+          tipoCreacion: 'Manual / Automática' as const,
           necesidadCliente: 'Consulta general no clasificada'
         },
         incidenciasSecundarias: [],
@@ -310,11 +351,19 @@ Responde EXACTAMENTE en este formato JSON:
    * Verifica si una incidencia es de tipo "Exclusiva IA"
    */
   isExclusivaIA(incidencia: NogalIncidencia): boolean {
+    // Verificar primero por tipoCreacion
+    if (incidencia.tipoCreacion === 'Exclusiva IA') {
+      return true;
+    }
+    
+    // Lista actualizada de motivos exclusivos de IA según CSV 15.07.25
     const exclusivaIAMotivos = [
       'Cesión de derechos datos incompletos',
       'Datos incompletos',
       'Reenvío siniestros', 
-      'Reenvío agentes humanos'
+      'Reenvío agentes humanos',
+      'Reenvío agentes humanos no quiere IA',
+      'Reenvío agentes humanos no tomador'
     ];
     
     return exclusivaIAMotivos.includes(incidencia.motivo);
@@ -330,7 +379,7 @@ Responde EXACTAMENTE en este formato JSON:
     }
     
     // Crear ticket si la confianza es alta y se requiere
-    return analysis.requiereTicket && analysis.confidence >= 0.7;
+    return analysis.requiereTicket && analysis.confidence >= 0.3; // Umbral más flexible
   }
 
   /**

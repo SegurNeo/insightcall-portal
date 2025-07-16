@@ -32,21 +32,20 @@ export interface NogalClientData {
 }
 
 /**
- * Mapeo de tipos de incidencia de Nogal basado en tickets_nogal.csv
+ * Mapeo de tipos de incidencia de Nogal basado en tickets_nogal.csv actualizado 15.07.25
  */
 export type NogalTipoIncidencia = 
   | 'Nueva contratación de seguros'
   | 'Modificación póliza emitida'
   | 'Llamada asistencia en carretera'
-  | 'Retención de Cliente Cartera'
-  | 'Cancelación antes de efecto'
+  | 'Retención cliente'
   | 'Llamada gestión comercial'
   | 'Baja cliente en BBDD'
   | 'Reclamación cliente regalo'
   | 'Solicitud duplicado póliza';
 
 /**
- * Motivos de gestión más comunes de Nogal
+ * Motivos de gestión actualizados de Nogal - CSV 15.07.25
  */
 export type NogalMotivoGestion = 
   | 'Contratación Póliza'
@@ -54,29 +53,36 @@ export type NogalMotivoGestion =
   | 'Atención al cliente - Modif datos póliza'
   | 'Cambio nº de cuenta'
   | 'Siniestros'
-  | 'Retención de Cliente Cartera Llamada'
-  | 'Cancelación antes de efecto llamada'
+  | 'Retención cliente'
   | 'LLam gestión comerc'
   | 'Pago de Recibo'
   | 'Consulta cliente'
+  | 'Cambio forma de pago'
+  | 'Reenvío siniestros'
+  | 'Reenvío agentes humanos'
+  | 'Reenvío agentes humanos no quiere IA'
+  | 'Reenvío agentes humanos no tomador'
   | 'Baja Cliente BBDD'
   | 'Reclamación atención al cliente'
   | 'Correo ordinario'
   | 'Duplicado Tarjeta'
   | 'Email'
+  | 'Información recibos declaración renta'
   | 'Cambio fecha de efecto'
-  | 'Cambio forma de pago'
   | 'Modificación nº asegurados'
   | 'Cambio dirección postal'
   | 'Modificación coberturas'
   | 'Cesión de derechos datos incompletos'
   | 'Cesión de derechos'
   | 'Corrección datos erróneos en póliza'
-  | 'Datos incompletos'
-  | 'Reenvío siniestros'
-  | 'Reenvío agentes humanos'
-  | 'Información recibos declaración renta'
-  | 'Cambio de mediador';
+  | 'Datos incompletos';
+
+/**
+ * Tipos de creación según CSV actualizado
+ */
+export type NogalTipoCreacion = 
+  | 'Manual / Automática'
+  | 'Exclusiva IA';
 
 /**
  * Resultado del análisis actualizado para tipos de Nogal
@@ -94,6 +100,9 @@ export interface NogalGeminiAnalysisResult {
   // Contexto extraído
   resumenLlamada: string;
   consideraciones?: string; // Notas adicionales para el gestor
+  
+  // Tipo de creación según CSV
+  tipoCreacion: NogalTipoCreacion;
   
   // Datos específicos extraídos de la conversación
   datosExtraidos: {
@@ -122,7 +131,6 @@ export interface NogalGeminiAnalysisResult {
   // Control de creación
   requiereTicket: boolean;
   esExclusivaIA: boolean; // Para tipos marcados como "Exclusiva IA" en el CSV
-  tipoCreacion: 'Manual' | 'Automática' | 'Exclusiva IA';
 }
 
 /**
@@ -151,51 +159,72 @@ export interface NogalTicketResponse {
 }
 
 /**
- * Mapeo de acciones Gemini actuales a tipos Nogal
+ * Mapeo de acciones Gemini actuales a tipos Nogal actualizados
  */
 export const GEMINI_TO_NOGAL_MAPPING: Record<string, {
   tipoIncidencia: NogalTipoIncidencia;
   motivoGestion: NogalMotivoGestion;
+  tipoCreacion: NogalTipoCreacion;
   esExclusivaIA: boolean;
 }> = {
   'DEVOLUCION_RECIBOS': {
     tipoIncidencia: 'Llamada gestión comercial',
     motivoGestion: 'Pago de Recibo',
+    tipoCreacion: 'Manual / Automática',
     esExclusivaIA: false
   },
   'ANULACION_POLIZA': {
-    tipoIncidencia: 'Cancelación antes de efecto',
-    motivoGestion: 'Cancelación antes de efecto llamada',
+    tipoIncidencia: 'Retención cliente',
+    motivoGestion: 'Retención cliente',
+    tipoCreacion: 'Manual / Automática',
     esExclusivaIA: false
   },
   'REGULARIZACION_POLIZA': {
     tipoIncidencia: 'Modificación póliza emitida',
     motivoGestion: 'Atención al cliente - Modif datos póliza',
-    esExclusivaIA: false
-  },
-  'CAMBIO_MEDIADOR': {
-    tipoIncidencia: 'Modificación póliza emitida',
-    motivoGestion: 'Cambio de mediador',
+    tipoCreacion: 'Manual / Automática',
     esExclusivaIA: false
   },
   'CONTRASEÑAS': {
     tipoIncidencia: 'Llamada gestión comercial',
     motivoGestion: 'Consulta cliente',
+    tipoCreacion: 'Manual / Automática',
     esExclusivaIA: false
   },
   'REENVIO_SINIESTROS': {
     tipoIncidencia: 'Llamada gestión comercial',
     motivoGestion: 'Reenvío siniestros',
+    tipoCreacion: 'Exclusiva IA',
     esExclusivaIA: true
   },
   'REENVIO_AGENTES_HUMANOS': {
     tipoIncidencia: 'Llamada gestión comercial',
     motivoGestion: 'Reenvío agentes humanos',
+    tipoCreacion: 'Exclusiva IA',
+    esExclusivaIA: true
+  },
+  'REENVIO_AGENTES_HUMANOS_NO_QUIERE_IA': {
+    tipoIncidencia: 'Llamada gestión comercial',
+    motivoGestion: 'Reenvío agentes humanos no quiere IA',
+    tipoCreacion: 'Exclusiva IA',
+    esExclusivaIA: true
+  },
+  'REENVIO_AGENTES_HUMANOS_NO_TOMADOR': {
+    tipoIncidencia: 'Llamada gestión comercial',
+    motivoGestion: 'Reenvío agentes humanos no tomador',
+    tipoCreacion: 'Exclusiva IA',
     esExclusivaIA: true
   },
   'DATOS_INCOMPLETOS': {
     tipoIncidencia: 'Modificación póliza emitida',
     motivoGestion: 'Datos incompletos',
+    tipoCreacion: 'Exclusiva IA',
+    esExclusivaIA: true
+  },
+  'CESION_DERECHOS_DATOS_INCOMPLETOS': {
+    tipoIncidencia: 'Modificación póliza emitida',
+    motivoGestion: 'Cesión de derechos datos incompletos',
+    tipoCreacion: 'Exclusiva IA',
     esExclusivaIA: true
   }
 };
