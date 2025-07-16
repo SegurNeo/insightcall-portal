@@ -461,7 +461,9 @@ export class CallProcessingService {
         }
 
         // Actualizar el ticket con el resultado
-        await supabase
+        console.log(`🔄 [SIMPLE] Actualizando ticket ${createdTicket.id} a estado: ${finalStatus}`);
+        
+        const { error: updateError } = await supabase
           .from('tickets')
           .update({
             status: finalStatus,
@@ -469,6 +471,12 @@ export class CallProcessingService {
             updated_at: new Date().toISOString()
           })
           .eq('id', createdTicket.id);
+
+        if (updateError) {
+          console.error(`❌ [SIMPLE] Error actualizando estado del ticket:`, updateError);
+        } else {
+          console.log(`✅ [SIMPLE] Ticket actualizado exitosamente a estado: ${finalStatus}`);
+        }
 
         // 7. 📊 Actualizar registro de llamada con el ticket creado
         await supabase
@@ -485,7 +493,9 @@ export class CallProcessingService {
       } else {
         console.log(`⏭️ [SIMPLE] No se envía a Segurneo Voice para este ticket: tipo=${aiAnalysis.tipo_incidencia}, confianza=${clientData.confidence}`);
         // Solo actualizar el estado del ticket si no se envía a Nogal
-        await supabase
+        console.log(`🔄 [SIMPLE] Actualizando ticket ${createdTicket.id} a estado: pending (no enviado)`);
+        
+        const { error: updateError } = await supabase
           .from('tickets')
           .update({
             status: 'pending', // Mantener como pendiente para posible reintento manual
@@ -497,6 +507,12 @@ export class CallProcessingService {
             updated_at: new Date().toISOString()
           })
           .eq('id', createdTicket.id);
+
+        if (updateError) {
+          console.error(`❌ [SIMPLE] Error actualizando estado del ticket (no enviado):`, updateError);
+        } else {
+          console.log(`✅ [SIMPLE] Ticket actualizado exitosamente a estado: pending`);
+        }
 
         // 7. 📊 Actualizar registro de llamada con el ticket creado
         await supabase

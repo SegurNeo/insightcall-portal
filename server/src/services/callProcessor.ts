@@ -390,7 +390,9 @@ export class CallProcessor {
           }
 
           // Actualizar el ticket con el resultado
-          await supabase
+          console.log(`🔄 [PROCESSOR] Actualizando ticket ${ticket.id} a estado: ${finalStatus}`);
+          
+          const { error: updateError } = await supabase
             .from('tickets')
             .update({
               status: finalStatus,
@@ -399,11 +401,19 @@ export class CallProcessor {
             })
             .eq('id', ticket.id);
 
+          if (updateError) {
+            console.error(`❌ [PROCESSOR] Error actualizando estado del ticket:`, updateError);
+          } else {
+            console.log(`✅ [PROCESSOR] Ticket actualizado exitosamente a estado: ${finalStatus}`);
+          }
+
         } catch (nogalError) {
           console.error(`❌ [PROCESSOR] Error en envío a Segurneo/Nogal:`, nogalError);
           
           // Actualizar ticket con error
-          await supabase
+          console.log(`🔄 [PROCESSOR] Actualizando ticket ${ticket.id} a estado: failed_to_send (por error)`);
+          
+          const { error: updateError } = await supabase
             .from('tickets')
             .update({
               status: 'failed_to_send',
@@ -414,6 +424,12 @@ export class CallProcessor {
               updated_at: new Date().toISOString()
             })
             .eq('id', ticket.id);
+
+          if (updateError) {
+            console.error(`❌ [PROCESSOR] Error actualizando estado del ticket (catch):`, updateError);
+          } else {
+            console.log(`✅ [PROCESSOR] Ticket actualizado exitosamente a estado: failed_to_send`);
+          }
         }
       } else {
         console.log(`⏭️ [PROCESSOR] No se envía a Segurneo/Nogal: idCliente=${!!idCliente}, confidence=${clientData.confidence}`);
