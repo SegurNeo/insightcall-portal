@@ -139,14 +139,25 @@ export class NogalTicketService {
         timeout: this.TIMEOUT_MS
       });
 
-      // ✅ ARREGLO: Aceptar cualquier código de estado 2xx como exitoso
+      // ✅ ARREGLO MEJORADO: Revisar campo success del payload + código HTTP
       if (response.status >= 200 && response.status < 300) {
-        console.log(`✅ [NOGAL] Respuesta exitosa de Segurneo Voice (${response.status}):`, response.data);
-        return {
-          success: true,
-          message: `Ticket enviado exitosamente via Segurneo Voice (HTTP ${response.status})`,
-          ticket_id: payload.IdTicket
-        };
+        console.log(`✅ [NOGAL] Respuesta de Segurneo Voice (${response.status}):`, response.data);
+        
+        // 🎯 VALIDACIÓN PRINCIPAL: Revisar campo success del payload
+        if (response.data && response.data.success === true) {
+          console.log(`✅ [NOGAL] Ticket creado exitosamente en Nogal: ${response.data.ticket_id || payload.IdTicket}`);
+          return {
+            success: true,
+            message: response.data.message || 'Ticket creado exitosamente en Nogal',
+            ticket_id: response.data.ticket_id || payload.IdTicket,
+            nogal_response: response.data
+          };
+        } else {
+          // HTTP 2xx pero success=false - Error en Nogal
+          const errorMsg = response.data?.message || response.data?.error || 'Error procesando ticket en Nogal';
+          console.error(`❌ [NOGAL] Ticket rechazado por Nogal:`, errorMsg);
+          throw new Error(`Nogal error: ${errorMsg}`);
+        }
       } else {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }

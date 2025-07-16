@@ -90,6 +90,7 @@ export interface NogalTicketResponse {
   message: string;
   ticket_id?: string;
   error?: string;
+  nogal_response?: any; // Respuesta completa de Segurneo Voice para debugging
 }
 
 export interface CallRecord {
