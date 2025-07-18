@@ -367,6 +367,7 @@ export class CallProcessor {
             IdLlamada: call.conversation_id,
             TipoIncidencia: analysis.incident_type,
             MotivoIncidencia: analysis.management_reason,
+            Ramo: (analysis.extracted_data?.ramo as string) || (analysis as any).ramo || '', // ✅ NUEVO - ramo desde análisis IA
             NumeroPoliza: (analysis.extracted_data?.numeroPoliza as string) || '', // ✅ SOLO desde análisis IA
             Notas: ticketData.description,
             FicheroLlamada: call.audio_download_url || call.fichero_llamada || '' // 🎵 NUEVO: URL del audio

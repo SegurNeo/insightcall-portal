@@ -248,6 +248,13 @@ INSTRUCCIONES:
 - Si solo se dice "soy Juan" sin apellido, extraer solo "Juan"
 - Si no se menciona el nombre explícitamente, NO incluir este campo
 
+⚠️ IMPORTANTE - DETECCIÓN DEL RAMO:
+- SOLO incluir ramo si se menciona explícitamente el tipo de seguro (ej: "mi seguro de coche", "la póliza de hogar", "mi seguro de vida")
+- Valores válidos: hogar, auto, vida, decesos, Salud, otros
+- Si el agente identifica al cliente y menciona "póliza de decesos", incluir ramo: "decesos"
+- Si se habla de "seguros" en general sin especificar tipo, NO incluir ramo
+- Si hay duda sobre el tipo específico, usar "otros"
+
 ⚠️ IMPORTANTE - TODOS LOS DEMÁS DATOS:
 - SOLO incluir datos que se mencionen EXPLÍCITAMENTE y sin ambigüedad
 - NO asumir información basada en el contexto del tipo de incidencia
@@ -281,7 +288,6 @@ Responde EXACTAMENTE en este formato JSON:
     "prestamo": "datos del préstamo hipotecario si aplica",
     "recomendadoPor": "SOLO si el cliente menciona explícitamente que fue recomendado por alguien (ej: 'Me recomendó Juan', 'Vengo de parte de María'). Incluir nombre completo del recomendante",
     "campaña": "SOLO si el cliente menciona una campaña específica (ej: 'Vi el anuncio de verano', 'Llamé por la oferta navideña'). Incluir nombre de la campaña",
-    "ramo": "tipo de seguro si se menciona específicamente (hogar, auto, vida, decesos, salud)",
     "otros": "cualquier otro dato específico relevante"
   },
   "notasParaNogal": "información específica que debe ir en el campo Notas del ticket según las reglas del CSV",

@@ -26,6 +26,7 @@ export class NogalTicketService {
         IdCliente: this.sanitizeTextField(ticketData.IdCliente, 50, 'IdCliente'),
         TipoIncidencia: this.sanitizeTextField(ticketData.TipoIncidencia, 100, 'TipoIncidencia'),
         MotivoIncidencia: this.sanitizeTextField(ticketData.MotivoIncidencia, 100, 'MotivoIncidencia'),
+        Ramo: this.sanitizeRamo(ticketData.Ramo), // ✅ NUEVO - sanitizar campo ramo
         NumeroPoliza: this.sanitizeNumeroPoliza(ticketData.NumeroPoliza), // ✅ Sanitizar formato
         Notas: this.sanitizeNotas(ticketData.Notas) // ✅ Limitar longitud de notas
       };
@@ -35,7 +36,11 @@ export class NogalTicketService {
         IdTicket: completePayload.IdTicket,
         IdLlamada: completePayload.IdLlamada,
         TipoIncidencia: completePayload.TipoIncidencia,
-        hasPoliza: !!completePayload.NumeroPoliza
+        MotivoIncidencia: completePayload.MotivoIncidencia,
+        hasRamo: !!completePayload.Ramo,
+        ramo: completePayload.Ramo || 'no especificado',
+        hasPoliza: !!completePayload.NumeroPoliza,
+        numeroPoliza: completePayload.NumeroPoliza || 'no especificado'
       });
 
       // 3. Enviar a Segurneo Voice
@@ -302,6 +307,16 @@ export class NogalTicketService {
     }
     
     return sanitized;
+  }
+
+  /**
+   * 🧹 Sanitizar campo Ramo para evitar errores en Nogal
+   */
+  private sanitizeRamo(ramo?: string): string {
+    if (!ramo || ramo.trim() === '') {
+      return 'No especificado';
+    }
+    return this.sanitizeTextField(ramo, 50, 'Ramo');
   }
 
   /**

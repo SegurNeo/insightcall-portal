@@ -431,6 +431,7 @@ export class CallProcessingService {
           IdLlamada: callRecord.conversation_id,
           TipoIncidencia: aiAnalysis.tipo_incidencia || aiAnalysis.incident_type || 'Consulta cliente',
           MotivoIncidencia: aiAnalysis.motivo_gestion || aiAnalysis.management_reason || 'Consulta general',
+          Ramo: aiAnalysis.incidencia_principal?.ramo || aiAnalysis.datos_extraidos?.ramo || (aiAnalysis as any).ramo || '', // ✅ NUEVO - ramo desde análisis IA
           NumeroPoliza: aiAnalysis.datos_extraidos?.numeroPoliza || aiAnalysis.extracted_data?.numeroPoliza || '', // ✅ SOLO desde análisis IA
           Notas: aiAnalysis.notas_para_nogal || descripcionCompleta,
           FicheroLlamada: callRecord.audio_download_url || callRecord.fichero_llamada || '' // 🎵 NUEVO: URL del audio
@@ -440,7 +441,11 @@ export class CallProcessingService {
           IdCliente: nogalPayload.IdCliente,
           IdLlamada: nogalPayload.IdLlamada,
           TipoIncidencia: nogalPayload.TipoIncidencia,
-          hasPoliza: !!nogalPayload.NumeroPoliza
+          MotivoIncidencia: nogalPayload.MotivoIncidencia,
+          hasRamo: !!nogalPayload.Ramo,
+          ramo: nogalPayload.Ramo || 'no detectado',
+          hasPoliza: !!nogalPayload.NumeroPoliza,
+          numeroPoliza: nogalPayload.NumeroPoliza || 'no detectado'
         });
 
         const nogalResult = await nogalTicketService.createAndSendTicket(nogalPayload);

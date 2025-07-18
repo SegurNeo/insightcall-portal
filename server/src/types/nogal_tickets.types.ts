@@ -143,6 +143,7 @@ export interface NogalTicketPayload {
   "IdTicket": string;
   "TipoIncidencia": string;
   "MotivoIncidencia": string;
+  "Ramo"?: string; // ✅ NUEVO - ramo de seguro si se detecta (hogar, auto, vida, decesos, salud, otros)
   "NumeroPoliza"?: string;
   "Notas": string;
   "FicheroLlamada"?: string;
