@@ -83,11 +83,11 @@ export class NogalTicketService {
     try {
       console.log(`🎲 [NOGAL] Generando ID con prefijo: ${todayPrefix}`);
       
-      // Buscar tickets del día en Supabase
+      // 🔧 ARREGLO: Buscar tickets del día usando cast explícito para string
       const { data: existingTickets, error } = await supabase
         .from('tickets')
         .select('metadata')
-        .filter('metadata->ticket_id', 'like', `${todayPrefix}%`)
+        .like('metadata->>ticket_id', `${todayPrefix}%`) // Usar ->> para extraer como texto
         .order('created_at', { ascending: false })
         .limit(1);
 

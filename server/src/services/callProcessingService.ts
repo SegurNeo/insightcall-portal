@@ -192,29 +192,57 @@ export class CallProcessingService {
         // 🧠 CONVERTIR A FORMATO NOGAL PARA ANÁLISIS IA
         let nogalClientData: any = undefined;
         if (clientData.idCliente) {
+          console.log(`🔍 [SIMPLE] DEBUG: Cliente encontrado, construyendo datos para IA: ${clientData.idCliente}`);
+          
           // Obtener datos completos del cliente desde tool_results
           const toolResults = callRecord.transcripts.flatMap(t => t.tool_results || []);
+          console.log(`🔍 [SIMPLE] DEBUG: Total tool_results encontrados: ${toolResults.length}`);
+          
           const clientToolResult = toolResults.find(tr => 
-            (tr as any).tool_name === 'identificar_cliente'
+            (tr as any).tool_name === 'identificar_cliente' || 
+            (tr as any).function_name === 'identificar_cliente'
           );
 
-          if (clientToolResult && (clientToolResult as any).result) {
-            const clientInfo = (clientToolResult as any).result;
-            nogalClientData = {
-              name: clientInfo.nombre || clientData.nombre,
-              dni: clientInfo.dni,
-              phone: clientInfo.telefono || clientData.telefono,
-              email: clientInfo.email || clientData.email,
-              codigoCliente: clientInfo.idCliente || clientData.idCliente,
-              polizas: clientInfo.polizas || [],
-              incidenciasAbiertas: clientInfo.incidenciasAbiertas || []
-            };
-            
-            console.log(`🔍 [SIMPLE] Datos del cliente para análisis IA:`, {
-              name: nogalClientData.name,
-              polizas: nogalClientData.polizas?.length || 0,
-              incidenciasAbiertas: nogalClientData.incidenciasAbiertas?.length || 0
+          console.log(`🔍 [SIMPLE] DEBUG: clientToolResult encontrado:`, !!clientToolResult);
+
+          if (clientToolResult) {
+            const clientInfo = (clientToolResult as any).result || (clientToolResult as any).data;
+            console.log(`🔍 [SIMPLE] DEBUG: clientInfo extraído:`, {
+              hasInfo: !!clientInfo,
+              keys: clientInfo ? Object.keys(clientInfo) : 'none'
             });
+            
+            if (clientInfo) {
+              nogalClientData = {
+                name: clientInfo.nombre || clientData.nombre,
+                dni: clientInfo.dni,
+                phone: clientInfo.telefono || clientData.telefono,
+                email: clientInfo.email || clientData.email,
+                codigoCliente: clientInfo.idCliente || clientData.idCliente,
+                polizas: clientInfo.polizas || [],
+                incidenciasAbiertas: clientInfo.incidenciasAbiertas || []
+              };
+              
+              console.log(`🔍 [SIMPLE] Datos del cliente para análisis IA:`, {
+                name: nogalClientData.name,
+                polizas: nogalClientData.polizas?.length || 0,
+                incidenciasAbiertas: nogalClientData.incidenciasAbiertas?.length || 0
+              });
+            }
+          }
+          
+          // 🚨 FALLBACK: Si no encuentra datos en tool_results, usar datos extraídos básicos
+          if (!nogalClientData && clientData.idCliente) {
+            console.log(`🚨 [SIMPLE] FALLBACK: Usando datos básicos extraídos`);
+            nogalClientData = {
+              name: clientData.nombre,
+              dni: undefined, // No está disponible en ExtractedClientData
+              phone: clientData.telefono,
+              email: clientData.email,
+              codigoCliente: clientData.idCliente,
+              polizas: [],
+              incidenciasAbiertas: []
+            };
           }
         }
 
