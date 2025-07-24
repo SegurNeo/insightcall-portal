@@ -349,65 +349,99 @@ export class CallProcessor {
         console.log(`🎫 [PROCESSOR] Ticket creado con cliente existente: ${ticket.id}`);
       }
 
-      // 🔥 PROCESAMIENTO DE MÚLTIPLES GESTIONES
-      const createdTicketIds: string[] = [];
-      const nogalAnalysis = analysis.extracted_data as any;
+      // 🔥 VERIFICAR MÚLTIPLES GESTIONES DESDE EL ANÁLISIS IA
+      console.log(`🔍 [PROCESSOR] Verificando si hay múltiples gestiones detectadas por la IA...`);
       
-      // Verificar si hay múltiples gestiones
-      const hasMultipleGestiones = nogalAnalysis?.multipleGestiones || (analysis.extracted_data as any)?.totalGestiones > 1;
+      // 🚀 MEJORADO: Detectar múltiples gestiones incluso sin datos completos del cliente
+      const aiAnalysisData = analysis.extracted_data || {};
+      const hasMultipleGestiones = (aiAnalysisData as any).multipleGestiones || ((aiAnalysisData as any).totalGestiones > 1);
       
-      if (hasMultipleGestiones) {
+      // 🔍 DETECTAR MÚLTIPLES GESTIONES POR CONTENIDO DE NOTAS
+      const notas = ticketData.description || '';
+      const hasMultipleIndicators = (
+        notas.includes('Además') || 
+        notas.includes('También') || 
+        notas.includes('Por otro lado') ||
+        notas.includes('Ya aprovechando') ||
+        (notas.includes('seguimiento') && notas.includes('duplicado')) ||
+        (notas.includes('rellamada') && notas.includes('solicita'))
+      );
+      
+      if (hasMultipleGestiones || hasMultipleIndicators) {
         console.log(`🔥 [PROCESSOR] ¡MÚLTIPLES GESTIONES DETECTADAS!`);
-        console.log(`📊 [PROCESSOR] Total gestiones: ${analysis.extracted_data?.totalGestiones || 'desconocido'}`);
+        console.log(`📊 [PROCESSOR] Método detección: ${hasMultipleGestiones ? 'IA directa' : 'indicadores en texto'}`);
+        console.log(`📝 [PROCESSOR] Contenido: ${notas.substring(0, 100)}...`);
         
-        // PROCESAR INCIDENCIA PRINCIPAL
-        const incidenciaPrincipal = nogalAnalysis.incidenciaPrincipal;
-        if (incidenciaPrincipal) {
-          const principalTicketId = await this.procesarIncidenciaIndividual(
-            incidenciaPrincipal, 
-            call, 
-            idCliente, 
-            ticketData, 
-            'principal'
-          );
-          if (principalTicketId) createdTicketIds.push(principalTicketId);
-        }
-        
-        // PROCESAR INCIDENCIAS SECUNDARIAS
-        const incidenciasSecundarias = nogalAnalysis.incidenciasSecundarias || [];
-        for (let i = 0; i < incidenciasSecundarias.length; i++) {
-          const incidenciaSecundaria = incidenciasSecundarias[i];
-          const secundariaTicketId = await this.procesarIncidenciaIndividual(
-            incidenciaSecundaria,
-            call,
-            idCliente,
-            ticketData,
-            `secundaria_${i + 1}`
-          );
-          if (secundariaTicketId) createdTicketIds.push(secundariaTicketId);
-        }
-        
-        console.log(`✅ [PROCESSOR] Múltiples gestiones procesadas: ${createdTicketIds.length} tickets/rellamadas creados`);
-        return createdTicketIds;
+        // 🎯 TODO: Implementar procesamiento de múltiples gestiones
+        // Por ahora, procesar como gestión única pero con mejor logging
+        console.log(`⚠️ [PROCESSOR] Múltiples gestiones detectadas pero procesando como única (temporal)`);
       }
       
       // FLUJO TRADICIONAL: UNA SOLA GESTIÓN
       console.log(`📝 [PROCESSOR] Procesando gestión única tradicional`);
       
-      // Verificar si la incidencia principal es una rellamada
-      const incidenciaPrincipal = nogalAnalysis?.incidenciaPrincipal;
+      // 🔥 VERIFICAR MÚLTIPLES GESTIONES Y RELLAMADAS
+      const incidenciaPrincipal = (aiAnalysisData as any)?.incidenciaPrincipal;
+      const incidenciasSecundarias = (aiAnalysisData as any)?.incidenciasSecundarias || [];
+      const createdIds: string[] = [];
+
+      // ✅ PROCESAR INCIDENCIA PRINCIPAL
       if (incidenciaPrincipal?.esRellamada && incidenciaPrincipal.incidenciaRelacionada) {
         console.log(`📞 [PROCESSOR] ¡RELLAMADA DETECTADA EN INCIDENCIA PRINCIPAL!`);
         
-        const rellamadaTicketId = await this.procesarIncidenciaIndividual(
+        const rellamadaId = await this.crearRellamada(
           incidenciaPrincipal,
           call,
           idCliente,
-          ticketData,
-          'principal'
+          ticketData
         );
         
-        return rellamadaTicketId ? [rellamadaTicketId] : [];
+        if (rellamadaId) createdIds.push(rellamadaId);
+      } else if (incidenciaPrincipal) {
+        console.log(`🎫 [PROCESSOR] Creando ticket para incidencia principal`);
+        
+        const ticketId = await this.crearTicketNormal(
+          incidenciaPrincipal,
+          call,
+          idCliente,
+          ticketData
+        );
+        
+        if (ticketId) createdIds.push(ticketId);
+      }
+
+      // ✅ PROCESAR INCIDENCIAS SECUNDARIAS
+      for (let i = 0; i < incidenciasSecundarias.length; i++) {
+        const incidencia = incidenciasSecundarias[i];
+        
+        if (incidencia.esRellamada && incidencia.incidenciaRelacionada) {
+          console.log(`📞 [PROCESSOR] Creando rellamada secundaria ${i + 1}`);
+          
+          const rellamadaId = await this.crearRellamada(
+            incidencia,
+            call,
+            idCliente,
+            ticketData
+          );
+          
+          if (rellamadaId) createdIds.push(rellamadaId);
+        } else {
+          console.log(`🎫 [PROCESSOR] Creando ticket secundario ${i + 1}`);
+          
+          const ticketId = await this.crearTicketNormal(
+            incidencia,
+            call,
+            idCliente,
+            ticketData
+          );
+          
+          if (ticketId) createdIds.push(ticketId);
+        }
+      }
+
+      if (createdIds.length > 0) {
+        console.log(`✅ [PROCESSOR] Múltiples gestiones procesadas: ${createdIds.length}`);
+        return createdIds;
       }
 
       // 📤 FLUJO NORMAL: ENVIAR TICKET A SEGURNEO/NOGAL según el tipo de incidencia
@@ -1183,6 +1217,184 @@ export class CallProcessor {
     }
     
     return description;
+  }
+
+  /**
+   * 📞 NUEVO: Crear rellamada usando el servicio específico
+   */
+  private async crearRellamada(
+    incidencia: any,
+    call: Call,
+    idCliente: string,
+    baseTicketData: any
+  ): Promise<string | null> {
+    try {
+      console.log(`📞 [PROCESSOR] Creando rellamada:`, {
+        idCliente,
+        incidenciaRelacionada: incidencia.incidenciaRelacionada,
+        tipo: incidencia.tipo
+      });
+
+      // Crear rellamada usando el servicio específico
+      const rellamadaResponse = await nogalRellamadaService.crearRellamadaDesdeAnalisis(
+        idCliente,
+        call.conversation_id,
+        incidencia.incidenciaRelacionada,
+        incidencia.consideraciones || 'Seguimiento de incidencia solicitado por el cliente',
+        call.audio_download_url || undefined
+      );
+
+      if (rellamadaResponse.success) {
+        console.log(`✅ [PROCESSOR] Rellamada creada exitosamente: ${rellamadaResponse.rellamada_id}`);
+
+        // Crear registro en tickets table con metadata de rellamada
+        const ticketData = {
+          ...baseTicketData,
+          tipo_incidencia: incidencia.tipo,
+          motivo_incidencia: incidencia.motivo,
+          description: `RELLAMADA: ${incidencia.consideraciones}`,
+          metadata: {
+            ...baseTicketData.metadata,
+            tipo_gestion: 'rellamada',
+            rellamada_id: rellamadaResponse.rellamada_id,
+            incidencia_relacionada: incidencia.incidenciaRelacionada,
+            nogal_response: rellamadaResponse.nogal_response
+          }
+        };
+
+        const { data: ticket, error } = await supabase
+          .from('tickets')
+          .insert([ticketData])
+          .select('id')
+          .single();
+
+        if (error) {
+          console.error(`❌ [PROCESSOR] Error guardando rellamada en BD:`, error);
+          return null;
+        }
+
+        return ticket.id;
+      } else {
+        console.error(`❌ [PROCESSOR] Error creando rellamada:`, rellamadaResponse.message);
+        return null;
+      }
+    } catch (error) {
+      console.error(`❌ [PROCESSOR] Excepción creando rellamada:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * 🎫 NUEVO: Crear ticket normal usando el servicio existente
+   */
+  private async crearTicketNormal(
+    incidencia: any,
+    call: Call,
+    idCliente: string,
+    baseTicketData: any
+  ): Promise<string | null> {
+    try {
+      console.log(`🎫 [PROCESSOR] Creando ticket normal:`, {
+        idCliente,
+        tipo: incidencia.tipo,
+        motivo: incidencia.motivo
+      });
+
+      // Crear ticket interno
+      const ticketData = {
+        ...baseTicketData,
+        tipo_incidencia: incidencia.tipo,
+        motivo_incidencia: incidencia.motivo,
+        description: incidencia.consideraciones || incidencia.necesidadCliente || 'Gestión automática',
+        metadata: {
+          ...baseTicketData.metadata,
+          tipo_gestion: 'ticket',
+          incidencia_data: incidencia
+        }
+      };
+
+      const { data: ticket, error } = await supabase
+        .from('tickets')
+        .insert([ticketData])
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error(`❌ [PROCESSOR] Error creando ticket interno:`, error);
+        return null;
+      }
+
+      console.log(`✅ [PROCESSOR] Ticket interno creado: ${ticket.id}`);
+
+      // Enviar a Segurneo/Nogal si cumple criterios
+      const mockAnalysis = {
+        incident_type: incidencia.tipo,
+        management_reason: incidencia.motivo,
+        confidence: 0.8,
+        priority: 'medium' as 'low' | 'medium' | 'high',
+        summary: 'Gestión automática procesada',
+        extracted_data: {}
+      };
+      
+      const shouldSend = this.shouldSendToNogal(
+        mockAnalysis, 
+        { confidence: 0.8, idCliente }, 
+        idCliente
+      );
+
+      if (shouldSend) {
+        console.log(`📤 [PROCESSOR] Enviando ticket a Segurneo/Nogal: ${ticket.id}`);
+
+        const nogalPayload = {
+          IdCliente: idCliente,
+          IdLlamada: call.conversation_id,
+          TipoIncidencia: incidencia.tipo,
+          MotivoIncidencia: incidencia.motivo,
+          Ramo: incidencia.ramo || '',
+          NumeroPoliza: incidencia.numeroPoliza || '',
+          Notas: incidencia.consideraciones || incidencia.necesidadCliente || 'Gestión automática',
+          FicheroLlamada: call.audio_download_url || ''
+        };
+
+        try {
+          const nogalResult = await nogalTicketService.createAndSendTicket(nogalPayload);
+          console.log(`✅ [PROCESSOR] Ticket enviado a Nogal exitosamente`);
+
+          // Actualizar metadata con resultado de Nogal
+          await supabase
+            .from('tickets')
+            .update({
+              status: 'sent',
+              metadata: {
+                ...ticketData.metadata,
+                nogal_result: nogalResult,
+                sent_at: new Date().toISOString()
+              }
+            })
+            .eq('id', ticket.id);
+
+        } catch (nogalError) {
+          console.error(`❌ [PROCESSOR] Error enviando ticket a Nogal:`, nogalError);
+          
+          await supabase
+            .from('tickets')
+            .update({
+              status: 'pending',
+              metadata: {
+                ...ticketData.metadata,
+                nogal_error: nogalError instanceof Error ? nogalError.message : 'Error desconocido',
+                failed_at: new Date().toISOString()
+              }
+            })
+            .eq('id', ticket.id);
+        }
+      }
+
+      return ticket.id;
+    } catch (error) {
+      console.error(`❌ [PROCESSOR] Excepción creando ticket normal:`, error);
+      return null;
+    }
   }
 }
 

@@ -5,7 +5,7 @@ if (!process.env.GEMINI_API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-export const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+export const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
 export async function generateTextResponse(prompt: string, context?: string): Promise<string> {
   try {
