@@ -32,10 +32,25 @@ export interface NogalAnalysisResult {
 class NogalAnalysisService {
   
   private readonly NOGAL_PROMPT = `
-🔥 INSTRUCCIÓN CRÍTICA: ANALIZA LA CONVERSACIÓN COMPLETA DE PRINCIPIO A FIN
+🚀 **ANÁLISIS AUTÓNOMO - INSTRUCCIÓN PRINCIPAL**:
+
+🔥 **LA TRANSCRIPCIÓN COMPLETA TIENE TODA LA INFORMACIÓN QUE NECESITAS**:
+- Datos del cliente (nombre, DNI, email, teléfono)
+- Pólizas contratadas y números de póliza
+- Incidencias abiertas y gestiones previas
+- Contexto completo de todas las gestiones solicitadas
+
+🎯 **TU MISIÓN - SÉ COMPLETAMENTE AUTÓNOMO**:
+1. **EXTRAE TODO** de la transcripción directamente
+2. **NO DEPENDAS** de datos externos - analiza SOLO la conversación
+3. **IDENTIFICA MÚLTIPLES GESTIONES** si existen en una misma llamada
+4. **DETECTA RELLAMADAS** cuando cliente menciona incidencias previas
+5. **ENCUENTRA NÚMEROS DE PÓLIZA** mencionados en la conversación
+
+🔥 **INSTRUCCIÓN CRÍTICA: ANALIZA LA CONVERSACIÓN COMPLETA DE PRINCIPIO A FIN**
 NO te enfoques solo en la solicitud inicial del cliente. DEBES analizar TODA la conversación hasta el final para entender QUÉ REALMENTE PASÓ en la llamada.
 
-⚠️ REGLA FUNDAMENTAL: EL RESULTADO FINAL DE LA LLAMADA ES MÁS IMPORTANTE QUE LA SOLICITUD INICIAL
+⚠️ **REGLA FUNDAMENTAL: EL RESULTADO FINAL DE LA LLAMADA ES MÁS IMPORTANTE QUE LA SOLICITUD INICIAL**
 
 Eres un experto en seguros y atención al cliente de la Correduría de Seguros Nogal. 
 Analiza la siguiente conversación telefónica COMPLETA y clasifícala según los tipos de incidencia exactos de Nogal.
@@ -625,22 +640,23 @@ Responde EXACTAMENTE en este formato JSON:
     clientData?: NogalClientData
   ): Promise<NogalAnalysisResult> {
     try {
-      console.log(`[NogalAnalysis] [DEBUG] Analizando conversación ${conversationId || 'unknown'} con ${messages.length} mensajes`);
-      console.log(`[NogalAnalysis] [DEBUG] Datos del cliente:`, clientData);
+      console.log(`[NogalAnalysis] [SIMPLE] Analizando conversación ${conversationId || 'unknown'} con ${messages.length} mensajes`);
       
-      // Formatear la conversación
+      // 🎯 FORMATEAR LA CONVERSACIÓN COMPLETA - La IA analizará TODO
       const conversation = messages
         .map(m => `${m.role.toUpperCase()}: ${m.message}`)
         .join('\n');
 
-      // Formatear información del cliente
-      const clientInfo = clientData ? this.formatClientDataForPrompt(clientData) : 'INFORMACIÓN DEL CLIENTE:\nNo hay información del cliente disponible.';
+      // 🚀 SIMPLE: La IA analizará la conversación completa autónomamente
+      // No necesitamos datos externos complejos - está todo en la transcripción
+      const clientInfo = clientData ? this.formatClientDataForPrompt(clientData) : 
+        'INFORMACIÓN DEL CLIENTE:\nAnalizar la transcripción para extraer datos del cliente.';
 
       const prompt = this.NOGAL_PROMPT
         .replace('{{conversation}}', conversation)
         .replace('{{clientData}}', clientInfo);
 
-      console.log(`[NogalAnalysis] [DEBUG] Enviando prompt a Gemini - Cliente: ${clientData?.name || 'N/A'}, Pólizas: ${clientData?.polizas?.length || 0}`);
+      console.log(`[NogalAnalysis] [SIMPLE] Enviando transcripción completa a Gemini para análisis autónomo`);
 
       const response = await generateStructuredResponse<NogalAnalysisResult>(prompt);
       

@@ -694,91 +694,11 @@ export class CallProcessor {
         message: t.message
       }));
 
-      // 🔍 EXTRAER DATOS DEL CLIENTE PRIMERO para pasarlos al análisis
-      const adaptedTranscripts = transcripts.map(t => ({
-        sequence: t.sequence || 0,
-        speaker: t.speaker,
-        message: t.message,
-        segment_start_time: t.start_time || 0,
-        segment_end_time: t.end_time || 0,
-        tool_calls: t.tool_calls,
-        tool_results: t.tool_results,
-        feedback: t.feedback
-      }));
-
-      const clientData = clientDataExtractor.extractClientDataWithAIContext(
-        adaptedTranscripts as any,
-        { datosExtraidos: {} }
-      );
-
-      // 🧠 CONVERTIR A FORMATO NOGAL PARA ANÁLISIS IA
-      let nogalClientData: any = undefined;
-      if (clientData.idCliente) {
-        console.log(`🔍 [PROCESSOR] DEBUG: Cliente encontrado, construyendo datos para IA: ${clientData.idCliente}`);
-        
-        // Obtener datos completos del cliente desde tool_results
-        const toolResults = transcripts.flatMap(t => t.tool_results || []);
-        console.log(`🔍 [PROCESSOR] DEBUG: Total tool_results encontrados: ${toolResults.length}`);
-        
-        // DEBUG: Mostrar estructura de tool_results
-        toolResults.forEach((tr, index) => {
-          console.log(`🔍 [PROCESSOR] DEBUG tool_result[${index}]:`, {
-            keys: Object.keys(tr),
-            tool_name: (tr as any).tool_name,
-            status: (tr as any).status,
-            hasResult: !!(tr as any).result
-          });
-        });
-        
-        const clientToolResult = toolResults.find(tr => 
-          (tr as any).tool_name === 'identificar_cliente' || 
-          (tr as any).function_name === 'identificar_cliente'
-        );
-
-        console.log(`🔍 [PROCESSOR] DEBUG: clientToolResult encontrado:`, !!clientToolResult);
-
-        if (clientToolResult) {
-          const clientInfo = (clientToolResult as any).result || (clientToolResult as any).data;
-          console.log(`🔍 [PROCESSOR] DEBUG: clientInfo extraído:`, {
-            hasInfo: !!clientInfo,
-            keys: clientInfo ? Object.keys(clientInfo) : 'none'
-          });
-          
-          if (clientInfo) {
-            nogalClientData = {
-              name: clientInfo.nombre || clientData.nombre,
-              dni: clientInfo.dni,
-              phone: clientInfo.telefono || clientData.telefono,
-              email: clientInfo.email || clientData.email,
-              codigoCliente: clientInfo.idCliente || clientData.idCliente,
-              polizas: clientInfo.polizas || [],
-              incidenciasAbiertas: clientInfo.incidenciasAbiertas || []
-            };
-            
-            console.log(`🔍 [PROCESSOR] Datos del cliente para análisis IA:`, {
-              name: nogalClientData.name,
-              polizas: nogalClientData.polizas?.length || 0,
-              incidenciasAbiertas: nogalClientData.incidenciasAbiertas?.length || 0
-            });
-          }
-        }
-        
-                 // 🚨 FALLBACK: Si no encuentra datos en tool_results, usar datos extraídos básicos
-         if (!nogalClientData && clientData.idCliente) {
-           console.log(`🚨 [PROCESSOR] FALLBACK: Usando datos básicos extraídos`);
-           nogalClientData = {
-             name: clientData.nombre,
-             dni: undefined, // No está disponible en ExtractedClientData
-             phone: clientData.telefono,
-             email: clientData.email,
-             codigoCliente: clientData.idCliente,
-             polizas: [],
-             incidenciasAbiertas: []
-           };
-         }
-      }
-
-      const nogalResult = await nogalAnalysisService.analyzeCallForNogal(messages, conversationId, nogalClientData);
+            // 🚀 SIMPLE: La IA analizará la transcripción completa autónomamente
+      console.log(`🚀 [PROCESSOR] Confiando en análisis autónomo de la IA - transcripción completa disponible`);
+      
+      // Solo pasamos la conversación - la IA extraerá TODO lo que necesite
+      const nogalResult = await nogalAnalysisService.analyzeCallForNogal(messages, conversationId, undefined);
 
       return {
         incident_type: nogalResult.incidenciaPrincipal.tipo,
