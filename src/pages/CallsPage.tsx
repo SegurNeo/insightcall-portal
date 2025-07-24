@@ -21,7 +21,7 @@ import {
   FileText
 } from 'lucide-react';
 
-import { useVoiceCallsReal } from '../hooks/useVoiceCallsReal';
+import { useVoiceCallsPaginated } from '../hooks/useVoiceCallsReal';
 import { CallDetailsSidebar } from '../components/calls/CallDetailsSidebar';
 import { voiceCallsRealDataService, VoiceCallDetailsClean } from '../services/voiceCallsRealDataService';
 import { VoiceCallReal } from '../services/voiceCallsRealDataService';
@@ -44,6 +44,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Pagination } from '@/components/ui/pagination';
 
 import { 
   Popover, 
@@ -72,76 +73,59 @@ interface FilterState {
 
 export default function CallsPage() {
   const { toast } = useToast();
-  const { calls, stats, isLoading, error, lastUpdated, refresh } = useVoiceCallsReal();
   
-  // Estados
+  // Estados locales de filtros
   const [filters, setFilters] = useState<FilterState>({
     status: 'all',
     period: 'all',
     search: ''
   });
+  
+  // USAR EL NUEVO HOOK CON PAGINACIÓN Y FILTROS
+  const { 
+    calls, 
+    stats, 
+    isLoading, 
+    error, 
+    lastUpdated, 
+    refresh,
+    currentPage,
+    totalPages,
+    total,
+    setPage,
+    hasNextPage,
+    hasPrevPage,
+    updateFilters
+  } = useVoiceCallsPaginated(1, 15, false, filters); // Pasamos los filtros al hook
+  
+  // Estados
   const [selectedCall, setSelectedCall] = useState<VoiceCallDetailsClean | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
-  // Filtros computados
-  const filteredCalls = useMemo(() => {
-    if (!calls) return [];
-    
-    return calls.filter(call => {
-      // Filtro por estado mejorado
-      if (filters.status !== 'all') {
-        if (filters.status === 'ticket_sent' && call.ticket_status !== 'sent') return false;
-        if (filters.status === 'ticket_pending' && call.ticket_status !== 'pending') return false;
-        if (filters.status === 'ticket_unassigned' && call.ticket_status !== 'none') return false;
-        if (filters.status === 'in_progress' && call.status === 'completed') return false;
-      }
-      
-      // Filtro por período
-      if (filters.period !== 'all') {
-        const callDate = new Date(call.start_time);
-        const today = startOfToday();
-        
-        switch (filters.period) {
-          case 'today':
-            if (callDate < today) return false;
-            break;
-          case 'week':
-            if (callDate < subDays(today, 7)) return false;
-            break;
-          case 'month':
-            if (callDate < subDays(today, 30)) return false;
-            break;
-        }
-      }
-      
-      // Filtro por búsqueda
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        return (
-          call.segurneo_call_id.toLowerCase().includes(searchLower) ||
-          call.conversation_id.toLowerCase().includes(searchLower) ||
-          call.agent_id.toLowerCase().includes(searchLower)
-        );
-      }
-      
-      return true;
-    });
-  }, [calls, filters]);
+  // YA NO NECESITAMOS FILTROS COMPUTADOS - TODO SE HACE EN EL BACKEND
+  const filteredCalls = calls || []; // Simplemente usar las llamadas que vienen del hook
+
+  // Handler para cambio de filtros
+  const handleFiltersChange = (newFilters: Partial<FilterState>) => {
+    const updatedFilters = { ...filters, ...newFilters };
+    setFilters(updatedFilters);
+    updateFilters(updatedFilters); // Esto actualizará los datos en el backend
+  };
 
   // Estadísticas por estado mejoradas
   const statusStats = useMemo(() => {
     if (!calls) return { all: 0, ticket_sent: 0, ticket_pending: 0, ticket_unassigned: 0, in_progress: 0 };
     
     return {
-      all: calls.length,
+      all: total, // Usar el total real de la BD, no solo las de la página actual
       ticket_sent: calls.filter(c => c.ticket_status === 'sent').length,
       ticket_pending: calls.filter(c => c.ticket_status === 'pending').length,
       ticket_unassigned: calls.filter(c => c.ticket_status === 'none').length,
       in_progress: calls.filter(c => c.status !== 'completed').length
     };
-  }, [calls]);
+  }, [calls, total]);
 
   // Handlers
   const handleViewDetails = async (call: VoiceCallReal) => {
@@ -339,7 +323,7 @@ export default function CallsPage() {
               <Phone className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.total || 0}</div>
+              <div className="text-2xl font-bold">{total || 0}</div>
               <p className="text-xs text-muted-foreground">
                 {lastUpdated && `Actualizado ${format(lastUpdated, 'HH:mm')}`}
               </p>
@@ -401,7 +385,7 @@ export default function CallsPage() {
             {/* Tabs de estado */}
             <Tabs 
               value={filters.status} 
-              onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as FilterStatus }))}
+              onValueChange={(value) => handleFiltersChange({ status: value as FilterStatus })}
             >
               <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="all">
@@ -432,7 +416,7 @@ export default function CallsPage() {
                 <Label htmlFor="period">Período</Label>
                 <Select 
                   value={filters.period} 
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, period: value as FilterPeriod }))}
+                  onValueChange={(value) => handleFiltersChange({ period: value as FilterPeriod })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar período" />
@@ -455,7 +439,7 @@ export default function CallsPage() {
                     id="search"
                     placeholder="ID, conversación, agente..."
                     value={filters.search}
-                    onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                    onChange={(e) => handleFiltersChange({ search: e.target.value })}
                     className="pl-8"
                   />
                 </div>
@@ -665,6 +649,42 @@ export default function CallsPage() {
               </div>
             )}
           </CardContent>
+          
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <CardContent className="pt-0">
+              <Separator className="mb-6" />
+              <div className="space-y-4">
+                {/* Información de paginación */}
+                <div className="text-center">
+                  <div className="inline-flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">
+                      Mostrando{' '}
+                      <span className="font-semibold text-foreground">
+                        {(currentPage - 1) * 15 + 1}
+                      </span>
+                      {' - '}
+                      <span className="font-semibold text-foreground">
+                        {Math.min(currentPage * 15, total)}
+                      </span>
+                      {' de '}
+                      <span className="font-semibold text-foreground">{total}</span>
+                      {' llamadas'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Componente de paginación */}
+                <div className="flex justify-center">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          )}
         </Card>
       </div>
 

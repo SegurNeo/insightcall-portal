@@ -6,6 +6,7 @@ import { translationService } from './translationService';
 import { nogalAnalysisService } from './nogalAnalysisService';
 import { clientDataExtractor } from './clientDataExtractor';
 import { nogalTicketService } from './nogalTicketService';
+import { nogalRellamadaService } from './nogalRellamadaService'; // NUEVO: Servicio de rellamadas
 import { nogalClientService } from './nogalClientService';
 import { 
   Call, 
@@ -348,7 +349,68 @@ export class CallProcessor {
         console.log(`🎫 [PROCESSOR] Ticket creado con cliente existente: ${ticket.id}`);
       }
 
-      // 📤 ENVIAR TICKET A SEGURNEO/NOGAL según el tipo de incidencia
+      // 🔥 PROCESAMIENTO DE MÚLTIPLES GESTIONES
+      const createdTicketIds: string[] = [];
+      const nogalAnalysis = analysis.extracted_data as any;
+      
+      // Verificar si hay múltiples gestiones
+      const hasMultipleGestiones = nogalAnalysis?.multipleGestiones || (analysis.extracted_data as any)?.totalGestiones > 1;
+      
+      if (hasMultipleGestiones) {
+        console.log(`🔥 [PROCESSOR] ¡MÚLTIPLES GESTIONES DETECTADAS!`);
+        console.log(`📊 [PROCESSOR] Total gestiones: ${analysis.extracted_data?.totalGestiones || 'desconocido'}`);
+        
+        // PROCESAR INCIDENCIA PRINCIPAL
+        const incidenciaPrincipal = nogalAnalysis.incidenciaPrincipal;
+        if (incidenciaPrincipal) {
+          const principalTicketId = await this.procesarIncidenciaIndividual(
+            incidenciaPrincipal, 
+            call, 
+            idCliente, 
+            ticketData, 
+            'principal'
+          );
+          if (principalTicketId) createdTicketIds.push(principalTicketId);
+        }
+        
+        // PROCESAR INCIDENCIAS SECUNDARIAS
+        const incidenciasSecundarias = nogalAnalysis.incidenciasSecundarias || [];
+        for (let i = 0; i < incidenciasSecundarias.length; i++) {
+          const incidenciaSecundaria = incidenciasSecundarias[i];
+          const secundariaTicketId = await this.procesarIncidenciaIndividual(
+            incidenciaSecundaria,
+            call,
+            idCliente,
+            ticketData,
+            `secundaria_${i + 1}`
+          );
+          if (secundariaTicketId) createdTicketIds.push(secundariaTicketId);
+        }
+        
+        console.log(`✅ [PROCESSOR] Múltiples gestiones procesadas: ${createdTicketIds.length} tickets/rellamadas creados`);
+        return createdTicketIds;
+      }
+      
+      // FLUJO TRADICIONAL: UNA SOLA GESTIÓN
+      console.log(`📝 [PROCESSOR] Procesando gestión única tradicional`);
+      
+      // Verificar si la incidencia principal es una rellamada
+      const incidenciaPrincipal = nogalAnalysis?.incidenciaPrincipal;
+      if (incidenciaPrincipal?.esRellamada && incidenciaPrincipal.incidenciaRelacionada) {
+        console.log(`📞 [PROCESSOR] ¡RELLAMADA DETECTADA EN INCIDENCIA PRINCIPAL!`);
+        
+        const rellamadaTicketId = await this.procesarIncidenciaIndividual(
+          incidenciaPrincipal,
+          call,
+          idCliente,
+          ticketData,
+          'principal'
+        );
+        
+        return rellamadaTicketId ? [rellamadaTicketId] : [];
+      }
+
+      // 📤 FLUJO NORMAL: ENVIAR TICKET A SEGURNEO/NOGAL según el tipo de incidencia
       const shouldSend = this.shouldSendToNogal(analysis, clientData, idCliente);
       
       if (shouldSend) {
@@ -632,7 +694,7 @@ export class CallProcessor {
         message: t.message
       }));
 
-      const nogalResult = await nogalAnalysisService.analyzeCallForNogal(messages, conversationId);
+      const nogalResult = await nogalAnalysisService.analyzeCallForNogal(messages, conversationId, undefined);
 
       return {
         incident_type: nogalResult.incidenciaPrincipal.tipo,
@@ -969,6 +1031,154 @@ export class CallProcessor {
     const result = isNewContract && hasSufficientData;
     console.log(`🔍 [PROCESSOR] shouldCreateClientFromScratch result:`, result);
     return result;
+  }
+
+  /**
+   * 🎯 NUEVO: Procesar una incidencia individual (puede ser ticket o rellamada)
+   */
+  private async procesarIncidenciaIndividual(
+    incidencia: any,
+    call: Call,
+    idCliente: string,
+    baseTicketData: any,
+    tipo: string
+  ): Promise<string | null> {
+    try {
+      console.log(`🎯 [PROCESSOR] Procesando incidencia ${tipo}:`, {
+        tipoIncidencia: incidencia.tipo,
+        esRellamada: incidencia.esRellamada,
+        incidenciaRelacionada: incidencia.incidenciaRelacionada
+      });
+
+      // Crear ticket específico para esta incidencia
+      const ticketData = {
+        ...baseTicketData,
+        tipo_incidencia: incidencia.tipo,
+        motivo_incidencia: incidencia.motivo,
+        description: this.generateTicketDescriptionFromIncidencia(incidencia),
+        metadata: {
+          ...baseTicketData.metadata,
+          incidencia_tipo: tipo,
+          incidencia_data: incidencia
+        }
+      };
+
+      const { data: ticket, error } = await supabase
+        .from('tickets')
+        .insert([ticketData])
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error(`❌ [PROCESSOR] Error creating ticket para ${tipo}:`, error);
+        return null;
+      }
+
+      console.log(`✅ [PROCESSOR] Ticket creado para ${tipo}: ${ticket.id}`);
+
+      // Si es rellamada, usar el servicio de rellamadas
+      if (incidencia.esRellamada && incidencia.incidenciaRelacionada) {
+        console.log(`📞 [PROCESSOR] Procesando como rellamada: ${incidencia.incidenciaRelacionada}`);
+        
+        const rellamadaResult = await nogalRellamadaService.crearRellamadaDesdeAnalisis(
+          idCliente,
+          call.conversation_id,
+          incidencia.incidenciaRelacionada,
+          ticketData.description,
+          call.audio_download_url || call.fichero_llamada || undefined
+        );
+
+        // Actualizar metadatos según resultado de rellamada
+        const updatedMetadata = { ...ticketData.metadata } as any;
+        let finalStatus: string;
+
+        if (rellamadaResult.success) {
+          finalStatus = 'completed';
+          updatedMetadata.rellamada_id = rellamadaResult.rellamada_id;
+          updatedMetadata.nogal_response = rellamadaResult.message;
+          updatedMetadata.nogal_status = 'rellamada_created';
+          console.log(`✅ [PROCESSOR] ${tipo}: Rellamada creada: ${rellamadaResult.rellamada_id}`);
+        } else {
+          finalStatus = 'pending';
+          updatedMetadata.rellamada_error = rellamadaResult.message;
+          updatedMetadata.nogal_status = 'rellamada_failed';
+          console.error(`❌ [PROCESSOR] ${tipo}: Error en rellamada: ${rellamadaResult.message}`);
+        }
+
+        // Actualizar ticket con resultado de rellamada
+        await supabase
+          .from('tickets')
+          .update({
+            status: finalStatus,
+            metadata: updatedMetadata,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ticket.id);
+
+      } else {
+        // Procesar como ticket normal
+        console.log(`🎫 [PROCESSOR] Procesando como ticket normal para ${tipo}`);
+        
+        const nogalPayload: Omit<NogalTicketPayload, 'IdTicket'> = {
+          IdCliente: idCliente,
+          IdLlamada: call.conversation_id,
+          TipoIncidencia: incidencia.tipo,
+          MotivoIncidencia: incidencia.motivo,
+          Ramo: incidencia.ramo || '',
+          NumeroPoliza: '', // TODO: extraer de incidencia
+          Notas: ticketData.description,
+          FicheroLlamada: call.audio_download_url || call.fichero_llamada || ''
+        };
+
+        const nogalResult = await nogalTicketService.createAndSendTicket(nogalPayload);
+        
+        // Actualizar metadatos según resultado
+        const updatedMetadata = { ...ticketData.metadata } as any;
+        let finalStatus: string;
+
+        if (nogalResult.success) {
+          finalStatus = 'completed';
+          updatedMetadata.nogal_ticket_id = nogalResult.ticket_id;
+          updatedMetadata.nogal_response = nogalResult.message;
+          updatedMetadata.nogal_status = 'sent_to_nogal';
+          console.log(`✅ [PROCESSOR] ${tipo}: Ticket enviado: ${nogalResult.ticket_id}`);
+        } else {
+          finalStatus = 'pending';
+          updatedMetadata.nogal_error = nogalResult.error;
+          updatedMetadata.nogal_status = 'failed_to_send';
+          console.error(`❌ [PROCESSOR] ${tipo}: Error enviando: ${nogalResult.error}`);
+        }
+
+        // Actualizar ticket con resultado
+        await supabase
+          .from('tickets')
+          .update({
+            status: finalStatus,
+            metadata: updatedMetadata,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ticket.id);
+      }
+
+      return ticket.id;
+
+    } catch (error) {
+      console.error(`❌ [PROCESSOR] Error procesando incidencia ${tipo}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * 📝 Generar descripción del ticket desde una incidencia específica
+   */
+  private generateTicketDescriptionFromIncidencia(incidencia: any): string {
+    let description = incidencia.necesidadCliente || incidencia.consideraciones || 'Gestión solicitada por el cliente';
+    
+    if (incidencia.esRellamada) {
+      description = `📞 RELLAMADA: ${description}\n\nIncidencia relacionada: ${incidencia.incidenciaRelacionada}`;
+    }
+    
+    return description;
   }
 }
 

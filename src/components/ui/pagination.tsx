@@ -8,48 +8,140 @@ interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  showPageNumbers?: number; // Número de páginas a mostrar alrededor de la actual
 }
 
-function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+function Pagination({ 
+  currentPage, 
+  totalPages, 
+  onPageChange, 
+  showPageNumbers = 5 
+}: PaginationProps) {
+  // Ajustar número de páginas según el tamaño de pantalla
+  const [isMobile, setIsMobile] = React.useState(false);
+  
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  const effectiveShowPageNumbers = isMobile ? 3 : showPageNumbers;
+
+  // Generar array de números de página a mostrar
+  const getPageNumbers = () => {
+    const pages: (number | 'ellipsis')[] = [];
+    
+    if (totalPages <= effectiveShowPageNumbers + 2) {
+      // Si hay pocas páginas, mostrar todas
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Lógica compleja para páginas con elipsis
+      const startPage = Math.max(1, currentPage - Math.floor(effectiveShowPageNumbers / 2));
+      const endPage = Math.min(totalPages, startPage + effectiveShowPageNumbers - 1);
+      
+      // Ajustar startPage si estamos cerca del final
+      const adjustedStartPage = Math.max(1, Math.min(startPage, totalPages - effectiveShowPageNumbers + 1));
+      const adjustedEndPage = Math.min(totalPages, adjustedStartPage + effectiveShowPageNumbers - 1);
+      
+      // Siempre mostrar primera página
+      if (adjustedStartPage > 1) {
+        pages.push(1);
+        if (adjustedStartPage > 2) {
+          pages.push('ellipsis');
+        }
+      }
+      
+      // Páginas del rango
+      for (let i = adjustedStartPage; i <= adjustedEndPage; i++) {
+        pages.push(i);
+      }
+      
+      // Siempre mostrar última página
+      if (adjustedEndPage < totalPages) {
+        if (adjustedEndPage < totalPages - 1) {
+          pages.push('ellipsis');
+        }
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
+  const pageNumbers = getPageNumbers();
+
   return (
-    <div className="flex items-center justify-between px-2">
-      <div className="flex w-[100px] items-center justify-start">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage <= 1}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Anterior
-        </Button>
+    <nav 
+      className="flex items-center justify-center space-x-1" 
+      aria-label="Navegación de páginas"
+    >
+      {/* Botón Anterior */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className="flex items-center gap-1 px-2 sm:px-3 py-2 h-9"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        <span className="hidden sm:inline">Anterior</span>
+      </Button>
+
+      {/* Números de página */}
+      <div className="flex items-center space-x-1">
+        {pageNumbers.map((page, index) => {
+          if (page === 'ellipsis') {
+            return (
+              <div
+                key={`ellipsis-${index}`}
+                className="flex h-9 w-9 items-center justify-center"
+              >
+                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                <span className="sr-only">Más páginas</span>
+              </div>
+            );
+          }
+
+          const isActive = currentPage === page;
+
+          return (
+            <Button
+              key={page}
+              variant={isActive ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(page)}
+              className={cn(
+                "h-9 w-9 p-0 text-sm",
+                isActive && "bg-primary text-primary-foreground shadow"
+              )}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={`Ir a página ${page}`}
+            >
+              {page}
+            </Button>
+          );
+        })}
       </div>
 
-      <div className="flex items-center gap-2">
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-          <Button
-            key={page}
-            variant={currentPage === page ? "default" : "outline"}
-            size="sm"
-            onClick={() => onPageChange(page)}
-          >
-            {page}
-          </Button>
-        ))}
-      </div>
-
-      <div className="flex w-[100px] items-center justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-        >
-          Siguiente
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
+      {/* Botón Siguiente */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className="flex items-center gap-1 px-2 sm:px-3 py-2 h-9"
+      >
+        <span className="hidden sm:inline">Siguiente</span>
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </nav>
   );
 }
 

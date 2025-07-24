@@ -564,6 +564,205 @@ class VoiceCallsRealDataService {
     }
   }
 
+  // NUEVO MÉTODO PARA PAGINACIÓN
+  async getVoiceCallsPaginated(page: number = 1, limit: number = 10, filters?: {
+    status?: 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
+    period?: 'all' | 'today' | 'week' | 'month';
+    search?: string;
+  }): Promise<{
+    calls: VoiceCallReal[];
+    total: number;
+    totalPages: number;
+    currentPage: number;
+  }> {
+    try {
+      console.log(`🔍 [PAGINATION] Obteniendo página ${page} con ${limit} llamadas por página...`, filters);
+      
+      // Calcular offset
+      const offset = (page - 1) * limit;
+      
+      // Construir query base
+      let query = supabase
+        .from('calls')
+        .select(`
+          id,
+          segurneo_call_id,
+          conversation_id,
+          agent_id,
+          start_time,
+          end_time,
+          duration_seconds,
+          status,
+          call_successful,
+          agent_messages,
+          user_messages,
+          total_messages,
+          transcript_summary,
+          termination_reason,
+          created_at,
+          received_at,
+          tickets_created,
+          audio_download_url,
+          audio_file_size,
+          fichero_llamada
+        `)
+        .order('start_time', { ascending: false });
+
+      let countQuery = supabase
+        .from('calls')
+        .select('*', { count: 'exact', head: true });
+
+      // Aplicar filtros de búsqueda
+      if (filters?.search) {
+        const searchTerm = `%${filters.search}%`;
+        query = query.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm},agent_id.ilike.${searchTerm}`);
+        countQuery = countQuery.or(`conversation_id.ilike.${searchTerm},segurneo_call_id.ilike.${searchTerm},agent_id.ilike.${searchTerm}`);
+      }
+
+      // Aplicar filtros de estado
+      if (filters?.status && filters.status !== 'all') {
+        switch (filters.status) {
+          case 'ticket_sent':
+            // Llamadas que tienen tickets creados (independientemente de si fueron exitosas o no)
+            query = query.gt('tickets_created', 0);
+            countQuery = countQuery.gt('tickets_created', 0);
+            break;
+          case 'ticket_pending':
+            // Llamadas completadas pero sin tickets (pendientes de crear ticket)
+            query = query.eq('status', 'completed').eq('tickets_created', 0);
+            countQuery = countQuery.eq('status', 'completed').eq('tickets_created', 0);
+            break;
+          case 'ticket_unassigned':
+            // Llamadas sin tickets (incluye tanto exitosas como fallidas sin tickets)
+            query = query.eq('tickets_created', 0);
+            countQuery = countQuery.eq('tickets_created', 0);
+            break;
+          case 'in_progress':
+            // Llamadas que no han terminado aún
+            query = query.neq('status', 'completed');
+            countQuery = countQuery.neq('status', 'completed');
+            break;
+        }
+      }
+
+      // Aplicar filtros de período
+      if (filters?.period && filters.period !== 'all') {
+        const now = new Date();
+        let startDate: Date;
+        
+        switch (filters.period) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          default:
+            startDate = new Date(0); // No filter
+        }
+        
+        if (startDate.getTime() > 0) {
+          const startDateISO = startDate.toISOString();
+          query = query.gte('start_time', startDateISO);
+          countQuery = countQuery.gte('start_time', startDateISO);
+        }
+      }
+
+      // Ejecutar conteo con filtros
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) {
+        console.error('❌ [PAGINATION] Error obteniendo conteo:', countError);
+        throw new Error(`Error al obtener conteo total: ${countError.message}`);
+      }
+      
+      // Ejecutar consulta paginada con filtros
+      const { data, error } = await query.range(offset, offset + limit - 1);
+      
+      if (error) {
+        console.error('❌ [PAGINATION] Error en consulta paginada:', error);
+        throw new Error(`Error en consulta paginada: ${error.message}`);
+      }
+      
+      if (!data || data.length === 0) {
+        console.log(`⚠️ [PAGINATION] No se encontraron datos para página ${page} con filtros aplicados`);
+        return {
+          calls: [],
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit),
+          currentPage: page
+        };
+      }
+      
+      // Procesar los datos igual que en getRecentVoiceCalls
+      const processedCalls: VoiceCallReal[] = data.map(call => {
+        const audioAvailable = !!(call.audio_download_url || call.fichero_llamada);
+        
+        // Determinar estado de tickets de manera más precisa
+        const ticketsCount = call.tickets_created || 0;
+        const hasTickets = ticketsCount > 0;
+        
+        let ticketStatus: 'none' | 'pending' | 'sent' = 'none';
+        
+        if (hasTickets) {
+          // Si tiene tickets creados, están enviados (independientemente del éxito de la llamada)
+          ticketStatus = 'sent';
+        } else if (call.status === 'completed') {
+          // Si está completada pero sin tickets, está pendiente
+          ticketStatus = 'pending';
+        } else {
+          // Si no está completada, no hay tickets asignados aún
+          ticketStatus = 'none';
+        }
+        
+        return {
+          id: call.id,
+          segurneo_call_id: call.segurneo_call_id,
+          conversation_id: call.conversation_id,
+          agent_id: call.agent_id,
+          start_time: call.start_time,
+          end_time: call.end_time,
+          duration_seconds: call.duration_seconds,
+          status: call.status,
+          call_successful: call.call_successful,
+          agent_messages: call.agent_messages || 0,
+          user_messages: call.user_messages || 0,
+          total_messages: call.total_messages || 0,
+          audio_available: audioAvailable,
+          termination_reason: call.termination_reason,
+          transcript_summary: call.transcript_summary,
+          created_at: call.created_at,
+          received_at: call.received_at,
+          tickets_count: ticketsCount,
+          tickets_sent: hasTickets ? ticketsCount : 0,
+          has_sent_tickets: hasTickets,
+          ticket_status: ticketStatus,
+          audio_download_url: call.audio_download_url,
+          audio_file_size: call.audio_file_size,
+          fichero_llamada: call.fichero_llamada
+        };
+      });
+      
+      const totalPages = Math.ceil((count || 0) / limit);
+      
+      console.log(`✅ [PAGINATION] Obtenidas ${processedCalls.length} llamadas (página ${page}/${totalPages}, total: ${count})`);
+      
+      return {
+        calls: processedCalls,
+        total: count || 0,
+        totalPages,
+        currentPage: page
+      };
+      
+    } catch (error) {
+      console.error('❌ [PAGINATION] Error general:', error);
+      throw error;
+    }
+  }
+
   private formatTime(seconds: number): string {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);

@@ -10,6 +10,31 @@ interface UseVoiceCallsRealReturn {
   refresh: () => void;
 }
 
+// TIPOS PARA FILTROS
+type FilterOptions = {
+  status?: 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
+  period?: 'all' | 'today' | 'week' | 'month';
+  search?: string;
+};
+
+// NUEVO TIPO PARA PAGINACIÓN
+interface UseVoiceCallsPaginatedReturn {
+  calls: VoiceCallReal[] | null;
+  stats: VoiceCallsStats | null;
+  isLoading: boolean;
+  error: string | null;
+  lastUpdated: Date | null;
+  refresh: (newFilters?: FilterOptions) => void;
+  // Información de paginación
+  currentPage: number;
+  totalPages: number;
+  total: number;
+  setPage: (page: number) => void;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  updateFilters: (newFilters: FilterOptions) => void;
+}
+
 export function useVoiceCallsReal(limit: number = 50, autoRefresh: boolean = true): UseVoiceCallsRealReturn {
   const [calls, setCalls] = useState<VoiceCallReal[] | null>(null);
   const [stats, setStats] = useState<VoiceCallsStats | null>(null);
@@ -76,5 +101,109 @@ export function useVoiceCallsReal(limit: number = 50, autoRefresh: boolean = tru
     error,
     lastUpdated,
     refresh
+  };
+}
+
+// NUEVO HOOK PARA PAGINACIÓN
+export function useVoiceCallsPaginated(
+  initialPage: number = 1, 
+  limit: number = 10, 
+  autoRefresh: boolean = false,
+  filters?: FilterOptions
+): UseVoiceCallsPaginatedReturn {
+  const [calls, setCalls] = useState<VoiceCallReal[] | null>(null);
+  const [stats, setStats] = useState<VoiceCallsStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [totalPages, setTotalPages] = useState(0);
+  const [total, setTotal] = useState(0);
+
+  const fetchData = useCallback(async (page: number, appliedFilters?: FilterOptions) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log(`🔄 [PAGINATION] Actualizando página ${page}...`, appliedFilters);
+      
+      // Obtener datos paginados y estadísticas en paralelo
+      const [paginatedData, statsData] = await Promise.all([
+        voiceCallsRealDataService.getVoiceCallsPaginated(page, limit, appliedFilters),
+        voiceCallsRealDataService.getVoiceCallsStats()
+      ]);
+
+      setCalls(paginatedData.calls);
+      setCurrentPage(paginatedData.currentPage);
+      setTotalPages(paginatedData.totalPages);
+      setTotal(paginatedData.total);
+      setStats(statsData);
+      setLastUpdated(new Date());
+      
+      console.log('✅ [PAGINATION] Datos actualizados:', {
+        página: paginatedData.currentPage,
+        páginas_total: paginatedData.totalPages,
+        llamadas_página: paginatedData.calls.length,
+        total_llamadas: paginatedData.total,
+        filtros: appliedFilters
+      });
+      
+    } catch (err) {
+      console.error('❌ [PAGINATION] Error actualizando datos:', err);
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [limit]);
+
+  const setPage = useCallback((page: number) => {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      setCurrentPage(page);
+      fetchData(page, filters);
+    }
+  }, [totalPages, currentPage, fetchData, filters]);
+
+  const refresh = useCallback((newFilters?: FilterOptions) => {
+    const filtersToUse = newFilters || filters;
+    fetchData(currentPage, filtersToUse);
+  }, [fetchData, currentPage, filters]);
+
+  // Función para actualizar filtros
+  const updateFilters = useCallback((newFilters: FilterOptions) => {
+    setCurrentPage(1); // Resetear a página 1 cuando cambian filtros
+    fetchData(1, newFilters);
+  }, [fetchData]);
+
+  // Carga inicial
+  useEffect(() => {
+    fetchData(initialPage, filters);
+  }, [fetchData, initialPage, filters]);
+
+  // Auto-refresh si está habilitado (menos frecuente para paginación)
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      console.log(`🔄 [PAGINATION] Auto-refresh página ${currentPage}...`);
+      fetchData(currentPage, filters);
+    }, 60000); // 60 segundos (menos frecuente)
+
+    return () => clearInterval(interval);
+  }, [fetchData, currentPage, autoRefresh, filters]);
+
+  return {
+    calls,
+    stats,
+    isLoading,
+    error,
+    lastUpdated,
+    refresh,
+    currentPage,
+    totalPages,
+    total,
+    setPage,
+    hasNextPage: currentPage < totalPages,
+    hasPrevPage: currentPage > 1,
+    updateFilters
   };
 } 

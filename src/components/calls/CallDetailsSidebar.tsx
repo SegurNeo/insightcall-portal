@@ -624,13 +624,44 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                         {/* Estado Segurneo Voice rediseñado */}
                                         <div className="p-4 bg-white rounded-lg border border-zinc-200">
                                           <div className="text-sm font-medium text-zinc-600 mb-3">Estado Segurneo Voice</div>
-                                          {ticket.metadata?.ticket_id || ticket.metadata?.nogal_ticket_id ? (
+                                          
+                                          {/* 📞 RELLAMADA */}
+                                          {ticket.metadata?.rellamada_id ? (
+                                            <div className="flex items-start gap-3">
+                                              <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="text-sm text-blue-700 font-medium mb-1">📞 Rellamada creada</div>
+                                                <div className="text-xs text-zinc-600 bg-blue-50 p-2 rounded font-mono break-all">
+                                                  {ticket.metadata.rellamada_id}
+                                                </div>
+                                                <div className="text-xs text-blue-600 mt-1">
+                                                  Seguimiento sobre incidencia existente
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ) : 
+                                          
+                                          /* 🎫 TICKET NORMAL */
+                                          ticket.metadata?.ticket_id || ticket.metadata?.nogal_ticket_id ? (
                                             <div className="flex items-start gap-3">
                                               <div className="w-2 h-2 bg-green-500 rounded-full mt-1.5 flex-shrink-0"></div>
                                               <div className="flex-1 min-w-0">
-                                                <div className="text-sm text-green-700 font-medium mb-1">Enviado correctamente</div>
+                                                <div className="text-sm text-green-700 font-medium mb-1">🎫 Ticket enviado</div>
                                                 <div className="text-xs text-zinc-600 bg-zinc-50 p-2 rounded font-mono break-all">
                                                   {ticket.metadata.ticket_id || ticket.metadata.nogal_ticket_id}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ) : 
+                                          
+                                          /* ❌ ERRORES */
+                                          ticket.metadata?.rellamada_error ? (
+                                            <div className="flex items-start gap-3">
+                                              <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                                              <div className="flex-1">
+                                                <div className="text-sm text-red-700 font-medium mb-1">❌ Error en rellamada</div>
+                                                <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                                                  {ticket.metadata.rellamada_error}
                                                 </div>
                                               </div>
                                             </div>
@@ -638,7 +669,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                             <div className="flex items-start gap-3">
                                               <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
                                               <div className="flex-1">
-                                                <div className="text-sm text-red-700 font-medium mb-1">Error en envío</div>
+                                                <div className="text-sm text-red-700 font-medium mb-1">❌ Error en ticket</div>
                                                 <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
                                                   {ticket.metadata.nogal_error}
                                                 </div>
@@ -647,7 +678,7 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                                           ) : (
                                             <div className="flex items-center gap-3">
                                               <div className="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></div>
-                                              <div className="text-sm text-amber-700">Pendiente de envío</div>
+                                              <div className="text-sm text-amber-700">⏳ Pendiente de envío</div>
                                             </div>
                                           )}
                                         </div>

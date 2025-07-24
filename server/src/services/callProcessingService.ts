@@ -155,6 +155,7 @@ export class CallProcessingService {
     let aiAnalysis: {
       tipo_incidencia: string;
       motivo_gestion: string;
+      ramo?: string;
       confidence: number;
       prioridad: 'low' | 'medium' | 'high';
       resumen_analisis: string;
@@ -171,15 +172,17 @@ export class CallProcessingService {
           message: t.message
         }));
 
-        // Ejecutar análisis de Nogal
+        // Ejecutar análisis de Nogal (sin datos del cliente por ahora)
         const nogalAnalysis = await nogalAnalysisService.analyzeCallForNogal(
           transcriptMessages, 
-          callRecord.conversation_id
+          callRecord.conversation_id,
+          undefined // TODO: Implementar obtención de datos del cliente
         );
 
         aiAnalysis = {
           tipo_incidencia: nogalAnalysis.incidenciaPrincipal.tipo,
           motivo_gestion: nogalAnalysis.incidenciaPrincipal.motivo,
+          ramo: nogalAnalysis.incidenciaPrincipal.ramo,
           confidence: nogalAnalysis.confidence,
           prioridad: nogalAnalysis.prioridad as 'low' | 'medium' | 'high',
           resumen_analisis: nogalAnalysis.resumenLlamada,
