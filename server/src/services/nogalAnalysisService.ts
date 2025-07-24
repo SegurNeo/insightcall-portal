@@ -176,7 +176,9 @@ Responde en este formato JSON:
           ramo: response.incidenciaPrincipal.ramo, // Gemini decide cuándo incluirlo
           consideraciones: response.incidenciaPrincipal.consideraciones,
           necesidadCliente: response.incidenciaPrincipal.necesidadCliente,
-          tipoCreacion: response.incidenciaPrincipal.tipoCreacion || 'Manual / Automática'
+          tipoCreacion: response.incidenciaPrincipal.tipoCreacion || 'Manual / Automática',
+          esRellamada: response.incidenciaPrincipal.esRellamada || false,
+          incidenciaRelacionada: response.incidenciaPrincipal.incidenciaRelacionada
         },
         incidenciasSecundarias: response.incidenciasSecundarias || [],
         confidence: Math.max(0, Math.min(1, response.confidence || 0.8)),
@@ -195,7 +197,8 @@ Responde en este formato JSON:
         motivo: result.incidenciaPrincipal.motivo,
         ramo: result.incidenciaPrincipal.ramo,
         numeroPoliza: result.datosExtraidos.numeroPoliza,
-        confidence: result.confidence
+        confidence: result.confidence,
+        esRellamada: result.incidenciaPrincipal.esRellamada
       });
 
       return result;

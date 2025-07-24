@@ -176,7 +176,7 @@ async function analizarTranscripcion(nombre, transcripcion, esperado = null) {
     console.log(`   - Tipo: ${resultado.incidenciaPrincipal.tipo}`);
     console.log(`   - Motivo: ${resultado.incidenciaPrincipal.motivo}`);
     console.log(`   - Ramo: ${resultado.incidenciaPrincipal.ramo || 'N/A'}`);
-    console.log(`   - Es Rellamada: ${resultado.incidenciaPrincipal.esRellamada || false}`);
+    console.log(`   - Es Rellamada: ${resultado.incidenciaPrincipal.esRellamada}`);
     
     if (resultado.incidenciasSecundarias?.length > 0) {
       console.log('\n🎯 Incidencias Secundarias:');
