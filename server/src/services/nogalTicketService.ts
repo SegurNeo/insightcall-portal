@@ -87,7 +87,7 @@ export class NogalTicketService {
       const { data: existingTickets, error } = await supabase
         .from('tickets')
         .select('metadata')
-        .like('metadata->ticket_id', `${todayPrefix}%`)
+        .filter('metadata->ticket_id', 'like', `${todayPrefix}%`)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -235,11 +235,29 @@ export class NogalTicketService {
     if (!numeroPoliza || numeroPoliza.trim() === '') {
       return ''; // ✅ Vacío si no hay número de póliza claro
     }
+
+    const original = numeroPoliza.trim();
+    
+    // 🚨 CRÍTICO: Si es texto descriptivo, devolver vacío
+    const descriptivePatterns = [
+      /número de póliza.*\(a obtener/i,
+      /obtener del sistema/i,
+      /no especificado/i,
+      /no detectado/i,
+      /sin especificar/i,
+      /^no especificado$/i
+    ];
+    
+    for (const pattern of descriptivePatterns) {
+      if (pattern.test(original)) {
+        console.log(`🚨 [NOGAL] Número de póliza descriptivo detectado: "${original}" → ""`);
+        return '';
+      }
+    }
     
     // ✅ FIX: Nogal no acepta múltiples pólizas separadas por comas
     // Convertir comas a pipes que sí acepta
-    let sanitized = numeroPoliza
-      .trim()
+    let sanitized = original
       .replace(/,\s*/g, '|') // Reemplazar "," y ", " por "|"
       .replace(/\s+/g, ' ');  // Normalizar espacios
     
