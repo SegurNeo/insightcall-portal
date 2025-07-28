@@ -74,6 +74,18 @@ Cliente solicita copia de su póliza:
 ## 📋 **INFORMACIÓN DEL CLIENTE:**
 {{clientData}}
 
+## 🏢 **EXTRACCIÓN DE DATOS DEL CLIENTE:**
+
+**EXTRAE TODA LA INFORMACIÓN del cliente que aparezca en la conversación:**
+- **nombreCliente**: Nombre completo si se menciona ("Me llamo Juan Pérez")
+- **telefono**: Cualquier teléfono mencionado (formatos: 666123456, 666 123 456, +34 666123456)
+- **email**: Cualquier email mencionado
+- **numeroPoliza**: Si menciona número de póliza existente
+- **cuentaBancaria**: Si proporciona nueva cuenta bancaria
+- **direccion**: Si menciona dirección nueva
+
+**IMPORTANTE**: Si hay herramientas con resultados de búsqueda de leads, incluir esa información.
+
 ## 🎯 **EJEMPLOS CLAROS:**
 
 **EJEMPLO 1 - NUEVA CONTRATACIÓN (CORRECTO)**:
@@ -127,8 +139,18 @@ Responde en este formato JSON:
   "confidence": 0.95,
   "resumenLlamada": "resumen breve de qué pasó en la conversación",
   "datosExtraidos": {
-    "nombreCliente": "nombre si se menciona explícitamente",
-    "numeroPoliza": "número de póliza si cliente tiene y se habla de gestión existente"
+    "nombreCliente": "nombre completo si se menciona explícitamente",
+    "telefono": "teléfono si se menciona en cualquier formato",
+    "email": "email si se menciona",
+    "numeroPoliza": "número de póliza si cliente tiene y se habla de gestión existente",
+    "cuentaBancaria": "nueva cuenta bancaria si se proporciona",
+    "direccion": "nueva dirección si se menciona",
+    "leadInfo": {
+      "isLead": false,
+      "idLead": "ID del lead si se encontró en herramientas",
+      "campaña": "campaña del lead si aplica",
+      "ramo": "ramo del lead si aplica"
+    }
   },
   "notasParaNogal": "información específica para el ticket",
   "requiereTicket": true,

@@ -987,6 +987,116 @@ export class ClientDataExtractor {
     
     return matrix[str2.length][str1.length];
   }
+
+  /**
+   * 🆕 NUEVO: Extraer caller ID de los tool_results
+   * Busca en transfer_to_number, identificar_cliente, etc.
+   */
+  extractCallerIdFromTranscripts(transcripts: CallTranscript[]): string | null {
+    console.log(`📞 [EXTRACTOR] Buscando caller ID en ${transcripts.length} transcripts`);
+    
+    for (const transcript of transcripts) {
+      // 1. Buscar en tool_results estructurados
+      if (transcript.tool_results && transcript.tool_results.length > 0) {
+        for (const toolResult of transcript.tool_results) {
+          const callerId = this.extractCallerIdFromToolResult(toolResult);
+          if (callerId) {
+            console.log(`✅ [EXTRACTOR] Caller ID encontrado en ${toolResult.tool_name}: ${callerId}`);
+            return callerId;
+          }
+        }
+      }
+      
+      // 2. Buscar en tool_calls si no se encontró en results
+      if (transcript.tool_calls && transcript.tool_calls.length > 0) {
+        for (const toolCall of transcript.tool_calls) {
+          const callerId = this.extractCallerIdFromToolCall(toolCall);
+          if (callerId) {
+            console.log(`✅ [EXTRACTOR] Caller ID encontrado en tool_call ${toolCall.tool_name}: ${callerId}`);
+            return callerId;
+          }
+        }
+      }
+    }
+    
+    console.log(`❌ [EXTRACTOR] No se encontró caller ID en los transcripts`);
+    return null;
+  }
+
+  /**
+   * 🔍 Extraer caller ID de un tool_result específico
+   */
+  private extractCallerIdFromToolResult(toolResult: any): string | null {
+    try {
+      // Parsear result_value si es string
+      let resultData = toolResult.result_value;
+      if (typeof resultData === 'string') {
+        resultData = JSON.parse(resultData);
+      }
+      
+      // Buscar en transfer_to_number
+      if (toolResult.tool_name === 'transfer_to_number' && resultData.conference_name) {
+        const conferenceMatch = resultData.conference_name.match(/transfer_customer_(\+\d+)_/);
+        if (conferenceMatch && conferenceMatch[1]) {
+          return conferenceMatch[1];
+        }
+      }
+      
+      // Buscar en identificar_cliente u otros tools
+      if (resultData.caller_id) {
+        return resultData.caller_id;
+      }
+      
+      if (resultData.phone_number) {
+        return resultData.phone_number;
+      }
+      
+    } catch (error) {
+      // Silencioso - no todos los tool_results son JSON
+    }
+    
+    return null;
+  }
+
+  /**
+   * 🔍 Extraer caller ID de un tool_call específico
+   */
+  private extractCallerIdFromToolCall(toolCall: any): string | null {
+    try {
+      // Parsear params_as_json si existe
+      let params = toolCall.params_as_json;
+      if (typeof params === 'string') {
+        params = JSON.parse(params);
+      }
+      
+      // Buscar en tool_details.body para identificar_cliente
+      if (toolCall.tool_name === 'identificar_cliente' && toolCall.tool_details?.body) {
+        let bodyData = toolCall.tool_details.body;
+        if (typeof bodyData === 'string') {
+          bodyData = JSON.parse(bodyData);
+        }
+        
+        // Priorizar el telefono principal sobre telefono_alternativo
+        if (bodyData.telefono && bodyData.telefono !== bodyData.telefono_alternativo) {
+          return bodyData.telefono;
+        }
+      }
+      
+      // Buscar en params generales
+      if (params?.caller_id) {
+        return params.caller_id;
+      }
+      
+      if (params?.telefono && params.telefono.startsWith('+')) {
+        return params.telefono;
+      }
+      
+    } catch (error) {
+      // Silencioso - no todos los tool_calls tienen JSON válido
+    }
+    
+    return null;
+  }
 }
 
 // Exportar instancia única

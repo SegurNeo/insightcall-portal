@@ -14,6 +14,9 @@ export interface Call {
   // 👤 Información del agente
   readonly agent_id: string;
   
+  // 📞 Información de contacto
+  readonly caller_id: string | null;      // Número desde el cual se realizó la llamada
+  
   // ⏱️ Información temporal
   readonly start_time: string;            // ISO 8601 timestamp
   readonly end_time: string;              // ISO 8601 timestamp  

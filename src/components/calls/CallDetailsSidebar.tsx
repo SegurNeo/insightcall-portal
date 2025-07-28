@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Brain, MessageSquare, Ticket, Globe, CheckCircle, AlertCircle, Clock, User, Bot, XCircle, Music, Download, Info, Play, Pause, Volume2, SkipBack, SkipForward } from 'lucide-react';
+import { X, Brain, MessageSquare, Ticket, Globe, CheckCircle, AlertCircle, Clock, User, Bot, XCircle, Music, Download, Info, Play, Pause, Volume2, SkipBack, SkipForward, Phone } from 'lucide-react';
 import { VoiceCallDetailsClean } from '../../services/voiceCallsRealDataService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
@@ -254,6 +254,19 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                       <h2 className="text-lg font-semibold text-gray-900">
                         Resumen
                       </h2>
+                      
+                      {/* 📞 CALLER ID - Información de contacto */}
+                      {call.caller_id && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center space-x-2">
+                            <Phone className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-900">Número de contacto:</span>
+                            <code className="font-mono text-sm bg-white border border-blue-300 text-blue-800 px-2 py-1 rounded">
+                              {call.caller_id}
+                            </code>
+                          </div>
+                        </div>
+                      )}
                       
                       {call.hasTranscriptSummary ? (
                         <div className="prose prose-lg max-w-none">

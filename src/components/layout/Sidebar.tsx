@@ -1,160 +1,257 @@
+import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { cn } from "@/lib/utils";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarSeparator,
+  SidebarTrigger,
+} from "@/components/ui/sidebar/index";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import NogalLogo from '../branding/NogalLogo';
-import { Button } from "@/components/ui/button";
 import { 
-  BarChart3, 
-  ChevronLeft, 
-  ChevronRight, 
+  BarChart3,
   CreditCard, 
-  FileText, 
-  Home, 
-  Phone, 
-  PhoneCall, 
-  Search, 
-  Settings,
   FlaskConical,
+  FolderClosed,
+  Home, 
+  Lock,
+  PhoneCall, 
+  Settings,
+  ShoppingCart,
   Ticket,
-  MessageSquare
+  Workflow,
 } from "lucide-react";
 
-interface SidebarProps {
-  collapsed: boolean;
-  toggleSidebar: () => void;
+interface SidebarLayoutProps {
+  children: React.ReactNode;
 }
 
-interface SidebarItem {
-  name: string;
-  icon: React.ComponentType<{ className?: string }>;
-  path: string;
-  badge?: number;
-}
+// Navigation data structure
+const navigationData = {
+  mainNav: [
+    {
+      title: "Inicio",
+      url: "/",
+      icon: Home,
+    },
+  ],
+  supportSection: {
+    title: "Soporte",
+    icon: PhoneCall,
+    items: [
+      {
+        title: "Llamadas",
+        url: "/calls",
+        icon: PhoneCall,
+      },
+      {
+        title: "Analítica",
+        url: "/analytics", 
+        icon: BarChart3,
+      },
+      {
+        title: "Acciones",
+        url: "/actions",
+        icon: FolderClosed,
+      },
+      {
+        title: "Tickets",
+        url: "/tickets",
+        icon: Ticket,
+      },
+      {
+        title: "Lab",
+        url: "/lab",
+        icon: FlaskConical,
+        badge: "Beta",
+      },
+    ],
+  },
+  lockedSections: [
+    {
+      title: "Ventas",
+      icon: ShoppingCart,
+      locked: true,
+    },
+    {
+      title: "Operaciones", 
+      icon: Workflow,
+      locked: true,
+    },
+  ],
+  settingsNav: [
+    {
+      title: "Configuración",
+      url: "/settings",
+      icon: Settings,
+    },
+    {
+      title: "Facturación",
+      url: "/invoicing",
+      icon: CreditCard,
+    },
+  ],
+};
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
+const AppSidebar = () => {
   const location = useLocation();
-  
-  const navigationItems: SidebarItem[] = [
-    { name: 'Resumen', icon: Home, path: '/' },
-    { name: 'Llamadas', icon: PhoneCall, path: '/calls' },
-    { name: 'Buscar', icon: Search, path: '/search' },
-    { name: 'Transcripciones', icon: FileText, path: '/transcriptions' },
-    { name: 'Analítica', icon: BarChart3, path: '/analytics' },
-    { name: 'Tickets', icon: Ticket, path: '/tickets' },
-    { name: 'Números', icon: Phone, path: '/phones' },
-    { name: 'Lab', icon: FlaskConical, path: '/lab' },
-  ];
 
-  const bottomItems: SidebarItem[] = [
-    { name: 'Configuración', icon: Settings, path: '/settings' },
-    { name: 'Facturación', icon: CreditCard, path: '/invoicing' },
-  ];
-
-  const isActive = (path: string) => {
-    if (path === '/') {
+  const isActive = (url: string) => {
+    if (url === '/') {
       return location.pathname === '/';
     }
-    return location.pathname.startsWith(path);
+    return location.pathname.startsWith(url);
   };
 
   return (
-    <div className={cn(
-      "fixed left-0 top-0 h-full bg-background border-r border-border/50 transition-all duration-300 z-50",
-      collapsed ? "w-[70px]" : "w-[240px]"
-    )}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-border/50">
-        <div className={cn("flex items-center", collapsed && "justify-center")}>
-          <NogalLogo className="h-8 w-8 text-foreground" />
-          {!collapsed && (
-            <div className="ml-3">
-              <h1 className="text-lg font-semibold text-foreground">Nogal</h1>
-              <p className="text-xs text-muted-foreground">InsightCall</p>
-            </div>
-          )}
-        </div>
-        
-        {!collapsed && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleSidebar}
-            className="p-1 h-8 w-8 text-muted-foreground hover:text-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+    <Sidebar variant="inset">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link to="/">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <NogalLogo className="size-6" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">Nogal</span>
+                  <span className="truncate text-xs text-muted-foreground">InsightCall Portal</span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-      {/* Botón de expandir cuando está colapsado */}
-      {collapsed && (
-        <div className="p-4 border-b border-border/50">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleSidebar}
-            className="w-full p-2 h-8 text-muted-foreground hover:text-foreground"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
+      <SidebarContent>
+        {/* Main Navigation */}
+        <SidebarGroup>
+          <SidebarMenu>
+            {navigationData.mainNav.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton 
+                  asChild 
+                  isActive={isActive(item.url)}
+                  tooltip={item.title}
+                >
+                  <Link to={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
 
-      {/* Navegación principal */}
-      <nav className="flex-1 px-3 py-6">
-        <div className="space-y-1">
-          {navigationItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                "hover:bg-muted/50 hover:text-foreground",
-                isActive(item.path) 
-                  ? "bg-muted text-foreground" 
-                  : "text-muted-foreground",
-                collapsed && "justify-center"
-              )}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && (
-                <span className="ml-3 font-light">{item.name}</span>
-              )}
-              {!collapsed && item.badge && (
-                <span className="ml-auto bg-primary/10 text-primary text-xs rounded-full px-2 py-0.5">
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
-      </nav>
+        <SidebarSeparator />
 
-      {/* Navegación inferior */}
-      <div className="px-3 py-6 border-t border-border/50">
-        <div className="space-y-1">
-          {bottomItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                "hover:bg-muted/50 hover:text-foreground",
-                isActive(item.path) 
-                  ? "bg-muted text-foreground" 
-                  : "text-muted-foreground",
-                collapsed && "justify-center"
-              )}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && (
-                <span className="ml-3 font-light">{item.name}</span>
-              )}
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
+        {/* Support Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel>{navigationData.supportSection.title}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationData.supportSection.items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive(item.url)}
+                    tooltip={item.title}
+                  >
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                      {item.badge && (
+                        <Badge variant="secondary" className="ml-auto">
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarSeparator />
+
+        {/* Locked Sections */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Próximamente</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationData.lockedSections.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    disabled
+                    tooltip={`${item.title} - Próximamente disponible`}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                    <Lock className="ml-auto size-4 text-muted-foreground" />
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarSeparator />
+
+        {/* Settings Navigation */}
+        <SidebarGroup>
+          <SidebarMenu>
+            {navigationData.settingsNav.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton 
+                  asChild 
+                  isActive={isActive(item.url)}
+                  tooltip={item.title}
+                >
+                  <Link to={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src="/avatars/shadcn.jpg" alt="Admin" />
+                <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-medium">
+                  NS
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">Nogal Admin</span>
+                <span className="truncate text-xs text-muted-foreground">admin@nogal.es</span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 };
 
-export default Sidebar;
+export default AppSidebar;

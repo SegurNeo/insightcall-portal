@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { voiceCallsRealDataService, VoiceCallReal, VoiceCallsStats } from '@/services/voiceCallsRealDataService';
 
 interface UseVoiceCallsRealReturn {
@@ -15,6 +15,7 @@ type FilterOptions = {
   status?: 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
   period?: 'all' | 'today' | 'week' | 'month';
   search?: string;
+  caller_id?: string; // 📞 NUEVO: Filtro por caller ID
 };
 
 // NUEVO TIPO PARA PAGINACIÓN
@@ -119,6 +120,19 @@ export function useVoiceCallsPaginated(
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
+  
+  // Usar refs para evitar dependencias que cambien constantemente
+  const filtersRef = useRef(filters);
+  const currentPageRef = useRef(currentPage);
+  
+  // Actualizar refs cuando cambien los valores
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+  
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
 
   const fetchData = useCallback(async (page: number, appliedFilters?: FilterOptions) => {
     try {
@@ -159,14 +173,14 @@ export function useVoiceCallsPaginated(
   const setPage = useCallback((page: number) => {
     if (page >= 1 && page <= totalPages && page !== currentPage) {
       setCurrentPage(page);
-      fetchData(page, filters);
+      fetchData(page, filtersRef.current);
     }
-  }, [totalPages, currentPage, fetchData, filters]);
+  }, [totalPages, currentPage, fetchData]);
 
   const refresh = useCallback((newFilters?: FilterOptions) => {
-    const filtersToUse = newFilters || filters;
-    fetchData(currentPage, filtersToUse);
-  }, [fetchData, currentPage, filters]);
+    const filtersToUse = newFilters || filtersRef.current;
+    fetchData(currentPageRef.current, filtersToUse);
+  }, [fetchData]);
 
   // Función para actualizar filtros
   const updateFilters = useCallback((newFilters: FilterOptions) => {
@@ -174,22 +188,22 @@ export function useVoiceCallsPaginated(
     fetchData(1, newFilters);
   }, [fetchData]);
 
-  // Carga inicial
+  // Carga inicial - solo una vez
   useEffect(() => {
     fetchData(initialPage, filters);
-  }, [fetchData, initialPage, filters]);
+  }, []);
 
   // Auto-refresh si está habilitado (menos frecuente para paginación)
   useEffect(() => {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
-      console.log(`🔄 [PAGINATION] Auto-refresh página ${currentPage}...`);
-      fetchData(currentPage, filters);
+      console.log(`🔄 [PAGINATION] Auto-refresh página ${currentPageRef.current}...`);
+      fetchData(currentPageRef.current, filtersRef.current);
     }, 60000); // 60 segundos (menos frecuente)
 
     return () => clearInterval(interval);
-  }, [fetchData, currentPage, autoRefresh, filters]);
+  }, [autoRefresh, fetchData]);
 
   return {
     calls,

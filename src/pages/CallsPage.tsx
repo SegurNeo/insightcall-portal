@@ -1,39 +1,18 @@
-import React, { useState, useMemo } from 'react';
-import { format, startOfToday, subDays } from 'date-fns';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useVoiceCallsPaginated } from '@/hooks/useVoiceCallsReal';
+import { VoiceCallReal } from '@/services/voiceCallsRealDataService';
+import { voiceCallsRealDataService, VoiceCallDetailsClean } from '@/services/voiceCallsRealDataService';
+import { exportService } from '@/services/exportService';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { 
-  Search, 
-  RefreshCw, 
-  Filter, 
-  Download, 
-  Phone, 
-  Clock, 
-  Users, 
-  TrendingUp, 
-  Eye, 
-  Calendar, 
-  ChevronDown,
-  CheckCircle,
-  AlertCircle,
-  Activity,
-  MessageSquare,
-  Send,
-  FileText
-} from 'lucide-react';
 
-import { useVoiceCallsPaginated } from '../hooks/useVoiceCallsReal';
-import { CallDetailsSidebar } from '../components/calls/CallDetailsSidebar';
-import { voiceCallsRealDataService, VoiceCallDetailsClean } from '../services/voiceCallsRealDataService';
-import { VoiceCallReal } from '../services/voiceCallsRealDataService';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-
-// shadcn/ui components
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// Components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -45,43 +24,80 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Pagination } from '@/components/ui/pagination';
-
+import { 
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   Popover, 
   PopoverContent, 
   PopoverTrigger 
 } from '@/components/ui/popover';
-import { 
-  Command, 
-  CommandEmpty, 
-  CommandGroup, 
-  CommandInput, 
-  CommandItem, 
-  CommandList 
-} from '@/components/ui/command';
-import { useToast } from '@/hooks/use-toast';
 
-// Types para filtros mejorados
-type FilterStatus = 'all' | 'ticket_sent' | 'ticket_pending' | 'ticket_unassigned' | 'in_progress';
+// Icons
+import { 
+  Phone, 
+  Search, 
+  Filter, 
+  MoreHorizontal, 
+  Download, 
+  RefreshCw, 
+  Calendar,
+  FileSpreadsheet,
+  Clock,
+  MessageSquare,
+  AlertCircle,
+  Activity,
+  ChevronLeft,
+  Send,
+  FileText,
+  PieChart,
+  TrendingUp,
+  TrendingDown,
+  Minus
+} from 'lucide-react';
+
+import { CallDetailsSidebar } from '@/components/calls/CallDetailsSidebar';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+
+// Types para filtros simplificados
 type FilterPeriod = 'all' | 'today' | 'week' | 'month';
 
 interface FilterState {
-  status: FilterStatus;
   period: FilterPeriod;
   search: string;
+  caller_id: string; // 📞 NUEVO: Filtro por caller ID
 }
 
 export default function CallsPage() {
   const { toast } = useToast();
   
-  // Estados locales de filtros
+  // Estados locales de filtros - INMUTABLES para evitar re-renders
   const [filters, setFilters] = useState<FilterState>({
-    status: 'all',
     period: 'all',
-    search: ''
+    search: '',
+    caller_id: ''
   });
   
-  // USAR EL NUEVO HOOK CON PAGINACIÓN Y FILTROS
+  // Estados de UI
+  const [selectedCall, setSelectedCall] = useState<VoiceCallDetailsClean | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Sidebar de detalles cerrado por defecto
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+
+  // Hook de datos - SOLO SE EJECUTA CUANDO CAMBIAN LOS FILTROS
   const { 
     calls, 
     stats, 
@@ -96,609 +112,749 @@ export default function CallsPage() {
     hasNextPage,
     hasPrevPage,
     updateFilters
-  } = useVoiceCallsPaginated(1, 15, false, filters); // Pasamos los filtros al hook
-  
-  // Estados
-  const [selectedCall, setSelectedCall] = useState<VoiceCallDetailsClean | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loadingDetails, setLoadingDetails] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  } = useVoiceCallsPaginated(1, 15, false, filters);
 
-  // YA NO NECESITAMOS FILTROS COMPUTADOS - TODO SE HACE EN EL BACKEND
-  const filteredCalls = calls || []; // Simplemente usar las llamadas que vienen del hook
-
-  // Handler para cambio de filtros
-  const handleFiltersChange = (newFilters: Partial<FilterState>) => {
+  // Handler para cambio de filtros - MEMORIZADO
+  const handleFiltersChange = useCallback((newFilters: Partial<FilterState>) => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
-    updateFilters(updatedFilters); // Esto actualizará los datos en el backend
-  };
+    updateFilters(updatedFilters);
+  }, [filters, updateFilters]);
 
-  // Estadísticas por estado mejoradas
-  const statusStats = useMemo(() => {
-    if (!calls) return { all: 0, ticket_sent: 0, ticket_pending: 0, ticket_unassigned: 0, in_progress: 0 };
-    
-    return {
-      all: total, // Usar el total real de la BD, no solo las de la página actual
-      ticket_sent: calls.filter(c => c.ticket_status === 'sent').length,
-      ticket_pending: calls.filter(c => c.ticket_status === 'pending').length,
-      ticket_unassigned: calls.filter(c => c.ticket_status === 'none').length,
-      in_progress: calls.filter(c => c.status !== 'completed').length
-    };
-  }, [calls, total]);
+  // Handler para refresh - MEMORIZADO
+  const handleRefresh = useCallback(() => {
+    refresh(filters);
+    toast({
+      title: "Datos actualizados",
+      description: "Las llamadas han sido actualizadas correctamente.",
+    });
+  }, [refresh, filters, toast]);
 
-  // Handlers
-  const handleViewDetails = async (call: VoiceCallReal) => {
-    setLoadingDetails(true);
+  // Handler para cargar detalles - MEMORIZADO
+  const handleViewDetails = useCallback(async (call: VoiceCallReal) => {
     try {
+      setLoadingDetails(true);
       const details = await voiceCallsRealDataService.getVoiceCallDetailsClean(call.segurneo_call_id);
       setSelectedCall(details);
-      setSidebarOpen(true);
-      
-      toast({
-        title: "Detalles cargados",
-        description: `Mostrando detalles para ${call.segurneo_call_id.slice(0, 8)}...`,
-      });
+      setSidebarOpen(true); // Abrir sidebar de detalles cuando se selecciona una llamada
     } catch (error) {
-      console.error('Error cargando detalles:', error);
+      console.error('Error loading call details:', error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar los detalles de la llamada",
+        description: "No se pudieron cargar los detalles de la llamada.",
         variant: "destructive",
       });
     } finally {
       setLoadingDetails(false);
     }
-  };
+  }, [toast]);
 
-  const handleRefresh = async () => {
-    await refresh();
-    toast({
-      title: "Actualizado",
-      description: "Lista de llamadas actualizada correctamente",
-    });
-  };
-
-  const handleExport = () => {
-    toast({
-      title: "Exportando",
-      description: "Preparando archivo de exportación...",
-    });
-  };
-
-  // Utilidades
-  const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = startOfToday();
-    const diffInDays = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffInDays === 0) {
-      return `Hoy, ${format(date, 'HH:mm')}`;
-    } else if (diffInDays === 1) {
-      return `Ayer, ${format(date, 'HH:mm')}`;
-    } else {
-      return format(date, 'dd MMM, HH:mm', { locale: es });
+  // Handlers de exportación - MEMORIZADOS
+  const handleExportCSV = useCallback(async () => {
+    try {
+      await exportService.exportToCSV(filters);
+      toast({
+        title: "Exportación exitosa",
+        description: "El archivo CSV se ha descargado correctamente",
+      });
+    } catch (error) {
+      console.error('Error exporting to CSV:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo exportar el archivo CSV",
+        variant: "destructive",
+      });
     }
-  };
+  }, [filters, toast]);
 
-  const getStatusConfig = (call: VoiceCallReal) => {
-    // Si la llamada está en proceso
-    if (call.status !== 'completed') {
+  const handleExportExcel = useCallback(async () => {
+    try {
+      await exportService.exportToExcel(filters);
+      toast({
+        title: "Exportación exitosa",
+        description: "El archivo Excel se ha descargado correctamente",
+      });
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo exportar el archivo Excel",
+        variant: "destructive",
+      });
+    }
+  }, [filters, toast]);
+
+  // Handlers para exportar llamadas específicas - MEMORIZADOS
+  const handleExportSingleCSV = useCallback(async (conversationId: string) => {
+    try {
+      await exportService.exportSingleCallToCSV(conversationId);
+      toast({
+        title: "Exportación exitosa",
+        description: `Llamada exportada: ...${conversationId.slice(-8)}.csv`,
+      });
+    } catch (error) {
+      console.error('Error exporting single call to CSV:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo exportar la llamada",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  const handleExportSingleExcel = useCallback(async (conversationId: string) => {
+    try {
+      await exportService.exportSingleCallToExcel(conversationId);
+      toast({
+        title: "Exportación exitosa",
+        description: `Llamada exportada: ...${conversationId.slice(-8)}.xlsx`,
+      });
+    } catch (error) {
+      console.error('Error exporting single call to Excel:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo exportar la llamada",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  // Métricas calculadas - MEMORIZADAS
+  const keyMetrics = useMemo(() => {
+    if (!calls || !stats) return [];
+
+    const avgDurationFormatted = stats.avgDuration 
+      ? `${Math.floor(stats.avgDuration / 60)}m ${Math.floor(stats.avgDuration % 60)}s`
+      : '0m 0s';
+    
+    const successRate = calls.length > 0 
+      ? ((calls.filter(c => c.call_successful).length / calls.length) * 100).toFixed(1)
+      : '0';
+    
+    const ticketsGenerated = calls.reduce((sum, call) => sum + (call.tickets_count || 0), 0);
+    const totalMessages = calls.reduce((sum, call) => sum + call.total_messages, 0);
+    const audioAvailable = calls.filter(c => !!c.audio_download_url).length;
+    const audioPercentage = calls.length > 0 ? ((audioAvailable / calls.length) * 100).toFixed(0) : '0';
+
+    return [
+      {
+        title: 'Total Llamadas',
+        value: total.toLocaleString(),
+        subtitle: `${calls.length} en esta página`,
+        icon: Phone,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50'
+      },
+      {
+        title: 'Duración Promedio',
+        value: avgDurationFormatted,
+        subtitle: 'Por llamada',
+        icon: Clock,
+        color: 'text-green-600',
+        bgColor: 'bg-green-50'
+      },
+      {
+        title: 'Tasa de Éxito',
+        value: `${successRate}%`,
+        subtitle: 'Llamadas exitosas',
+        icon: TrendingUp,
+        color: 'text-emerald-600',
+        bgColor: 'bg-emerald-50'
+      },
+      {
+        title: 'Tickets Enviados',
+        value: calls.filter(c => c.ticket_sent_to_nogal).length.toString(),
+        subtitle: 'Exitosos a Nogal',
+        icon: Send,
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-50'
+      },
+      {
+        title: 'Mensajes Totales',
+        value: totalMessages.toLocaleString(),
+        subtitle: 'En esta página',
+        icon: MessageSquare,
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50'
+      },
+      {
+        title: 'Interacción Promedio',
+        value: `${Math.round(calls.reduce((sum, call) => sum + call.total_messages, 0) / calls.length)}`,
+        subtitle: 'Mensajes por llamada',
+        icon: MessageSquare,
+        color: 'text-indigo-600',
+        bgColor: 'bg-indigo-50'
+      }
+    ];
+  }, [calls, stats, total]);
+
+  // Función para formatear fecha - MEMORIZADA
+  const formatDate = useCallback((dateString: string | null | undefined) => {
+    if (!dateString) return 'Fecha no disponible';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Fecha inválida';
+      return format(date, 'dd MMM, yyyy HH:mm', { locale: es });
+    } catch (error) {
+      console.error('Error formatting date:', dateString, error);
+      return 'Error en fecha';
+    }
+  }, []);
+
+  // Función para obtener configuración de estado - MEMORIZADA
+  const getStatusConfig = useCallback((call: VoiceCallReal) => {
+    // Llamadas fallidas
+    if (call.status === 'failed') {
+      return { variant: 'destructive' as const, label: 'Llamada Fallida', icon: AlertCircle };
+    }
+    
+    // Llamadas en progreso
+    if (call.status === 'in_progress') {
       return { variant: 'secondary' as const, label: 'En Proceso', icon: Activity };
     }
     
-    // Para todas las llamadas completadas, mostrar estado de tickets
-    if (call.ticket_status === 'sent') {
-      return { variant: 'default' as const, label: 'Ticket Enviado', icon: Send };
-    } else if (call.ticket_status === 'pending') {
-      return { variant: 'secondary' as const, label: 'Ticket Pendiente', icon: FileText };
-    } else {
-      return { variant: 'outline' as const, label: 'Ticket Sin Asignar', icon: AlertCircle };
+    // Llamadas completadas - revisar si tienen tickets
+    if (call.status === 'completed') {
+      if (call.tickets_count > 0) {
+        return { variant: 'default' as const, label: 'Ticket Enviado', icon: Send };
+      } else {
+        return { variant: 'secondary' as const, label: 'Ticket Pendiente', icon: FileText };
+      }
     }
-  };
-
-  const getSuccessRate = () => {
-    if (!calls || calls.length === 0) return 0;
-    const successful = calls.filter(c => c.call_successful).length;
-    return Math.round((successful / calls.length) * 100);
-  };
+    
+    // Fallback
+    return { variant: 'outline' as const, label: 'Estado Desconocido', icon: AlertCircle };
+  }, []);
 
   // Loading State
   if (isLoading && !calls) {
     return (
-      <DashboardLayout>
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-          <div className="flex items-center justify-between space-y-2">
-            <div>
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-96 mt-2" />
-            </div>
-            <Skeleton className="h-10 w-32" />
-          </div>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {Array(4).fill(0).map((_, i) => (
-              <Card key={i}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-3 w-20 mt-2" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-32" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Array(5).fill(0).map((_, i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-32" />
         </div>
-      </DashboardLayout>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-16" />
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   // Error State
   if (error) {
     return (
-      <DashboardLayout>
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-          <div className="flex items-center justify-between space-y-2">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight">Llamadas</h2>
-              <p className="text-muted-foreground">
-                Gestión y análisis de llamadas de voz
-              </p>
-            </div>
-          </div>
-          
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <p>Error al cargar las llamadas: {error}</p>
-                <Button onClick={handleRefresh} variant="outline" size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Reintentar
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
-      </DashboardLayout>
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Error al cargar las llamadas: {error}
+        </AlertDescription>
+      </Alert>
     );
   }
 
+  const filteredCalls = calls || [];
+
   return (
     <DashboardLayout>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between space-y-2">
+      <div className="space-y-6">
+      {/* Header Minimalista */}
+      <div className="border-b pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Llamadas</h2>
-            <p className="text-muted-foreground">
-              Gestión y análisis de llamadas de voz
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Phone className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold">Llamadas</h1>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>{total.toLocaleString()} llamadas totales</span>
+                  {lastUpdated && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <span>Actualizado {format(lastUpdated, 'HH:mm', { locale: es })}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
-            <Button onClick={handleRefresh} disabled={isLoading}>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              disabled={isLoading}
+            >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Actualizar
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Exportar Datos</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Exportar CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Exportar Excel
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <PieChart className="h-4 w-4 mr-2" />
+                  Ver analíticas
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
+      </div>
 
-        {/* Métricas principales */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Llamadas</CardTitle>
-              <Phone className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{total || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {lastUpdated && `Actualizado ${format(lastUpdated, 'HH:mm')}`}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Duración Promedio</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold tabular-nums">
-                {stats?.avgDuration ? formatDuration(stats.avgDuration) : '0:00'}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Por llamada
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tasa de Éxito</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{getSuccessRate()}%</div>
-              <Progress value={getSuccessRate()} className="mt-2" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Mensajes Totales</CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {calls?.reduce((sum, call) => sum + call.total_messages, 0) || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                En conversaciones
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filtros y controles */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filtros</CardTitle>
-            <CardDescription>
-              Filtra y busca llamadas específicas
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            
-            {/* Tabs de estado */}
-            <Tabs 
-              value={filters.status} 
-              onValueChange={(value) => handleFiltersChange({ status: value as FilterStatus })}
-            >
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="all">
-                  Todas <Badge variant="secondary" className="ml-1">{statusStats.all}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="ticket_sent">
-                  Ticket Enviado <Badge variant="secondary" className="ml-1">{statusStats.ticket_sent}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="ticket_pending">
-                  Ticket Pendiente <Badge variant="secondary" className="ml-1">{statusStats.ticket_pending}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="ticket_unassigned">
-                  Sin Asignar <Badge variant="secondary" className="ml-1">{statusStats.ticket_unassigned}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="in_progress">
-                  En Proceso <Badge variant="secondary" className="ml-1">{statusStats.in_progress}</Badge>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <Separator />
-
-            {/* Controles de filtro */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              {/* Período */}
-              <div className="space-y-2">
-                <Label htmlFor="period">Período</Label>
-                <Select 
-                  value={filters.period} 
-                  onValueChange={(value) => handleFiltersChange({ period: value as FilterPeriod })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las fechas</SelectItem>
-                    <SelectItem value="today">Hoy</SelectItem>
-                    <SelectItem value="week">Última semana</SelectItem>
-                    <SelectItem value="month">Último mes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Búsqueda */}
-              <div className="space-y-2">
-                <Label htmlFor="search">Búsqueda</Label>
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="search"
-                    placeholder="ID, conversación, agente..."
-                    value={filters.search}
-                    onChange={(e) => handleFiltersChange({ search: e.target.value })}
-                    className="pl-8"
-                  />
+      {/* Métricas Minimalistas */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-medium">Resumen</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {keyMetrics.map((metric, index) => {
+              const IconComponent = metric.icon;
+              return (
+                <div key={index} className="flex flex-col items-center text-center p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <div className="p-2 rounded-md bg-background mb-2">
+                    <IconComponent className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-lg font-semibold">{metric.value}</p>
+                    <p className="text-xs text-muted-foreground leading-tight">{metric.title}</p>
+                  </div>
                 </div>
-              </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
-              {/* Modo de vista */}
-              <div className="space-y-2">
-                <Label>Vista</Label>
-                <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'table' | 'cards')}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="table">Tabla</SelectItem>
-                    <SelectItem value="cards">Tarjetas</SelectItem>
-                  </SelectContent>
-                </Select>
+      {/* Filtros y Búsqueda */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Filtros y Búsqueda</CardTitle>
+              <CardDescription>
+                Filtra y busca llamadas específicas
+              </CardDescription>
+            </div>
+            <Badge variant="secondary" className="text-sm">
+              {filteredCalls.length} resultados
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          
+          {/* Filtros en una sola línea */}
+          <div className="flex items-center space-x-4">
+            
+            {/* Búsqueda */}
+            <div className="flex-1 max-w-sm">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por ID, conversación, agente..."
+                  value={filters.search}
+                  onChange={(e) => handleFiltersChange({ search: e.target.value })}
+                  className="pl-9"
+                />
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Lista de llamadas */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Llamadas {filters.status !== 'all' && `(${filteredCalls.length})`}
+            {/* 📞 NUEVO: Filtro por Caller ID */}
+            <div className="max-w-48">
+              <div className="relative">
+                <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Caller ID (ej: +34...)"
+                  value={filters.caller_id}
+                  onChange={(e) => handleFiltersChange({ caller_id: e.target.value })}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            {/* Período */}
+            <Select 
+              value={filters.period} 
+              onValueChange={(value) => handleFiltersChange({ period: value as FilterPeriod })}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="today">Hoy</SelectItem>
+                <SelectItem value="week">Semana</SelectItem>
+                <SelectItem value="month">Mes</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Modo de vista */}
+            <Select value={viewMode} onValueChange={(value) => setViewMode(value as 'table' | 'cards')}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="table">Tabla</SelectItem>
+                <SelectItem value="cards">Tarjetas</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Botón de filtros avanzados */}
+            <Button variant="outline">
+              <Filter className="h-4 w-4 mr-2" />
+              Filtros
+            </Button>
+          </div>
+
+ 
+        </CardContent>
+      </Card>
+
+      {/* Lista de llamadas mejorada */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl">
+              Llamadas
             </CardTitle>
             <CardDescription>
-              Lista de llamadas con detalles y acciones
+                Lista de llamadas con detalles y acciones • Página {currentPage} de {totalPages}
             </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredCalls.length === 0 ? (
-              <div className="text-center py-12">
-                <Phone className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No hay llamadas</h3>
-                <p className="text-muted-foreground">
-                  {filters.status !== 'all' || filters.search || filters.period !== 'all'
-                    ? 'No se encontraron llamadas con los filtros actuales.'
-                    : 'No hay llamadas disponibles en este momento.'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {viewMode === 'table' ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Llamada</TableHead>
-                          <TableHead>Fecha</TableHead>
-                          <TableHead>Duración</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead>Mensajes</TableHead>
-                          <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredCalls.map((call) => {
-                          const statusConfig = getStatusConfig(call);
-                          const StatusIcon = statusConfig.icon;
-                          
-                          return (
-                            <TableRow key={call.id}>
-                              <TableCell>
-                                <div className="space-y-1">
-                                  <div className="flex items-center space-x-2">
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarFallback className="text-xs">
-                                        {call.agent_id.slice(0, 2).toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                      <div className="font-medium text-sm">
-                                        {call.segurneo_call_id.slice(0, 8)}...
-                                      </div>
-                                      <div className="text-xs text-muted-foreground font-mono">
-                                        {call.conversation_id.slice(0, 16)}...
-                                      </div>
-                                    </div>
-                                  </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm">
+                <PieChart className="h-4 w-4 mr-2" />
+                Analíticas
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filteredCalls.length === 0 ? (
+            <div className="text-center py-12">
+              <Phone className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No hay llamadas</h3>
+              <p className="text-muted-foreground">
+                {filters.search || filters.period !== 'all'
+                  ? 'No se encontraron llamadas con los filtros actuales.'
+                  : 'No hay llamadas disponibles en este momento.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              {viewMode === 'table' ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Llamada</TableHead>
+                        <TableHead className="w-40">Fecha</TableHead>
+                        <TableHead>Duración</TableHead>
+                        <TableHead>Interacción</TableHead>
+                        <TableHead>Ticket Enviado</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCalls.map((call) => {
+                        const statusConfig = getStatusConfig(call);
+                        const StatusIcon = statusConfig.icon;
+                        return (
+                          <TableRow key={call.id} className="hover:bg-muted/50">
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="flex items-center space-x-2">
+                                  <code className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                                    {call.conversation_id}
+                                  </code>
                                 </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  {formatDate(call.start_time)}
+                                <div className="text-sm text-muted-foreground">
+                                  {call.segurneo_call_id.slice(0, 16)}...
                                 </div>
-                              </TableCell>
-                              <TableCell>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="whitespace-nowrap">
+                                {formatDate(call.start_time)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                <span>{Math.floor(call.duration_seconds / 60)}m {call.duration_seconds % 60}s</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-3 text-sm">
                                 <div className="flex items-center space-x-1">
-                                  <Clock className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-sm font-semibold tabular-nums">
-                                    {formatDuration(call.duration_seconds)}
-                                  </span>
+                                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium">{call.total_messages}</span>
                                 </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={statusConfig.variant} className="flex items-center space-x-1">
-                                  <StatusIcon className="h-3 w-3" />
-                                  <span>{statusConfig.label}</span>
+                                <div className="text-muted-foreground">
+                                  ({Math.round((call.agent_messages / call.total_messages) * 100)}% agente)
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {call.ticket_sent_to_nogal ? (
+                                <Badge variant="default" className="flex items-center space-x-1 w-fit">
+                                  <Send className="h-3 w-3" />
+                                  <span>Enviado a Nogal</span>
                                 </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center space-x-2 text-sm">
-                                  <div className="flex items-center space-x-1">
-                                    <Users className="h-3 w-3 text-muted-foreground" />
-                                    <span>{call.agent_messages}</span>
-                                  </div>
-                                  <div className="flex items-center space-x-1">
-                                    <MessageSquare className="h-3 w-3 text-muted-foreground" />
-                                    <span>{call.user_messages}</span>
-                                  </div>
-                                  <Badge variant="outline" className="text-xs">
-                                    {call.total_messages}
-                                  </Badge>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
+                              ) : call.tickets_count > 0 ? (
+                                <Badge variant="secondary" className="flex items-center space-x-1 w-fit">
+                                  <AlertCircle className="h-3 w-3" />
+                                  <span>Error al Enviar</span>
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="flex items-center space-x-1 w-fit">
+                                  <Minus className="h-3 w-3" />
+                                  <span>Sin Ticket</span>
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center space-x-2">
                                 <Button 
-                                  variant="default" 
-                                  size="sm" 
+                                  variant="outline" 
+                                  size="sm"
                                   onClick={() => handleViewDetails(call)}
                                   disabled={loadingDetails}
-                                  className="h-8 px-3 text-xs"
                                 >
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  Ver detalles
+                                  {loadingDetails ? (
+                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    'Ver detalles'
+                                  )}
                                 </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredCalls.map((call) => {
-                      const statusConfig = getStatusConfig(call);
-                      const StatusIcon = statusConfig.icon;
-                      
-                      return (
-                        <Card key={call.id} className="hover:shadow-md transition-shadow">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="text-xs">
-                                    {call.agent_id.slice(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <CardTitle className="text-sm">
-                                    {call.segurneo_call_id.slice(0, 8)}...
-                                  </CardTitle>
-                                  <p className="text-xs text-muted-foreground font-mono">
-                                    {call.conversation_id.slice(0, 16)}...
-                                  </p>
-                                </div>
+                                
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Exportar Llamada</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleExportSingleCSV(call.conversation_id)}>
+                                      <FileText className="h-4 w-4 mr-2" />
+                                      Exportar CSV
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleExportSingleExcel(call.conversation_id)}>
+                                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                                      Exportar Excel
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
-                              <Badge variant={statusConfig.variant} className="flex items-center space-x-1">
-                                <StatusIcon className="h-3 w-3" />
-                                <span>{statusConfig.label}</span>
-                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredCalls.map((call) => {
+                    const statusConfig = getStatusConfig(call);
+                    const StatusIcon = statusConfig.icon;
+                    return (
+                      <Card key={call.id} className="hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <code className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                                {call.conversation_id}
+                              </code>
+                              <p className="text-sm text-muted-foreground">
+                                {call.segurneo_call_id.slice(0, 16)}...
+                              </p>
                             </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Fecha:</span>
-                                <span>{formatDate(call.start_time)}</span>
+                            <Badge variant={statusConfig.variant} className="flex items-center space-x-1">
+                              <StatusIcon className="h-3 w-3" />
+                              <span>{statusConfig.label}</span>
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center space-x-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span>{formatDate(call.start_time)}</span>
+                            </div>
+                          </div>
+                                                      <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center space-x-2">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                <span>{Math.floor(call.duration_seconds / 60)}m {call.duration_seconds % 60}s</span>
                               </div>
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Duración:</span>
-                                <span className="font-semibold tabular-nums">{formatDuration(call.duration_seconds)}</span>
+                            </div>
+                                                        <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center space-x-2">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                <span>{call.total_messages} mensajes</span>
                               </div>
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Mensajes:</span>
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="outline" className="text-xs">
-                                    {call.agent_messages}A
-                                  </Badge>
-                                  <Badge variant="outline" className="text-xs">
-                                    {call.user_messages}U
-                                  </Badge>
-                                </div>
-                              </div>
-                              <Separator />
+                              <span className="text-muted-foreground">
+                                {Math.round((call.agent_messages / call.total_messages) * 100)}% agente
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-sm">
+                              {call.ticket_sent_to_nogal ? (
+                                <>
+                                  <Send className="h-4 w-4 text-green-600" />
+                                  <span className="text-green-600">Ticket enviado a Nogal</span>
+                                </>
+                              ) : call.tickets_count > 0 ? (
+                                <>
+                                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                                  <span className="text-orange-600">Error al enviar ticket</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Minus className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-muted-foreground">Sin ticket generado</span>
+                                </>
+                              )}
+                            </div>
+                                                      <div className="pt-2 space-y-2">
                               <Button 
-                                variant="default" 
+                                variant="outline" 
                                 size="sm" 
-                                className="w-full h-8 text-xs" 
+                                className="w-full"
                                 onClick={() => handleViewDetails(call)}
                                 disabled={loadingDetails}
                               >
-                                <Eye className="h-3 w-3 mr-1" />
-                                Ver detalles
+                                {loadingDetails ? (
+                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  'Ver detalles'
+                                )}
                               </Button>
+                              
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="outline" size="sm" className="w-full">
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Exportar
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Exportar Llamada</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleExportSingleCSV(call.conversation_id)}>
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    Exportar CSV
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleExportSingleExcel(call.conversation_id)}>
+                                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                                    Exportar Excel
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-          
-          {/* Paginación */}
-          {totalPages > 1 && (
-            <CardContent className="pt-0">
-              <Separator className="mb-6" />
-              <div className="space-y-4">
-                {/* Información de paginación */}
-                <div className="text-center">
-                  <div className="inline-flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg">
-                    <div className="text-sm text-muted-foreground">
-                      Mostrando{' '}
-                      <span className="font-semibold text-foreground">
-                        {(currentPage - 1) * 15 + 1}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Paginación mejorada */}
+              <div className="flex items-center justify-between pt-6">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <span>
+                    Mostrando {filteredCalls.length} de {total.toLocaleString()} llamadas
+                  </span>
+                  {filteredCalls.length > 0 && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <span>
+                        Página {currentPage} de {totalPages}
                       </span>
-                      {' - '}
-                      <span className="font-semibold text-foreground">
-                        {Math.min(currentPage * 15, total)}
-                      </span>
-                      {' de '}
-                      <span className="font-semibold text-foreground">{total}</span>
-                      {' llamadas'}
-                    </div>
-                  </div>
+                    </>
+                  )}
                 </div>
                 
-                {/* Componente de paginación */}
-                <div className="flex justify-center">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                  />
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(currentPage - 1)}
+                    disabled={!hasPrevPage || isLoading}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(currentPage + 1)}
+                    disabled={!hasNextPage || isLoading}
+                  >
+                    Siguiente
+                    <ChevronLeft className="h-4 w-4 ml-2 rotate-180" />
+                  </Button>
                 </div>
               </div>
-            </CardContent>
+            </>
           )}
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Sidebar de detalles */}
-      {selectedCall && (
-        <CallDetailsSidebar
-          call={selectedCall}
-          isOpen={sidebarOpen}
-          onClose={() => {
-            setSidebarOpen(false);
-            setSelectedCall(null);
-          }}
-        />
-      )}
-    </DashboardLayout>
-  );
-}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent className="w-[600px] sm:max-w-[600px]">
+          {selectedCall && (
+            <CallDetailsSidebar
+              call={selectedCall}
+              isOpen={sidebarOpen}
+              onClose={() => setSidebarOpen(false)}
+            />
+          )}
+        </SheetContent>
+             </Sheet>
+       </div>
+     </DashboardLayout>
+   );
+ }

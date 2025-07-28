@@ -85,10 +85,21 @@ export class CallProcessor {
       feedback: t.feedback || null
     }));
 
+    // 📞 NUEVO: Extraer caller ID de los transcripts
+    // Usar la interface correcta de types/calls.types.ts
+    const callerIdTranscripts = transcripts.map(t => ({
+      ...t,
+      segment_start_time: t.start_time,
+      segment_end_time: t.end_time
+    }));
+    const callerId = clientDataExtractor.extractCallerIdFromTranscripts(callerIdTranscripts as any);
+    console.log(`📞 [PROCESSOR] Caller ID extraído: ${callerId || 'No encontrado'}`);
+
     const callData: CreateCallData = {
       segurneo_call_id: payload.call_id,
       conversation_id: payload.conversation_id,
       agent_id: payload.agent_id,
+      caller_id: callerId,
       start_time: payload.start_time,
       end_time: payload.end_time,
       duration_seconds: payload.duration_seconds,
@@ -174,99 +185,96 @@ export class CallProcessor {
     console.log(`✅ [PROCESSOR] Procesando ticket con lógica inteligente: ${shouldProcessTicket.reason}`);
 
     try {
-      // 🔍 EXTRAER DATOS DE CLIENTE de los transcripts estructurados
-      // Adaptar formato para compatibilidad con clientDataExtractor
-      const adaptedTranscripts = call.transcripts.map(t => ({
-        sequence: t.sequence,
-        speaker: t.speaker,
-        message: t.message,
-        segment_start_time: t.start_time,
-        segment_end_time: t.end_time,
-        tool_calls: t.tool_calls,
-        tool_results: t.tool_results,
-        feedback: t.feedback
-      }));
+      // 🧠 NUEVO: Usar directamente los datos extraídos por la IA
+      const extractedData = analysis.extracted_data as any;
       
-      // 🧠 NUEVO: Usar extracción inteligente con contexto IA para matching
-      const clientData = clientDataExtractor.extractClientDataWithAIContext(
-        adaptedTranscripts as any,
-        {
-          datosExtraidos: {
-            nombreCliente: (analysis.extracted_data as any)?.nombreCliente
-          }
-        }
-      );
-      
-      console.log(`🔍 [PROCESSOR] Datos de cliente extraídos con IA:`, {
-        idCliente: clientData.idCliente,
-        nombre: clientData.nombre,
-        confidence: clientData.confidence,
-        source: clientData.extractionSource,
-        toolsUsed: clientData.toolsUsed,
-        aiMatchingInfo: clientData.clientMatchingInfo
+      console.log(`🧠 [PROCESSOR] Datos extraídos por IA:`, {
+        nombreCliente: extractedData?.nombreCliente,
+        telefono: extractedData?.telefono,
+        email: extractedData?.email,
+        numeroPoliza: extractedData?.numeroPoliza,
+        leadInfo: extractedData?.leadInfo
       });
 
-      // 🆕 CRÍTICO: Lógica de creación de clientes - PRIMERO CLIENTE, DESPUÉS TICKET
+      // 🎯 FLUJO SIMPLIFICADO: Decidir según datos extraídos por IA
       let idCliente: string;
       let clientCreated = false;
       
-      if (clientData.idCliente) {
-        // ✅ CASO 1: Cliente existente encontrado
-        idCliente = clientData.idCliente;
-        console.log(`✅ [PROCESSOR] Cliente existente encontrado: ${idCliente}`);
+      // Verificar si es un lead
+      const isLead = extractedData?.leadInfo?.isLead;
+      const hasClientName = !!extractedData?.nombreCliente;
+      const hasContactInfo = !!(extractedData?.telefono || extractedData?.email);
+      const isNewContract = analysis.incident_type === 'Nueva contratación de seguros';
+      
+      console.log(`🔍 [PROCESSOR] shouldCreateClientFromScratch: {
+        isNewContract: ${isNewContract},
+        hasClientName: ${hasClientName},
+        nombreCliente: ${extractedData?.nombreCliente},
+        telefono: ${extractedData?.telefono},
+        email: ${extractedData?.email}
+      }`);
+      
+      if (isLead && hasClientName) {
+        // 🚨 CASO 1: LEAD DETECTADO - Crear cliente con idLead
+        console.log(`🚨 [PROCESSOR] LEAD DETECTADO: ${extractedData.nombreCliente}`);
+        console.log(`📋 [PROCESSOR] Lead ID: ${extractedData.leadInfo.idLead}`);
         
-      } else if (clientData.leadInfo?.isLead) {
-        // 🚨 CASO 2: ES UN LEAD - CREAR CLIENTE PRIMERO
-        console.log(`🚨 [PROCESSOR] ¡LEAD DETECTADO! Creando cliente PRIMERO antes del ticket`);
-        console.log(`🆕 [PROCESSOR] Creando cliente desde lead: ${clientData.leadInfo.selectedLead?.nombre}`);
-        
-        const clientCreationResult = await this.createClientFromLead(
-          clientData, 
-          call.conversation_id, 
-          analysis
+        const clientCreationResult = await this.createClientFromLeadData(
+          extractedData,
+          call.conversation_id
         );
         
         if (clientCreationResult.success && clientCreationResult.clientId) {
           idCliente = clientCreationResult.clientId;
           clientCreated = true;
-          console.log(`✅ [PROCESSOR] ¡CLIENTE CREADO EXITOSAMENTE DESDE LEAD!`);
-          console.log(`🔑 [PROCESSOR] ID del cliente nuevo: ${idCliente}`);
-          console.log(`🎫 [PROCESSOR] Ahora se procederá a crear el ticket con este ID`);
+          console.log(`✅ [PROCESSOR] Cliente creado desde lead: ${idCliente}`);
         } else {
-          console.error(`❌ [PROCESSOR] ERROR CRÍTICO: No se pudo crear cliente desde lead: ${clientCreationResult.error}`);
-          console.error(`❌ [PROCESSOR] Esto impedirá la creación correcta del ticket`);
-          // NO usar fallback para leads - es mejor fallar que crear datos incorrectos
-          throw new Error(`Error crítico: No se pudo crear cliente desde lead: ${clientCreationResult.error}`);
+          throw new Error(`Error crítico creando cliente desde lead: ${clientCreationResult.error}`);
         }
         
-      } else if (this.shouldCreateClientFromScratch(analysis, clientData)) {
-        // 🚨 CASO 3: Cliente nuevo (no lead) - CREAR CLIENTE PRIMERO
-        console.log(`🚨 [PROCESSOR] Creando cliente NUEVO - PRIMERO cliente, DESPUÉS ticket`);
-        console.log(`🆕 [PROCESSOR] Creando cliente desde cero para: ${analysis.incident_type}`);
+      } else if (isNewContract) {
+        // 🆕 CASO 2: NUEVA CONTRATACIÓN - SIEMPRE crear cliente (datos mínimos)
+        console.log(`🆕 [PROCESSOR] NUEVA CONTRATACIÓN DE SEGUROS - Creando cliente obligatorio`);
+        console.log(`📋 [PROCESSOR] Datos disponibles: nombre=${extractedData?.nombreCliente}, tel=${extractedData?.telefono}, email=${extractedData?.email}`);
         
-        const clientCreationResult = await this.createClientFromScratch(
-          clientData, 
-          call.conversation_id, 
+        const clientCreationResult = await this.createClientForNewContract(
+          extractedData,
+          call.conversation_id,
           analysis
         );
         
         if (clientCreationResult.success && clientCreationResult.clientId) {
           idCliente = clientCreationResult.clientId;
           clientCreated = true;
-          console.log(`✅ [PROCESSOR] ¡CLIENTE CREADO EXITOSAMENTE DESDE CERO!`);
-          console.log(`🔑 [PROCESSOR] ID del cliente nuevo: ${idCliente}`);
-          console.log(`🎫 [PROCESSOR] Ahora se procederá a crear el ticket con este ID`);
+          console.log(`✅ [PROCESSOR] Cliente creado para nueva contratación: ${idCliente}`);
         } else {
-          console.error(`❌ [PROCESSOR] ERROR: No se pudo crear cliente desde cero: ${clientCreationResult.error}`);
-          console.error(`❌ [PROCESSOR] Usando fallback para continuar el flujo`);
-          // Para clientes desde cero, sí usar fallback
-          idCliente = clientDataExtractor.generateFallbackClientId(call.conversation_id, clientData.telefono);
+          console.error(`❌ [PROCESSOR] Error creando cliente para nueva contratación: ${clientCreationResult.error}`);
+          console.log(`🔄 [PROCESSOR] Usando fallback para nueva contratación`);
+          idCliente = this.generateFallbackClientId(call.conversation_id, extractedData?.telefono);
+        }
+        
+      } else if (hasClientName && hasContactInfo && this.shouldCreateNewClient(analysis)) {
+        // 🆕 CASO 3: CLIENTE NUEVO CON DATOS - Crear cliente sin idLead
+        console.log(`🆕 [PROCESSOR] CLIENTE NUEVO CON DATOS: ${extractedData.nombreCliente}`);
+        
+        const clientCreationResult = await this.createClientFromExtractedData(
+          extractedData,
+          call.conversation_id
+        );
+        
+        if (clientCreationResult.success && clientCreationResult.clientId) {
+          idCliente = clientCreationResult.clientId;
+          clientCreated = true;
+          console.log(`✅ [PROCESSOR] Cliente creado desde cero: ${idCliente}`);
+        } else {
+          console.error(`❌ [PROCESSOR] Error creando cliente: ${clientCreationResult.error}`);
+          idCliente = this.generateFallbackClientId(call.conversation_id, extractedData?.telefono);
         }
         
       } else {
-        // ✅ CASO 4: Usar fallback cuando no hay información suficiente
-        idCliente = clientDataExtractor.generateFallbackClientId(call.conversation_id, clientData.telefono);
-        console.log(`🔄 [PROCESSOR] Usando idCliente fallback: ${idCliente}`);
+        // 🔄 CASO 4: FALLBACK - No crear cliente, usar ID generado
+        idCliente = this.generateFallbackClientId(call.conversation_id, extractedData?.telefono);
+        console.log(`🔄 [PROCESSOR] Usando ID fallback: ${idCliente}`);
       }
 
       // 🚨 VALIDACIÓN CRÍTICA: Asegurar que tenemos ID válido antes de crear ticket
@@ -276,7 +284,7 @@ export class CallProcessor {
 
       console.log(`🔑 [PROCESSOR] FLUJO CORRECTO: Cliente procesado - ID: ${idCliente}`);
       console.log(`🎫 [PROCESSOR] Procediendo a crear ticket con ID de cliente: ${idCliente}`);
-      console.log(`📊 [PROCESSOR] Estado: clientCreated=${clientCreated}, isLead=${clientData.leadInfo?.isLead || false}`);
+      console.log(`📊 [PROCESSOR] Estado: clientCreated=${clientCreated}, isLead=${isLead || false}`);
 
       const ticketData = {
         call_id: call.id, // Actualizado para usar call_id en lugar de conversation_id
@@ -290,17 +298,15 @@ export class CallProcessor {
           confidence: analysis.confidence,
           created_at: new Date().toISOString(),
           extracted_data: analysis.extracted_data,
-          // 🚀 AÑADIR DATOS DE CLIENTE EXTRAÍDOS CON MATCHING INTELIGENTE
-          client_data: clientData,
+          // 🚀 DATOS EXTRAÍDOS POR IA
+          client_data: extractedData,
           id_cliente: idCliente,
-          // 🧠 Información de matching para debugging
-          client_matching_debug: clientData.clientMatchingInfo,
-          // 🚨 AÑADIR INFORMACIÓN CRÍTICA DEL FLUJO
+          // 🚨 INFORMACIÓN DEL FLUJO DE CREACIÓN
           client_creation_flow: {
-            was_lead: clientData.leadInfo?.isLead || false,
+            was_lead: isLead || false,
             client_created_new: clientCreated,
-            lead_id: clientData.leadInfo?.leadId,
-            client_source: clientData.idCliente ? 'existing' : (clientCreated ? 'newly_created' : 'fallback'),
+            lead_id: extractedData?.leadInfo?.idLead,
+            client_source: clientCreated ? 'newly_created' : 'fallback',
             flow_timestamp: new Date().toISOString()
           },
           // 🧠 NUEVA: Información de decisión inteligente
@@ -337,12 +343,12 @@ export class CallProcessor {
       // 🚨 VALIDACIÓN FINAL: Confirmar que el flujo se completó correctamente
       console.log(`✅ [PROCESSOR] TICKET CREADO EXITOSAMENTE: ${ticket.id}`);
       
-      if (clientData.leadInfo?.isLead && clientCreated) {
+      if (isLead && clientCreated) {
         console.log(`🎉 [PROCESSOR] ¡FLUJO CRÍTICO COMPLETADO EXITOSAMENTE!`);
         console.log(`🔑 [PROCESSOR] Cliente creado desde lead: ${idCliente}`);
         console.log(`🎫 [PROCESSOR] Ticket creado con ID de cliente: ${ticket.id}`);
-        console.log(`📊 [PROCESSOR] Lead ID: ${clientData.leadInfo.leadId}`);
-        console.log(`📊 [PROCESSOR] Campaña: ${clientData.leadInfo.campaña}`);
+        console.log(`📊 [PROCESSOR] Lead ID: ${extractedData?.leadInfo?.idLead}`);
+        console.log(`📊 [PROCESSOR] Campaña: ${extractedData?.leadInfo?.campaña}`);
       } else if (clientCreated) {
         console.log(`🎉 [PROCESSOR] Cliente nuevo creado y ticket generado: ${ticket.id}`);
       } else {
@@ -445,16 +451,14 @@ export class CallProcessor {
       }
 
       // 📤 FLUJO NORMAL: ENVIAR TICKET A SEGURNEO/NOGAL según el tipo de incidencia
-      const shouldSend = this.shouldSendToNogal(analysis, clientData, idCliente);
+      const shouldSend = this.shouldSendToNogal(analysis, { confidence: analysis.confidence }, idCliente);
       
       if (shouldSend) {
         console.log(`📤 [PROCESSOR] Enviando ticket a Segurneo/Nogal: ${ticket.id}`);
-        console.log(`📊 [PROCESSOR] Criterios: tipo="${analysis.incident_type}", confianza=${clientData.confidence}, cliente=${!!idCliente}`);
+        console.log(`📊 [PROCESSOR] Criterios: tipo="${analysis.incident_type}", confianza=${analysis.confidence}, cliente=${!!idCliente}`);
         
-        // 🧠 Log adicional de matching para debugging
-        if (clientData.clientMatchingInfo) {
-          console.log(`🧠 [PROCESSOR] Info matching: método=${clientData.clientMatchingInfo.matchingMethod}, score=${clientData.clientMatchingInfo.matchingScore}, IA="${clientData.clientMatchingInfo.aiDetectedName}"`);
-        }
+        // 🧠 Log usando datos extraídos por IA
+        console.log(`🧠 [PROCESSOR] Datos IA: nombre=${extractedData?.nombreCliente}, teléfono=${extractedData?.telefono}, email=${extractedData?.email}`);
         
         try {
           // Preparar payload para Segurneo Voice
@@ -532,7 +536,7 @@ export class CallProcessor {
           }
         }
       } else {
-        console.log(`⏭️ [PROCESSOR] No se envía a Segurneo/Nogal: idCliente=${!!idCliente}, confidence=${clientData.confidence}`);
+        console.log(`⏭️ [PROCESSOR] No se envía a Segurneo/Nogal: idCliente=${!!idCliente}, confidence=${analysis.confidence}`);
       }
 
       return [ticket.id];
@@ -1037,38 +1041,226 @@ export class CallProcessor {
   }
 
   /**
-   * 🆕 NUEVO: Determinar si se debe crear cliente desde cero
+   * 🆕 NUEVO: Crear cliente específicamente para nuevas contrataciones
    */
-  private shouldCreateClientFromScratch(analysis: any, clientData: any): boolean {
-    // Crear cliente para nuevas contrataciones si no existe
+  private async createClientForNewContract(
+    extractedData: any,
+    conversationId: string,
+    analysis: any
+  ): Promise<{ success: boolean; clientId?: string; error?: string }> {
+    try {
+      console.log(`🆕 [PROCESSOR] Creando cliente para nueva contratación`);
+      
+      // Intentar usar datos extraídos, si no generar mínimos
+      let nombreCliente = extractedData?.nombreCliente;
+      let telefono = extractedData?.telefono;
+      let email = extractedData?.email;
+      
+      // Si no tenemos nombre, usar datos básicos de la conversación
+      if (!nombreCliente) {
+        console.log(`⚠️ [PROCESSOR] No hay nombre del cliente - generando nombre temporal`);
+        nombreCliente = `Cliente Nuevo ${conversationId.slice(-8)}`;
+      }
+      
+      // Si no tenemos teléfono, intentar extraer del conversation_id o usar genérico
+      if (!telefono) {
+        console.log(`⚠️ [PROCESSOR] No hay teléfono - usando genérico temporal`);
+        telefono = `+34000000000`; // Teléfono temporal que deberá actualizarse
+      }
+      
+      // Separar nombre y apellidos
+      const nameParts = nombreCliente.trim().split(' ');
+      const nombre = nameParts[0] || 'Cliente';
+      const primerApellido = nameParts[1] || 'Nuevo';
+      const segundoApellido = nameParts.slice(2).join(' ') || '';
+
+      // Preparar datos mínimos para crear cliente
+      const clientDataFromCall = {
+        nombre: nombre,
+        primerApellido: primerApellido,
+        segundoApellido: segundoApellido,
+        telefono: telefono,
+        email: email || '', // Email opcional
+        // Datos específicos de nueva contratación
+        ramo: analysis.ramo || 'No especificado',
+        tipoIncidencia: analysis.incident_type,
+        // Marcar como cliente temporal que necesita completar datos
+        esClienteTemporal: true,
+        origenCreacion: 'nueva_contratacion',
+        conversationId: conversationId
+      };
+
+      console.log(`📋 [PROCESSOR] Datos para crear cliente:`, {
+        nombre: clientDataFromCall.nombre,
+        primerApellido: clientDataFromCall.primerApellido,
+        telefono: clientDataFromCall.telefono,
+        email: clientDataFromCall.email,
+        ramo: clientDataFromCall.ramo
+      });
+
+      const result = await nogalClientService.createClientFromCall(
+        clientDataFromCall,
+        conversationId
+      );
+
+      if (result.success) {
+        console.log(`✅ [PROCESSOR] Cliente creado exitosamente para nueva contratación: ${result.client_id}`);
+        return {
+          success: true,
+          clientId: result.client_id
+        };
+      } else {
+        console.error(`❌ [PROCESSOR] Error del servicio Nogal:`, result.message);
+        return {
+          success: false,
+          error: result.message || 'Error creando cliente para nueva contratación'
+        };
+      }
+    } catch (error) {
+      console.error(`❌ [PROCESSOR] Excepción creando cliente para nueva contratación:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      };
+    }
+  }
+
+  /**
+   * 🆕 NUEVO: Determinar si se debe crear cliente nuevo
+   */
+  private shouldCreateNewClient(analysis: any): boolean {
+    // Crear cliente para nuevas contrataciones o casos específicos
     const isNewContract = analysis.incident_type === 'Nueva contratación de seguros';
     
-    // Para nuevas contrataciones, solo necesitamos el nombre del cliente
-    const hasClientName = analysis.extracted_data?.nombreCliente;
-    
-    // Log para debugging
-    console.log(`🔍 [PROCESSOR] shouldCreateClientFromScratch:`, {
+    console.log(`🔍 [PROCESSOR] shouldCreateNewClient:`, {
       isNewContract,
-      hasClientName,
-      nombreCliente: analysis.extracted_data?.nombreCliente,
-      telefono: clientData.telefono || analysis.extracted_data?.telefono,
-      email: clientData.email || analysis.extracted_data?.email
+      incident_type: analysis.incident_type
     });
     
-    // Para nuevas contrataciones, crear cliente si tenemos nombre
-    if (isNewContract && hasClientName) {
-      console.log(`✅ [PROCESSOR] Debe crear cliente desde cero: Nueva contratación con nombre detectado`);
-      return true;
+    return isNewContract;
+  }
+
+  /**
+   * 🔧 NUEVO: Crear cliente desde datos de Lead
+   */
+  private async createClientFromLeadData(
+    extractedData: any,
+    conversationId: string
+  ): Promise<{ success: boolean; clientId?: string; error?: string }> {
+    try {
+      console.log(`🚨 [PROCESSOR] Creando cliente desde lead data`);
+      
+      const leadInfo = extractedData.leadInfo;
+      const nombreCompleto = extractedData.nombreCliente || '';
+      
+      // Separar nombre y apellidos
+      const nameParts = nombreCompleto.trim().split(' ');
+      const nombre = nameParts[0] || '';
+      const primerApellido = nameParts[1] || '';
+      const segundoApellido = nameParts.slice(2).join(' ') || '';
+
+      const clientDataFromCall = {
+        nombre: nombre,
+        primerApellido: primerApellido,
+        segundoApellido: segundoApellido,
+        telefono: extractedData.telefono || '',
+        email: extractedData.email || '',
+        idLead: leadInfo.idLead,
+        campaña: leadInfo.campaña,
+        // Campos adicionales
+        telefono2: extractedData.telefono2,
+        recomendadoPor: extractedData.recomendadoPor
+      };
+
+      const result = await nogalClientService.createClientFromCall(
+        clientDataFromCall,
+        conversationId
+      );
+
+      if (result.success) {
+        return {
+          success: true,
+          clientId: result.client_id
+        };
+      } else {
+        return {
+          success: false,
+          error: result.message || 'Error creando cliente desde lead'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      };
     }
-    
-    // Para otros casos, verificar si tenemos información suficiente
-    const hasSufficientData = 
-      hasClientName && 
-      (clientData.telefono || clientData.email);
-    
-    const result = isNewContract && hasSufficientData;
-    console.log(`🔍 [PROCESSOR] shouldCreateClientFromScratch result:`, result);
-    return result;
+  }
+
+  /**
+   * 🔧 NUEVO: Crear cliente desde datos extraídos
+   */
+  private async createClientFromExtractedData(
+    extractedData: any,
+    conversationId: string
+  ): Promise<{ success: boolean; clientId?: string; error?: string }> {
+    try {
+      console.log(`🆕 [PROCESSOR] Creando cliente desde datos extraídos`);
+      
+      const nombreCompleto = extractedData.nombreCliente || '';
+      
+      if (!nombreCompleto) {
+        throw new Error('No se puede crear cliente sin nombre');
+      }
+
+      // Separar nombre y apellidos
+      const nameParts = nombreCompleto.trim().split(' ');
+      const nombre = nameParts[0] || '';
+      const primerApellido = nameParts[1] || '';
+      const segundoApellido = nameParts.slice(2).join(' ') || '';
+
+      const clientDataFromCall = {
+        nombre: nombre,
+        primerApellido: primerApellido,
+        segundoApellido: segundoApellido,
+        telefono: extractedData.telefono || '',
+        email: extractedData.email || '',
+        // Campos opcionales
+        telefono2: extractedData.telefono2,
+        recomendadoPor: extractedData.recomendadoPor,
+        campaña: extractedData.campaña
+      };
+
+      const result = await nogalClientService.createClientFromCall(
+        clientDataFromCall,
+        conversationId
+      );
+
+      if (result.success) {
+        return {
+          success: true,
+          clientId: result.client_id
+        };
+      } else {
+        return {
+          success: false,
+          error: result.message || 'Error creando cliente'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      };
+    }
+  }
+
+  /**
+   * 🔧 NUEVO: Generar ID de cliente fallback
+   */
+  private generateFallbackClientId(conversationId: string, telefono?: string): string {
+    const timestamp = Date.now().toString().slice(-6);
+    const phoneDigits = telefono ? telefono.slice(-4) : '0000';
+    return `FALL${phoneDigits}${timestamp}`;
   }
 
   /**
