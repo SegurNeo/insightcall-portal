@@ -343,7 +343,33 @@ export class CallExecutor {
           confidence: decision.metadata.confidence,
           prioridad: decision.decisions.priority,
           resumen_analisis: decision.metadata.processingRecommendation,
-          datos_extraidos: decision.clientInfo.extractedData
+          datos_extraidos: decision.clientInfo.extractedData,
+          // 🎯 ACCIONES REALIZADAS - Para el frontend
+          tickets_creados: result.actions.ticketsCreated.map(t => ({
+            ticket_id: t.ticketId,
+            tipo_incidencia: decision.incidentAnalysis.primaryIncident.type,
+            motivo_gestion: decision.incidentAnalysis.primaryIncident.reason,
+            cliente_id: decision.clientInfo.clientType === 'existing' 
+              ? decision.clientInfo.existingClientInfo?.clientId 
+              : result.actions.clientCreated?.clientId,
+            estado: t.success ? 'created' : 'failed',
+            error: t.error || null
+          })),
+          rellamadas_creadas: result.actions.followUpCreated ? [{
+            ticket_relacionado: decision.incidentAnalysis.followUpInfo?.relatedTicketId || 'N/A',
+            followup_id: result.actions.followUpCreated.followUpId,
+            estado: result.actions.followUpCreated.success ? 'created' : 'failed',
+            motivo: 'Seguimiento de incidencia existente',
+            error: result.actions.followUpCreated.error || null
+          }] : [],
+          clientes_creados: result.actions.clientCreated ? [{
+            cliente_id: result.actions.clientCreated.clientId,
+            nombre: decision.clientInfo.extractedData.nombreCompleto,
+            tipo: decision.clientInfo.clientType,
+            estado: result.actions.clientCreated.success ? 'created' : 'failed',
+            error: result.actions.clientCreated.error || null
+          }] : [],
+          resumen_ejecucion: this.generateExecutionSummary(decision, result)
         },
         tickets_created: ticketIds.length,
         ticket_ids: ticketIds,
