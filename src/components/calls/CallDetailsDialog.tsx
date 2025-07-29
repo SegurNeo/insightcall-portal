@@ -37,7 +37,8 @@ import {
   Star,
   ThumbsUp,
   ThumbsDown,
-  Music
+  Music,
+  Activity
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
@@ -48,6 +49,7 @@ import { callService } from "@/services/callService";
 import { cn, formatTicketType } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { CallActionsSection } from "./CallActionsSection";
 import { analysisService } from '@/services/analysisService';
 import { TranscriptionAnalysisResult, TicketActionType } from '@/types/analysis';
 import { CreateTicketDialog } from "./CreateTicketDialog";
@@ -371,9 +373,9 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                 <ClipboardCheck className="h-4 w-4 mr-1.5" />
                 Análisis Detallado
               </TabsTrigger>
-              <TabsTrigger value="tickets" className="text-sm px-3 py-2 data-[state=active]:bg-zinc-100 data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm">
-                 <CheckCircle2 className="h-4 w-4 mr-1.5" />
-                 Tickets ({tickets.length})
+                             <TabsTrigger value="actions" className="text-sm px-3 py-2 data-[state=active]:bg-zinc-100 data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm">
+                 <Activity className="h-4 w-4 mr-1.5" />
+                 Acciones
               </TabsTrigger>
               <TabsTrigger value="client" className="text-sm px-3 py-2 data-[state=active]:bg-zinc-100 data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm">
                 <User2 className="h-4 w-4 mr-1.5" />
@@ -856,62 +858,13 @@ export function CallDetailsDialog({ call, open, onOpenChange }: CallDetailsDialo
                  </Card>
               </TabsContent>
               
-              <TabsContent value="tickets" className="mt-0 space-y-6">
-                <Card className="shadow-sm">
-                  <CardHeader>
-                     <div className="flex items-center justify-between flex-wrap gap-2">
-                       <CardTitle className="text-base font-semibold flex items-center">
-                         <CheckCircle2 className="h-4 w-4 mr-2 text-blue-600" />
-                         Tickets Asociados
-                       </CardTitle>
-                       <Button
-                           variant="default"
-                           size="sm"
-                           className="bg-zinc-900 text-white hover:bg-zinc-800 h-8 px-3 text-xs"
-                           onClick={() => setIsCreateTicketOpen(true)}
-                           disabled={!call?.conversation_id}
-                       >
-                           <Plus className="h-3.5 w-3.5 mr-1.5" />
-                           Crear Nuevo Ticket
-                       </Button>
-                     </div>
-                  </CardHeader>
-                  <CardContent className="pt-2">
-                     {isLoadingTickets ? (
-                       <div className="flex items-center justify-center py-12">
-                          <Loader2 className="h-5 w-5 animate-spin text-zinc-500 mr-2" />
-                          <span className="text-sm text-zinc-500">Cargando tickets...</span>
-                       </div>
-                     ) : tickets.length > 0 ? (
-                       <ul className="divide-y border rounded-md bg-white">
-                         {tickets.map(ticket => (
-                           <li key={ticket.id} className="px-4 py-3 hover:bg-zinc-50/80 transition-colors duration-100">
-                              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
-                                 <div className="flex items-center space-x-2">
-                                    <span className="text-sm font-semibold text-zinc-800">Ticket #{ticket.id}</span>
-                                     <Badge variant="outline" className="capitalize text-xs">
-                                        Prioridad: {ticket.priority}
-                                     </Badge>
-                                 </div>
-                                 <Badge variant="secondary" className="capitalize font-normal text-xs">
-                                    {ticket.status}
-                                 </Badge>
-                              </div>
-                              <p className="text-sm text-zinc-600 mb-1 truncate" title={ticket.description}>{ticket.description}</p>
-                               <div className="text-xs text-zinc-500">
-                                  Tipo: {formatTicketType(ticket.type as TicketActionType)}
-                               </div>
-                           </li>
-                         ))}
-                       </ul>
-                     ) : (
-                       <div className="text-center py-12 border rounded-md bg-white">
-                          <CheckCircle2 className="h-10 w-10 text-zinc-300 mx-auto mb-3" />
-                          <p className="text-sm text-zinc-500">No hay tickets asociados a esta llamada.</p>
-                       </div>
-                     )}
-                  </CardContent>
-                </Card>
+              <TabsContent value="actions" className="mt-0 space-y-6">
+                <CallActionsSection
+                  aiAnalysis={(call as any).ai_analysis || null}
+                  ticketsCreated={(call as any).ticket_count || 0}
+                  ticketIds={(call as any).ticket_ids || []}
+                  onCreateNewTicket={() => setIsCreateTicketOpen(true)}
+                />
               </TabsContent>
 
               <TabsContent value="client" className="mt-0">
