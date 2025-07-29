@@ -248,6 +248,9 @@ export class CallExecutor {
       const response = await this.nogalTicketService.createAndSendTicket(ticketPayload);
       
       if (response.success) {
+        // 💾 GUARDAR TICKET EN SUPABASE PARA EL FRONTEND
+        await this.saveTicketToSupabase(call, decision, response.ticket_id!, clientId, numeroPoliza);
+        
         return {
           success: true,
           ticketId: response.ticket_id
@@ -464,6 +467,78 @@ export class CallExecutor {
     notes += `Procesado automáticamente por IA (Confianza: ${Math.round(decision.metadata.confidence * 100)}%)`;
     
     return notes.substring(0, 500);
+  }
+
+  /**
+   * 💾 Guardar ticket en tabla tickets de Supabase para el frontend
+   */
+  private async saveTicketToSupabase(
+    call: Call, 
+    decision: CallDecision, 
+    ticketId: string, 
+    clientId: string, 
+    numeroPoliza?: string | null
+  ): Promise<void> {
+    try {
+      const { supabase } = require('../lib/supabase');
+      const incident = decision.incidentAnalysis.primaryIncident;
+      
+      const { v4: uuidv4 } = require('uuid');
+      const ticketUuid = uuidv4(); // Generar UUID válido para Supabase
+      
+      const descripcion = `Ticket automático generado por IA
+
+📞 Llamada: ${call.conversation_id}
+🕐 Fecha: ${new Date(call.created_at || Date.now()).toLocaleDateString()}
+👤 Cliente: ${clientId}
+📱 Teléfono: ${decision.clientInfo.extractedData.telefono || 'No disponible'}
+
+🧠 Análisis IA:
+• Tipo: ${incident.type}
+• Motivo: ${incident.reason}
+• Póliza: ${numeroPoliza || 'No especificada'}
+
+🎫 ID Nogal: ${ticketId}
+📝 Procesado automáticamente por el nuevo sistema`;
+
+      const ticketData = {
+        id: ticketUuid, // UUID válido para Supabase
+        tipo_incidencia: incident.type,
+        motivo_incidencia: incident.reason,
+        status: 'completed',
+        priority: 'medium',
+        description: descripcion,
+        call_id: call.id,
+        assignee_id: null,
+        metadata: {
+          source: 'ai-auto-generated-new-system',
+          conversation_id: call.conversation_id,
+          cliente_id: clientId,
+          nogal_ticket_id: ticketId,
+          original_ticket_id: ticketId,
+          numero_poliza: numeroPoliza,
+          ramo: incident.ramo,
+          ai_analysis: decision,
+          extracted_data: decision.clientInfo.extractedData,
+          nogal_status: 'sent_to_nogal',
+          generated_uuid: ticketUuid,
+          created_by_system: 'CallExecutor'
+        }
+      };
+
+      const { error } = await supabase
+        .from('tickets')
+        .insert([ticketData]);
+
+      if (error) {
+        console.error('❌ [EXECUTOR] Error guardando ticket en Supabase:', error);
+      } else {
+        console.log(`✅ [EXECUTOR] Ticket guardado en Supabase: ${ticketId}`);
+      }
+
+    } catch (error) {
+      console.error('❌ [EXECUTOR] Error interno guardando ticket:', error);
+    }
   }
 
   /**
