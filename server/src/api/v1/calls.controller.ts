@@ -10,7 +10,7 @@ import { nogalApiService } from '../../services/nogalApiService';
 import { ticketDefinitions } from '../../utils/ticketDefinitions';
 import { v4 as uuidv4 } from 'uuid';
 import { callService } from '../../modules/calls';
-import { callProcessor } from '../../services/callProcessor';
+import { newCallProcessor } from '../../services/newCallProcessor';
 
 interface TranscriptMessage {
   role: string;
@@ -269,7 +269,7 @@ export class CallsController {
         
         // 🚀 FORZAR SIEMPRE EL NUEVO SISTEMA - ELIMINAR DETECCIÓN PROBLEMÁTICA
         console.log('🚀 Usando SIEMPRE nuevo sistema callProcessor (con integración Segurneo)...');
-        await callProcessor.processCall(req.body);
+        await newCallProcessor.processCall(req.body);
         
       } else {
         console.warn('❌ Formato de webhook no reconocido:', req.body);

@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { callProcessingService } from './services/call_processing_service';
+// import { callProcessingService } from './services/call_processing_service'; // ELIMINADO - sistema legacy
 import { ticketService } from './services/ticketService';
 import config from './config/index';
 import { supabase } from './lib/supabase';
@@ -31,18 +31,12 @@ const healthCheck: express.RequestHandler = (_req, res) => {
   });
 };
 
-// Process call endpoint
+// Process call endpoint - DESHABILITADO (sistema legacy eliminado)
 const processCall: express.RequestHandler<CallParams> = async (req, res, next) => {
-  try {
-    const { externalCallId } = req.params;
-    const result = await callProcessingService.processCallByExternalId(externalCallId);
-    res.json({
-      message: 'Call processed successfully',
-      data: result
-    });
-  } catch (error: unknown) {
-    next(error);
-  }
+  res.status(410).json({
+    error: 'Endpoint discontinued',
+    message: 'Este endpoint ha sido eliminado. Usar /api/v1/calls/webhook-new'
+  });
 };
 
 // Get call details endpoint

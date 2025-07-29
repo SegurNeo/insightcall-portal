@@ -1,10 +1,10 @@
-// CallService – thin wrapper around legacy callProcessingService
+// CallService – DESHABILITADO (sistema legacy eliminado)
 import type { ProcessedCall } from '../../../types/supabase.types';
-import { callProcessingService } from '../../../services/call_processing_service';
+// import { callProcessingService } from '../../../services/call_processing_service'; // ELIMINADO
 
 class CallService {
   async processByExternalId(externalCallId: string): Promise<ProcessedCall> {
-    return callProcessingService.processCallByExternalId(externalCallId);
+    throw new Error('Legacy call processing discontinued. Use newCallProcessor instead.');
   }
 }
 

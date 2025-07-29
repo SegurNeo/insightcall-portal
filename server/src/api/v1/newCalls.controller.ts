@@ -3,9 +3,10 @@
 // CAMBIO FORZADO PARA RELOAD
 
 import { Request, Response } from 'express';
-import { callProcessor } from '../../services/callProcessor';
+import { newCallProcessor } from '../../services/newCallProcessor';
 import { supabase } from '../../lib/supabase';
-import { Call, SegurneoWebhookPayload } from '../../types/call.types';
+import { Call } from '../../types/call.types';
+import { SegurneoWebhookPayload } from '../../types/calls.types';
 
 /**
  * 🎯 Controller principal para el sistema de llamadas optimizado
@@ -40,7 +41,7 @@ export class NewCallsController {
       }
 
       // Procesar llamada completa
-      const processedCall = await callProcessor.processCall(req.body as SegurneoWebhookPayload);
+      const processedCall = await newCallProcessor.processCall(req.body as SegurneoWebhookPayload);
       
       const duration = Date.now() - startTime;
       console.log(`✅ [WEBHOOK] Processed successfully in ${duration}ms: ${processedCall.id}`);
@@ -185,7 +186,8 @@ export class NewCallsController {
     try {
       console.log('📊 [STATS] Getting system statistics');
 
-      const stats = await callProcessor.getStats();
+      // TODO: Implementar getStats en newCallProcessor
+      const stats = { message: "Stats temporalmente deshabilitadas durante migración" };
       
       console.log('✅ [STATS] Statistics retrieved');
       return res.json(stats);
@@ -267,7 +269,8 @@ export class NewCallsController {
             message: 'Hola, soy el agente virtual de prueba.',
             segment_start_time: 0,
             segment_end_time: 3,
-            confidence: 0.95
+            tool_calls: [],
+            tool_results: []
           },
           {
             sequence: 2,
@@ -275,7 +278,8 @@ export class NewCallsController {
             message: 'Hola, necesito ayuda con mi póliza.',
             segment_start_time: 4,
             segment_end_time: 7,
-            confidence: 0.92
+            tool_calls: [],
+            tool_results: []
           },
           {
             sequence: 3,
@@ -283,12 +287,13 @@ export class NewCallsController {
             message: 'Por supuesto, ¿me puede dar su número de póliza?',
             segment_start_time: 8,
             segment_end_time: 11,
-            confidence: 0.94
+            tool_calls: [],
+            tool_results: []
           }
         ]
       };
 
-      const result = await callProcessor.processCall(testPayload);
+      const result = await newCallProcessor.processCall(testPayload);
       
       console.log(`✅ [TEST] Test call created: ${result.id}`);
       return res.status(201).json({

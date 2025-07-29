@@ -2,7 +2,7 @@
 
 import { config } from 'dotenv';
 import { SegurneoSyncService } from '../services/segurneo-sync.service';
-import { callProcessingService } from '../services/call_processing_service';
+// import { callProcessingService } from '../services/call_processing_service'; // ELIMINADO - usar newCallProcessor
 import { supabase } from '../lib/supabase';
 
 // Cargar variables de entorno
@@ -111,10 +111,9 @@ async function main() {
 
         console.log(`🔄 [${call.segurneo_external_call_id}] Procesando...`);
         
-        // Procesar llamada
-        const result = await callProcessingService.processCallByExternalId(
-          call.segurneo_external_call_id
-        );
+        // Procesar llamada - SCRIPT DESHABILITADO (servicio legacy eliminado)
+        console.log(`❌ Script deshabilitado: callProcessingService eliminado. Usar newCallProcessor.`);
+        const result = { ticket_ids: [] }; // Mock result
 
         if (result.ticket_ids?.length) {
           ticketsCreated += result.ticket_ids.length;
