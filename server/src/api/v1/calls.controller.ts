@@ -44,8 +44,8 @@ export class CallsController {
       console.log('Consultando Supabase con parámetros:', { page, per_page, offset });
 
       const { data: calls, count, error } = await supabase
-        .from('processed_calls')
-        .select('*, tickets!tickets_conversation_id_fkey(*)', { count: 'exact' })
+        .from('calls')
+        .select('*, tickets!tickets_call_id_fkey(*)', { count: 'exact' })
         .range(offset, offset + per_page - 1)
         .order('created_at', { ascending: false });
 
@@ -60,19 +60,23 @@ export class CallsController {
 
       const formattedCalls = calls?.map(call => ({
         call_id: call.id,
-        conversation_id: call.segurneo_external_call_id,
+        conversation_id: call.conversation_id,
         status: call.status,
-        call_successful: call.segurneo_call_details?.status === 'completed' ? 'success' : 'failed',
-        call_duration_secs: call.segurneo_call_details?.duration_seconds || 0,
-        start_time_unix_secs: call.created_at ? Math.floor(new Date(call.created_at).getTime() / 1000) : 0,
+        call_successful: call.call_successful ? 'success' : 'failed',
+        call_duration_secs: call.duration_seconds || 0,
+        start_time_unix_secs: call.start_time ? Math.floor(new Date(call.start_time).getTime() / 1000) : 0,
         metadata: {
-          start_time_unix_secs: call.created_at ? Math.floor(new Date(call.created_at).getTime() / 1000) : 0,
-          call_duration_secs: call.segurneo_call_details?.duration_seconds || 0
+          start_time_unix_secs: call.start_time ? Math.floor(new Date(call.start_time).getTime() / 1000) : 0,
+          call_duration_secs: call.duration_seconds || 0
         },
         tickets: call.tickets || [],
         ticket_count: call.tickets?.length || 0,
-        ai_intent: call.ai_intent,
-        ticket_suggestions: call.ticket_suggestions
+        ai_intent: call.ai_analysis?.tipo_incidencia || null,
+        ticket_suggestions: call.ai_analysis || null,
+        // Campos adicionales del nuevo sistema
+        analysis_completed: call.analysis_completed,
+        ai_analysis: call.ai_analysis,
+        tickets_created: call.tickets_created
       }));
 
       console.log('Enviando respuesta con', formattedCalls?.length || 0, 'llamadas');
@@ -103,12 +107,12 @@ export class CallsController {
       console.log('Buscando llamada con ID:', id);
 
       const { data: call, error } = await supabase
-        .from('processed_calls')
+        .from('calls')
         .select(`
           *,
-          tickets!tickets_conversation_id_fkey(*)
+          tickets!tickets_call_id_fkey(*)
         `)
-        .eq('segurneo_external_call_id', id)
+        .eq('conversation_id', id)
         .single();
 
       if (error) {
@@ -123,23 +127,22 @@ export class CallsController {
 
       console.log('Llamada encontrada:', {
         id: call.id,
-        external_id: call.segurneo_external_call_id,
+        conversation_id: call.conversation_id,
         status: call.status,
-        details: call.segurneo_call_details,
-        transcriptCount: Array.isArray(call.segurneo_transcripts) ? call.segurneo_transcripts.length : 0
+        duration_seconds: call.duration_seconds,
+        transcriptCount: Array.isArray(call.transcripts) ? call.transcripts.length : 0
       });
 
-      // Extraer datos del segurneo_call_details de manera segura
-      const callDetails = call.segurneo_call_details || {};
-      const startTime = callDetails.start_time || call.created_at;
+      // Usar datos directos de la tabla calls del nuevo sistema
+      const startTime = call.start_time || call.created_at;
       const startTimeUnix = startTime ? Math.floor(new Date(startTime).getTime() / 1000) : 0;
 
-      // Formatear transcripción
+      // Formatear transcripción del nuevo sistema
       let formattedTranscripts: TranscriptMessage[] = [];
-      if (Array.isArray(call.segurneo_transcripts)) {
-        formattedTranscripts = (call.segurneo_transcripts as StoredTranscript[]).map(t => ({
+      if (Array.isArray(call.transcripts)) {
+        formattedTranscripts = call.transcripts.map((t: any) => ({
           role: t.speaker || 'user',
-          message: t.text || '',
+          message: t.message || '',
           time_in_call_secs: t.segment_start_time || 0,
           metadata: {
             is_agent: t.speaker === 'agent'
@@ -154,21 +157,25 @@ export class CallsController {
 
       const formattedCall = {
         call_id: call.id,
-        conversation_id: call.segurneo_external_call_id,
+        conversation_id: call.conversation_id,
         status: call.status,
-        call_successful: call.status === 'completed' ? 'success' : 'failed',
-        call_duration_secs: callDetails.duration_seconds || 0,
+        call_successful: call.call_successful ? 'success' : 'failed',
+        call_duration_secs: call.duration_seconds || 0,
         start_time_unix_secs: startTimeUnix,
         transcript: formattedTranscripts,
         metadata: {
           start_time_unix_secs: startTimeUnix,
-          call_duration_secs: callDetails.duration_seconds || 0,
-          agent_name: callDetails.agent_name || 'Asistente Virtual'
+          call_duration_secs: call.duration_seconds || 0,
+          agent_name: call.agent_id || 'Asistente Virtual'
         },
         tickets: call.tickets || [],
         ticket_count: call.tickets?.length || 0,
-        ai_intent: call.ai_intent,
-        ticket_suggestions: call.ticket_suggestions
+        ai_intent: call.ai_analysis?.tipo_incidencia || null,
+        ticket_suggestions: call.ai_analysis || null,
+        // Campos adicionales del nuevo sistema
+        analysis_completed: call.analysis_completed,
+        ai_analysis: call.ai_analysis,
+        tickets_created: call.tickets_created
       };
 
       console.log('Enviando respuesta formateada:', {
