@@ -33,6 +33,11 @@ export interface VoiceCallReal {
   audio_download_url: string | null;
   audio_file_size: number | null;
   fichero_llamada: string | null;
+  
+  // 🤖 CAMPOS DEL NUEVO SISTEMA IA
+  analysis_completed?: boolean;
+  ai_analysis?: any;
+  tickets_created?: number;
 }
 
 export interface VoiceCallsStats {

@@ -66,7 +66,8 @@ import {
   PieChart,
   TrendingUp,
   TrendingDown,
-  Minus
+  Minus,
+  CheckCircle2
 } from 'lucide-react';
 
 import { CallDetailsSidebar } from '@/components/calls/CallDetailsSidebar';
@@ -590,7 +591,7 @@ export default function CallsPage() {
                         <TableHead className="w-40">Fecha</TableHead>
                         <TableHead>Duración</TableHead>
                         <TableHead>Interacción</TableHead>
-                        <TableHead>Ticket Enviado</TableHead>
+                        <TableHead>Análisis</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -635,20 +636,25 @@ export default function CallsPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {call.ticket_sent_to_nogal ? (
-                                <Badge variant="default" className="flex items-center space-x-1 w-fit">
-                                  <Send className="h-3 w-3" />
-                                  <span>Enviado a Nogal</span>
-                                </Badge>
-                              ) : call.tickets_count > 0 ? (
-                                <Badge variant="secondary" className="flex items-center space-x-1 w-fit">
+                              {call.status === 'failed' ? (
+                                <Badge variant="destructive" className="flex items-center space-x-1 w-fit">
                                   <AlertCircle className="h-3 w-3" />
-                                  <span>Error al Enviar</span>
+                                  <span>Fallido</span>
+                                </Badge>
+                              ) : call.analysis_completed ? (
+                                <Badge variant="default" className="flex items-center space-x-1 w-fit bg-green-600 hover:bg-green-700">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  <span>Completado</span>
+                                </Badge>
+                              ) : call.status === 'completed' ? (
+                                <Badge variant="secondary" className="flex items-center space-x-1 w-fit bg-amber-100 text-amber-800 hover:bg-amber-200">
+                                  <Clock className="h-3 w-3" />
+                                  <span>En proceso</span>
                                 </Badge>
                               ) : (
                                 <Badge variant="outline" className="flex items-center space-x-1 w-fit">
                                   <Minus className="h-3 w-3" />
-                                  <span>Sin Ticket</span>
+                                  <span>Pendiente</span>
                                 </Badge>
                               )}
                             </TableCell>
