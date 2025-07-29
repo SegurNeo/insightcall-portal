@@ -9,7 +9,7 @@ import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Progress } from '../ui/progress';
-import { CallActionsSection } from './CallActionsSection';
+import CallActionsSection from './CallActionsSection';
 
 interface CallDetailsSidebarProps {
   call: VoiceCallDetailsClean;
@@ -152,9 +152,9 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
             <div className="flex-1 overflow-hidden">
               
               {/* RESUMEN */}
-              <TabsContent value="resumen" className="m-0 h-full">
-                <ScrollArea className="h-full">
-                  <div className="p-6 space-y-6">
+              <TabsContent value="resumen" className="m-0 h-full overflow-hidden">
+                <ScrollArea className="h-full max-h-[calc(100vh-200px)]">
+                  <div className="p-6 pb-8 space-y-6">
                     
                     {/* Info básica */}
                     <Card>
@@ -313,9 +313,9 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
               </TabsContent>
 
               {/* TRANSCRIPCIÓN */}
-              <TabsContent value="transcripcion" className="m-0 h-full">
-                <ScrollArea className="h-full">
-                  <div className="p-6">
+              <TabsContent value="transcripcion" className="m-0 h-full overflow-hidden">
+                <ScrollArea className="h-full max-h-[calc(100vh-200px)]">
+                  <div className="p-6 pb-8">
                     <Card>
                       <CardContent className="p-6">
                                                  <div className="space-y-4">
@@ -351,9 +351,9 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
               </TabsContent>
 
               {/* ANÁLISIS */}
-              <TabsContent value="analisis" className="m-0 h-full">
-                <ScrollArea className="h-full">
-                  <div className="p-6">
+              <TabsContent value="analisis" className="m-0 h-full overflow-hidden">
+                <ScrollArea className="h-full max-h-[calc(100vh-200px)]">
+                  <div className="p-6 pb-8">
                     <Card>
                       <CardContent className="p-6">
                         <div className="text-center py-8 text-muted-foreground">
@@ -367,11 +367,11 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
               </TabsContent>
 
               {/* ACCIONES */}
-              <TabsContent value="actions" className="m-0 h-full">
-                <ScrollArea className="h-full">
-                  <div className="p-6">
+              <TabsContent value="actions" className="m-0 h-full overflow-hidden">
+                <ScrollArea className="h-full max-h-[calc(100vh-200px)]">
+                  <div className="p-6 pb-8">
                     <CallActionsSection 
-                      aiAnalysis={call.analysisResult as any}
+                      aiAnalysis={call.aiAnalysis}
                       ticketsCreated={call.tickets?.length || 0}
                       ticketIds={call.tickets?.map(t => t.id) || []}
                     />

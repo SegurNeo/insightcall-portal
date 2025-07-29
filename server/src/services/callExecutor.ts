@@ -230,7 +230,7 @@ export class CallExecutor {
         IdLlamada: call.conversation_id,
         TipoIncidencia: incident.type,
         MotivoIncidencia: incident.reason,
-        Ramo: incident.ramo || '',
+        Ramo: (incident.type === 'Nueva contratación de seguros' && incident.reason === 'Contratación Póliza') ? (incident.ramo || '') : '',
         NumeroPoliza: numeroPoliza || '',
         Notas: this.generateTicketNotes(decision, call),
         FicheroLlamada: call.audio_download_url || call.fichero_llamada || ''
@@ -238,11 +238,14 @@ export class CallExecutor {
 
       console.log(`🎫 [EXECUTOR] Datos del ticket a crear:`, {
         IdCliente: ticketPayload.IdCliente,
+        IdLlamada: ticketPayload.IdLlamada,
         TipoIncidencia: ticketPayload.TipoIncidencia,
         MotivoIncidencia: ticketPayload.MotivoIncidencia,
         Ramo: ticketPayload.Ramo,
         NumeroPoliza: ticketPayload.NumeroPoliza,
-        NotasLength: ticketPayload.Notas.length
+        FicheroLlamada: ticketPayload.FicheroLlamada ? 'SÍ (Audio disponible)' : 'NO',
+        NotasLength: ticketPayload.Notas.length,
+        note: 'IdTicket será generado por NogalTicketService'
       });
 
       const response = await this.nogalTicketService.createAndSendTicket(ticketPayload);

@@ -139,6 +139,9 @@ export interface VoiceCallDetailsClean {
   analysisResult: AnalysisResult | null;
   hasAnalysis: boolean;
   
+  // 🤖 ANÁLISIS COMPLETO DEL NUEVO SISTEMA IA
+  aiAnalysis: any | null;
+  
   // Tickets REALES
   tickets: TicketInfo[];
   hasTickets: boolean;
@@ -225,7 +228,7 @@ class VoiceCallsRealDataService {
           has_sent_tickets: ticketsSent > 0,
           ticket_status: ticketStatus,
           ticket_sent_to_nogal: ticketSentToNogal,
-          ticket_ids: call.ticket_ids || [],
+          ticket_ids: [], // DEPRECATED: Ya no usamos ticket_ids, solo JOIN
           // 🎵 CAMPOS DE AUDIO AÑADIDOS
           audio_download_url: call.audio_download_url || null,
           audio_file_size: call.audio_file_size || null,
@@ -550,6 +553,9 @@ class VoiceCallsRealDataService {
         analysisResult,
         hasAnalysis: !!analysisResult,
         
+        // 🤖 ANÁLISIS COMPLETO DEL NUEVO SISTEMA IA
+        aiAnalysis: voiceCallData.ai_analysis || null,
+        
         // Tickets REALES
         tickets,
         hasTickets: tickets.length > 0,
@@ -605,29 +611,14 @@ class VoiceCallsRealDataService {
       let query = supabase
         .from('calls')
         .select(`
-          id,
-          segurneo_call_id,
-          conversation_id,
-          agent_id,
-          start_time,
-          end_time,
-          duration_seconds,
-          status,
-          call_successful,
-          agent_messages,
-          user_messages,
-          total_messages,
-          transcript_summary,
-          termination_reason,
-          created_at,
-          received_at,
-          tickets_created,
-          ticket_ids,
-          audio_download_url,
-          audio_file_size,
-          fichero_llamada
+          *,
+          tickets_info:tickets(
+            id,
+            status,
+            metadata
+          )
         `)
-        .order('start_time', { ascending: false });
+        .order('created_at', { ascending: false });
 
       let countQuery = supabase
         .from('calls')
@@ -691,7 +682,7 @@ class VoiceCallsRealDataService {
       }
       
       if (!data || data.length === 0) {
-        console.log(`⚠️ [PAGINATION] No se encontraron datos para página ${page} con filtros aplicados`);
+        console.log('⚠️ [PAGINATION] No se encontraron llamadas en calls');
         return {
           calls: [],
           total: count || 0,
@@ -700,60 +691,45 @@ class VoiceCallsRealDataService {
         };
       }
       
-      // Procesar los datos igual que en getRecentVoiceCalls
-      // 🔄 MEJORA: Obtener información real de tickets en una sola consulta
-      const allTicketIds = data
-        .filter(call => call.ticket_ids && call.ticket_ids.length > 0)
-        .flatMap(call => call.ticket_ids);
+      console.log(`📊 [PAGINATION] Obtenidas ${data.length} llamadas con ${data.reduce((acc, call) => acc + (call.tickets_info?.length || 0), 0)} tickets en total`);
       
-      let ticketsData: any[] = [];
-      if (allTicketIds.length > 0) {
-        const { data: tickets } = await supabase
-          .from('tickets')
-          .select('id, status, metadata')
-          .in('id', allTicketIds);
-        ticketsData = tickets || [];
-      }
-      
-      console.log(`📊 [PAGINATION] Consultados ${ticketsData.length} tickets para ${data.length} llamadas`);
-
+      // Procesar los datos usando los tickets del JOIN
       const callsWithTicketInfo = data.map((call) => {
+        // Procesar información de tickets del JOIN
+        const tickets = call.tickets_info || [];
+        const ticketsCount = tickets.length;
+        const ticketsSent = tickets.filter((ticket: any) => 
+          ticket.metadata?.nogal_ticket_id || 
+          ticket.metadata?.ticket_id ||
+          ticket.status === 'sent'
+        ).length;
+        
+        // Verificar si algún ticket llegó exitosamente a Nogal
+        const ticketSentToNogal = tickets.some((ticket: any) => 
+          ticket.status === 'completed' && 
+          ticket.metadata?.nogal_status === 'sent_to_nogal'
+        );
+        
+        // Determinar estado de tickets
+        let ticketStatus: 'none' | 'pending' | 'sent' = 'none';
+        if (ticketsCount > 0) {
+          ticketStatus = ticketsSent > 0 ? 'sent' : 'pending';
+        }
+
         const audioAvailable = !!(call.audio_download_url || call.fichero_llamada);
         
-        // Determinar estado de tickets de manera más precisa
-        const ticketsCount = call.tickets_created || 0;
-        const hasTickets = ticketsCount > 0;
-        
-        let ticketSentToNogal = false;
-        
-        if (hasTickets && call.ticket_ids && call.ticket_ids.length > 0) {
-          // Buscar tickets de esta llamada en los datos ya obtenidos
-          const callTickets = ticketsData.filter(ticket => call.ticket_ids.includes(ticket.id));
-          
-          // Verificar si algún ticket llegó exitosamente a Nogal
-          ticketSentToNogal = callTickets.some(ticket => 
-            ticket.status === 'completed' && 
-            ticket.metadata?.nogal_status === 'sent_to_nogal'
-          );
-        }
-        
-        let ticketStatus: 'none' | 'pending' | 'sent' = 'none';
-        
-        if (hasTickets) {
-          // Si tiene tickets creados, están enviados (independientemente del éxito de la llamada)
-          ticketStatus = 'sent';
-        } else if (call.status === 'completed') {
-          // Si está completada pero sin tickets, está pendiente
-          ticketStatus = 'pending';
-        } else {
-          // Si no está completada, no hay tickets asignados aún
-          ticketStatus = 'none';
-        }
-
-        return { call, audioAvailable, ticketsCount, hasTickets, ticketSentToNogal, ticketStatus };
+        return { 
+          call, 
+          audioAvailable, 
+          ticketsCount, 
+          hasTickets: ticketsCount > 0, 
+          ticketSentToNogal, 
+          ticketStatus,
+          tickets
+        };
       });
 
-      const processedCalls: VoiceCallReal[] = callsWithTicketInfo.map(({ call, audioAvailable, ticketsCount, hasTickets, ticketSentToNogal, ticketStatus }) => {
+      const processedCalls: VoiceCallReal[] = callsWithTicketInfo.map(({ call, audioAvailable, ticketsCount, hasTickets, ticketSentToNogal, ticketStatus, tickets }) => {
         
         return {
           id: call.id,
@@ -775,14 +751,22 @@ class VoiceCallsRealDataService {
           created_at: call.created_at,
           received_at: call.received_at,
           tickets_count: ticketsCount,
-          tickets_sent: hasTickets ? ticketsCount : 0,
+          tickets_sent: tickets.filter((ticket: any) => 
+            ticket.metadata?.nogal_ticket_id || 
+            ticket.metadata?.ticket_id ||
+            ticket.status === 'sent'
+          ).length,
           has_sent_tickets: hasTickets,
           ticket_status: ticketStatus,
           ticket_sent_to_nogal: ticketSentToNogal,
-          ticket_ids: call.ticket_ids || [],
+          ticket_ids: [], // DEPRECATED: Ya no usamos ticket_ids, solo JOIN
           audio_download_url: call.audio_download_url,
           audio_file_size: call.audio_file_size,
-          fichero_llamada: call.fichero_llamada
+          fichero_llamada: call.fichero_llamada,
+          // Nuevos campos del sistema IA
+          analysis_completed: call.analysis_completed,
+          ai_analysis: call.ai_analysis,
+          tickets_created: call.tickets_created
         };
       });
       

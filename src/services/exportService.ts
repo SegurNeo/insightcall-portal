@@ -553,10 +553,22 @@ export class ExportService {
    */
   private async getSpecificCalls(conversationIds: string[]): Promise<VoiceCallReal[]> {
     try {
-      // Consulta directa por conversation_ids específicos
+      // Consulta directa por conversation_ids específicos CON JOIN de tickets
       const { data: callsData, error } = await supabase
         .from('calls')
-        .select('*')
+        .select(`
+          *,
+          tickets_info:tickets(
+            id,
+            status,
+            metadata,
+            tipo_incidencia,
+            motivo_incidencia,
+            priority,
+            description,
+            created_at
+          )
+        `)
         .in('conversation_id', conversationIds)
         .order('start_time', { ascending: false });
 
@@ -569,34 +581,27 @@ export class ExportService {
         return [];
       }
 
-      // Obtener tickets para estas llamadas específicas
-      const allTicketIds = callsData
-        .filter(call => call.ticket_ids && call.ticket_ids.length > 0)
-        .flatMap(call => call.ticket_ids);
+      // ELIMINADO: Ya no consulta tickets por separado, usa JOIN
 
-      let ticketsData: any[] = [];
-      if (allTicketIds.length > 0) {
-        const { data: tickets } = await supabase
-          .from('tickets')
-          .select('*')
-          .in('id', allTicketIds);
-        ticketsData = tickets || [];
-      }
-
-      // Procesar las llamadas al formato VoiceCallReal
+      // Procesar las llamadas al formato VoiceCallReal usando JOIN
       const processedCalls: VoiceCallReal[] = callsData.map(call => {
-        const hasTickets = call.ticket_ids && call.ticket_ids.length > 0;
-        const ticketsCount = hasTickets ? call.ticket_ids.length : 0;
+        // Usar tickets del JOIN en lugar de consulta separada
+        const tickets = call.tickets_info || [];
+        const ticketsCount = tickets.length;
+        const hasTickets = ticketsCount > 0;
         
-        // Determinar estado de envío a Nogal
-        let ticketSentToNogal = false;
-        if (hasTickets && call.ticket_ids && call.ticket_ids.length > 0) {
-          const callTickets = ticketsData.filter(ticket => call.ticket_ids.includes(ticket.id));
-          ticketSentToNogal = callTickets.some(ticket =>
-            ticket.status === 'completed' &&
-            ticket.metadata?.nogal_status === 'sent_to_nogal'
-          );
-        }
+        // Determinar estado de envío a Nogal usando tickets del JOIN
+        const ticketSentToNogal = tickets.some((ticket: any) =>
+          ticket.status === 'completed' &&
+          ticket.metadata?.nogal_status === 'sent_to_nogal'
+        );
+
+        // Determinar tickets enviados
+        const ticketsSent = tickets.filter((ticket: any) => 
+          ticket.metadata?.nogal_ticket_id || 
+          ticket.metadata?.ticket_id ||
+          ticket.status === 'sent'
+        ).length;
 
         return {
           id: call.id,
@@ -618,11 +623,11 @@ export class ExportService {
           created_at: call.created_at,
           received_at: call.received_at,
           tickets_count: ticketsCount,
-          tickets_sent: hasTickets ? ticketsCount : 0,
-          has_sent_tickets: hasTickets,
-          ticket_status: ticketsCount > 0 ? 'sent' : 'none',
+          tickets_sent: ticketsSent,
+          has_sent_tickets: ticketsSent > 0,
+          ticket_status: ticketsCount > 0 ? (ticketsSent > 0 ? 'sent' : 'pending') : 'none',
           ticket_sent_to_nogal: ticketSentToNogal,
-          ticket_ids: call.ticket_ids || [],
+          ticket_ids: [], // DEPRECATED: Ya no usamos ticket_ids, solo JOIN
           audio_download_url: call.audio_download_url,
           audio_file_size: call.audio_file_size,
           fichero_llamada: call.fichero_llamada,
