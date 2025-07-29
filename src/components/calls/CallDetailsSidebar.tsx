@@ -1,16 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Brain, MessageSquare, Ticket, Globe, CheckCircle, AlertCircle, Clock, User, Bot, XCircle, Music, Download, Info, Play, Pause, Volume2, SkipBack, SkipForward, Phone, Activity } from 'lucide-react';
+import { X, Brain, MessageSquare, Activity, Phone, User, Bot, Play, Pause, Download, Volume2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { VoiceCallDetailsClean } from '../../services/voiceCallsRealDataService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { Button } from '../ui/button';
-import { Label } from '../ui/label';
-import { Slider } from '../ui/slider';
+import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Progress } from '../ui/progress';
-import { formatFileSize } from '../../lib/utils';
 import { CallActionsSection } from './CallActionsSection';
 
 interface CallDetailsSidebarProps {
@@ -24,15 +22,12 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
   isOpen, 
   onClose 
 }) => {
-  // Estado para el reproductor de audio avanzado
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Funciones del reproductor
   const togglePlayPause = () => {
     if (audioRef.current) {
       if (isPlaying) {
@@ -44,85 +39,30 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
     }
   };
 
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
-  };
-
-  const handleSeek = (value: number[]) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = value[0];
-      setCurrentTime(value[0]);
-    }
-  };
-
-  const handleVolumeChange = (value: number[]) => {
-    const newVolume = value[0];
-    setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
-  };
-
-  const skipBackward = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
-    }
-  };
-
-  const skipForward = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
-    }
-  };
-
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handleDownloadAudio = () => {
-    if (call.ficheroLlamada) {
-      const link = document.createElement('a');
-      link.href = call.ficheroLlamada;
-      link.download = `llamada-${call.segurneoCallId}.mp3`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'No disponible';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Fecha inválida';
+      
+      return new Intl.DateTimeFormat('es-ES', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+    } catch (error) {
+      return 'Error en fecha';
     }
   };
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
-      audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-      
-      return () => {
-        if (audioRef.current) {
-          audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
-          audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        }
-      };
-    }
-  }, [call.ficheroLlamada]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.play().catch(console.error);
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [isPlaying]);
 
   if (!isOpen) return null;
 
@@ -130,329 +70,308 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50" 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" 
         onClick={onClose}
       />
       
       {/* Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-[800px] bg-gradient-to-br from-white to-gray-50 shadow-2xl z-50 flex flex-col border-l border-gray-200">
+      <div className="fixed right-0 top-0 h-full w-[900px] bg-background shadow-2xl z-50 flex flex-col border-l">
         
-        {/* Header fijo */}
-        <div className="flex-shrink-0 px-8 py-6 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+        {/* Header minimalista */}
+        <div className="flex-shrink-0 p-6 border-b bg-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Análisis de Conversación</h2>
-                <p className="text-sm text-gray-600 font-mono">{call.conversation_id}</p>
+                <h2 className="text-lg font-semibold">Análisis de Conversación</h2>
+                <p className="text-sm text-muted-foreground font-mono">{call.conversationId}</p>
               </div>
             </div>
             <Button 
               variant="ghost" 
-              size="sm" 
+              size="icon"
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
+              className="h-8 w-8"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
           
-          {/* Métricas principales */}
-          <div className="grid grid-cols-4 gap-4 mt-6">
+          {/* Métricas compactas */}
+          <div className="grid grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{Math.floor(call.durationSeconds / 60)}:{(call.durationSeconds % 60).toString().padStart(2, '0')}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Duración</div>
+              <div className="text-xl font-bold">{call.formattedDuration}</div>
+              <div className="text-xs text-muted-foreground">Duración</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{call.totalMessages}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Mensajes</div>
+              <div className="text-xl font-bold">{call.totalMessages}</div>
+              <div className="text-xs text-muted-foreground">Mensajes</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{call.tickets?.length || 0}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Tickets</div>
+              <div className="text-xl font-bold">{call.tickets?.length || 0}</div>
+              <div className="text-xs text-muted-foreground">Tickets</div>
             </div>
             <div className="text-center">
-              <div className="flex items-center justify-center">
+              <div className="flex justify-center mb-1">
                 {call.callSuccessful ? (
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  </div>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
                 ) : (
-                  <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                  </div>
+                  <AlertCircle className="h-5 w-5 text-red-500" />
                 )}
               </div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Estado</div>
+              <div className="text-xs text-muted-foreground">Estado</div>
             </div>
           </div>
         </div>
 
-        {/* Navegación de tabs estilo ElevenLabs */}
-        <div className="px-8 py-4 border-b border-gray-200">
-          <Tabs defaultValue="resumen" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-gray-50">
-              <TabsTrigger value="resumen" className="data-[state=active]:bg-white data-[state=active]:text-gray-900">
-                Resumen IA
-              </TabsTrigger>
-              <TabsTrigger value="transcripcion" className="data-[state=active]:bg-white data-[state=active]:text-gray-900">
-                Transcription
-              </TabsTrigger>
-              <TabsTrigger value="analisis" className="data-[state=active]:bg-white data-[state=active]:text-gray-900">
-                Análisis Profundo
-              </TabsTrigger>
-              <TabsTrigger value="actions" className="data-[state=active]:bg-white data-[state=active]:text-gray-900">
-                <Activity className="h-4 w-4 mr-1" />
-                Acciones
-              </TabsTrigger>
-            </TabsList>
+        {/* Tabs minimalistas */}
+        <div className="flex-1 flex flex-col">
+          <Tabs defaultValue="resumen" className="flex-1 flex flex-col">
+            <div className="px-6 pt-4 border-b">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="resumen" className="text-xs">
+                  <Brain className="h-3 w-3 mr-1" />
+                  Resumen
+                </TabsTrigger>
+                <TabsTrigger value="transcripcion" className="text-xs">
+                  <MessageSquare className="h-3 w-3 mr-1" />
+                  Transcripción
+                </TabsTrigger>
+                <TabsTrigger value="analisis" className="text-xs">
+                  <Brain className="h-3 w-3 mr-1" />
+                  Análisis
+                </TabsTrigger>
+                <TabsTrigger value="actions" className="text-xs">
+                  <Activity className="h-3 w-3 mr-1" />
+                  Acciones
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* Contenido */}
-            <div className="mt-8">
-              <TabsContent value="resumen" className="mt-0">
-                <ScrollArea className="h-[calc(100vh-280px)]">
-                  <div className="px-2 space-y-8">
+            <div className="flex-1 overflow-hidden">
+              
+              {/* RESUMEN */}
+              <TabsContent value="resumen" className="m-0 h-full">
+                <ScrollArea className="h-full">
+                  <div className="p-6 space-y-6">
                     
-                    {/* Información de la llamada estilo ElevenLabs */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-black">Información de la llamada</h3>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
+                    {/* Info básica */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Información de la llamada</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
                         
-                        {/* Agente */}
-                        <Card className="border-black/10 bg-white shadow-sm">
-                          <CardContent className="p-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <Bot className="h-5 w-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-black/60">Agente</p>
-                                <p className="font-medium text-black">{call.agent_id}</p>
-                              </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Agente */}
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback>
+                                <Bot className="h-4 w-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium">Agente</p>
+                              <p className="text-sm text-muted-foreground">{call.agentId}</p>
                             </div>
-                          </CardContent>
-                        </Card>
-
-                        {/* Fecha y hora */}
-                        <Card className="border-black/10 bg-white shadow-sm">
-                          <CardContent className="p-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                <Clock className="h-5 w-5 text-purple-600" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-black/60">Fecha y hora</p>
-                                <p className="font-medium text-black">{new Date(call.start_time).toLocaleDateString()} {new Date(call.start_time).toLocaleTimeString()}</p>
-                              </div>
+                          </div>
+                          
+                          {/* Fecha */}
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback>
+                                <Clock className="h-4 w-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium">Fecha y hora</p>
+                              <p className="text-sm text-muted-foreground">{formatDate(call.startTime)}</p>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
 
-                      </div>
-
-                      {/* Métricas de conversación */}
-                      <div className="grid grid-cols-3 gap-4">
-                        <Card className="border-black/10 bg-white shadow-sm">
-                          <CardContent className="p-4 text-center">
-                            <div className="text-2xl font-bold text-black">{call.agent_messages}</div>
-                            <div className="text-sm text-black/60">Agente</div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card className="border-black/10 bg-white shadow-sm">
-                          <CardContent className="p-4 text-center">
-                            <div className="text-2xl font-bold text-black">{call.user_messages}</div>
-                            <div className="text-sm text-black/60">Usuario</div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card className="border-black/10 bg-white shadow-sm">
-                          <CardContent className="p-4 text-center">
-                            <div className="text-2xl font-bold text-black">{call.total_messages}</div>
-                            <div className="text-sm text-black/60">Total</div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
+                        {/* Métricas */}
+                        <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-blue-600">{call.agentMessages}</div>
+                            <div className="text-xs text-muted-foreground">Agente</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-green-600">{call.userMessages}</div>
+                            <div className="text-xs text-muted-foreground">Usuario</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold">{call.totalMessages}</div>
+                            <div className="text-xs text-muted-foreground">Total</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
                     {/* Resumen */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-black">Resumen</h3>
-                      
-                      <Card className="border-black/10 bg-white shadow-sm">
-                        <CardContent className="p-6">
-                          <p className="text-black leading-relaxed">
-                            {call.transcript_summary || "No hay resumen disponible para esta conversación."}
+                    {call.transcriptSummary && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Resumen</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            {call.transcriptSummaryTranslated || call.transcriptSummary}
                           </p>
                         </CardContent>
                       </Card>
-                    </div>
-
-                    {/* Número de contacto */}
-                    {call.caller_id && (
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-black">Número de contacto</h3>
-                        
-                        <Card className="border-black/10 bg-white shadow-sm">
-                          <CardContent className="p-6">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                <Phone className="h-5 w-5 text-green-600" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-black/60">Número de teléfono</p>
-                                <p className="font-mono text-lg font-medium text-black">{call.caller_id}</p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
                     )}
 
-                    {/* Grabación de audio */}
-                    {call.fichero_llamada && (
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-black">Grabación de audio</h3>
-                        
-                        <Card className="border-black/10 bg-white shadow-sm">
-                          <CardContent className="p-6">
+                    {/* Contacto */}
+                    {call.caller_id && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Número de contacto</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback>
+                                <Phone className="h-4 w-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium">Número de teléfono</p>
+                              <p className="font-mono text-sm">{call.caller_id}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Audio */}
+                    {call.ficheroLlamada && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Grabación de audio</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <audio
+                              ref={audioRef}
+                              src={call.ficheroLlamada}
+                              preload="metadata"
+                              onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+                              onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+                              onEnded={() => setIsPlaying(false)}
+                            />
                             
-                            {/* Reproductor de audio avanzado */}
-                            <div className="space-y-4">
+                            <div className="flex items-center gap-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={togglePlayPause}
+                                disabled={!duration}
+                              >
+                                {isPlaying ? (
+                                  <Pause className="h-4 w-4" />
+                                ) : (
+                                  <Play className="h-4 w-4" />
+                                )}
+                              </Button>
                               
-                              {/* Audio element (hidden) */}
-                              <audio
-                                ref={audioRef}
-                                src={call.fichero_llamada}
-                                preload="metadata"
-                                onEnded={() => setIsPlaying(false)}
-                              />
-                              
-                              {/* Control de reproducción */}
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={skipBackward}
-                                    disabled={!duration}
-                                  >
-                                    <SkipBack className="h-4 w-4" />
-                                  </Button>
-                                  
-                                  <Button
-                                    onClick={togglePlayPause}
-                                    disabled={!duration}
-                                    className="w-12 h-12 rounded-full"
-                                  >
-                                    {isPlaying ? (
-                                      <Pause className="h-5 w-5" />
-                                    ) : (
-                                      <Play className="h-5 w-5" />
-                                    )}
-                                  </Button>
-                                  
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={skipForward}
-                                    disabled={!duration}
-                                  >
-                                    <SkipForward className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                                
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={handleDownloadAudio}
-                                >
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Descargar
-                                </Button>
-                              </div>
-                              
-                              {/* Progress bar */}
-                              <div className="space-y-2">
-                                <Slider
-                                  value={[currentTime]}
-                                  max={duration || 100}
-                                  step={1}
-                                  onValueChange={handleSeek}
-                                  className="w-full"
-                                  disabled={!duration}
+                              <div className="flex-1">
+                                <Progress 
+                                  value={duration ? (currentTime / duration) * 100 : 0} 
+                                  className="h-2"
                                 />
-                                <div className="flex justify-between text-sm text-black/60">
+                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
                                   <span>{formatTime(currentTime)}</span>
                                   <span>{formatTime(duration)}</span>
                                 </div>
                               </div>
                               
-                              {/* Volume control */}
-                              <div className="flex items-center space-x-2">
-                                <Volume2 className="h-4 w-4 text-black/60" />
-                                <Slider
-                                  value={[volume]}
-                                  max={1}
-                                  step={0.1}
-                                  onValueChange={handleVolumeChange}
-                                  className="w-24"
-                                />
-                                <span className="text-sm text-black/60 w-10">
-                                  {Math.round(volume * 100)}%
-                                </span>
-                              </div>
-                              
-                              {/* File info */}
-                              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                                <div className="flex items-center space-x-2">
-                                  <Music className="h-4 w-4 text-black/60" />
-                                  <span className="text-sm text-black/60">MP3</span>
-                                  <span className="text-sm text-black/60">•</span>
-                                  <span className="text-sm text-black/60">Duración: {Math.floor(call.duration_seconds / 60)}:{(call.duration_seconds % 60).toString().padStart(2, '0')}</span>
-                                </div>
-                                <div className="text-sm text-black/60">
-                                  Disponible: 60 días
-                                </div>
-                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = call.ficheroLlamada!;
+                                  link.download = `llamada-${call.segurneoCallId}.mp3`;
+                                  link.click();
+                                }}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
                             </div>
-                          </CardContent>
-                        </Card>
-                      </div>
+                            
+                            <div className="text-xs text-muted-foreground">
+                              Formato: MP3 • Duración: {call.formattedDuration} • Disponible: 60 días
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     )}
-
                   </div>
                 </ScrollArea>
               </TabsContent>
 
-              {/* Transcripción completa */}
-              <TabsContent value="transcripcion" className="mt-0">
-                {/* Contenido de transcripción (simplificado) */}
-                <ScrollArea className="h-[calc(100vh-280px)]">
-                  <div className="px-2 space-y-4">
-                    <p className="text-gray-600">Contenido de transcripción...</p>
+              {/* TRANSCRIPCIÓN */}
+              <TabsContent value="transcripcion" className="m-0 h-full">
+                <ScrollArea className="h-full">
+                  <div className="p-6">
+                    <Card>
+                      <CardContent className="p-6">
+                                                 <div className="space-y-4">
+                           {call.chatMessages && call.chatMessages.length > 0 ? (
+                             call.chatMessages.map((message, index) => (
+                               <div key={index} className="flex gap-3">
+                                 <Avatar className="h-6 w-6">
+                                   <AvatarFallback className="text-xs">
+                                     {message.speaker === 'agent' ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                                   </AvatarFallback>
+                                 </Avatar>
+                                 <div className="flex-1">
+                                   <div className="flex items-center gap-2 mb-1">
+                                     <Badge variant={message.speaker === 'agent' ? 'default' : 'secondary'} className="text-xs">
+                                       {message.speaker === 'agent' ? 'Agente' : 'Usuario'}
+                                     </Badge>
+                                   </div>
+                                   <p className="text-sm leading-relaxed">{message.text}</p>
+                                 </div>
+                               </div>
+                             ))
+                          ) : (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p>No hay transcripción disponible</p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 </ScrollArea>
               </TabsContent>
 
-              {/* Análisis Profundo */}
-              <TabsContent value="analisis" className="mt-0">
-                <ScrollArea className="h-[calc(100vh-280px)]">
-                  <div className="px-2 space-y-4">
-                    <p className="text-gray-600">Contenido de análisis profundo...</p>
+              {/* ANÁLISIS */}
+              <TabsContent value="analisis" className="m-0 h-full">
+                <ScrollArea className="h-full">
+                  <div className="p-6">
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>Análisis profundo en desarrollo</p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 </ScrollArea>
               </TabsContent>
 
-              {/* ACCIONES REALIZADAS POR IA */}
-              <TabsContent value="actions" className="mt-0">
-                <ScrollArea className="h-[calc(100vh-280px)]">
-                  <div className="px-2">
+              {/* ACCIONES */}
+              <TabsContent value="actions" className="m-0 h-full">
+                <ScrollArea className="h-full">
+                  <div className="p-6">
                     <CallActionsSection 
-                      aiAnalysis={call.analysis_data || null}
+                      aiAnalysis={call.analysisResult as any}
                       ticketsCreated={call.tickets?.length || 0}
                       ticketIds={call.tickets?.map(t => t.id) || []}
                     />
