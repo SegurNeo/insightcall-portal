@@ -1,15 +1,31 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Brain, MessageSquare, Activity, Phone, User, Bot, Play, Pause, Download, Volume2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
-import { VoiceCallDetailsClean } from '../../services/voiceCallsRealDataService';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { 
+  Brain, 
+  MessageSquare, 
+  Activity, 
+  Phone, 
+  Play, 
+  Pause, 
+  Clock, 
+  MapPin,
+  User,
+  Bot,
+  X,
+  CheckCircle,
+  AlertCircle,
+  Download
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Separator } from '../ui/separator';
+import { Progress } from '../ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback } from '../ui/avatar';
-import { Progress } from '../ui/progress';
 import CallActionsSection from './CallActionsSection';
+import { CallTranscriptionChat } from './CallTranscriptionChat';
+import { ChatMessage, VoiceCallDetailsClean } from '../../services/voiceCallsRealDataService';
+import { translationService, TranslationResponse } from '../../services/translationService';
 
 interface CallDetailsSidebarProps {
   call: VoiceCallDetailsClean;
@@ -27,6 +43,8 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translatedSummary, setTranslatedSummary] = useState(call.transcriptSummaryTranslated || call.transcriptSummary);
 
   const togglePlayPause = () => {
     if (audioRef.current) {
@@ -63,6 +81,28 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
       return 'Error en fecha';
     }
   };
+
+  useEffect(() => {
+    const translateSummary = async () => {
+      if (!call.transcriptSummary) return;
+      if (call.transcriptSummaryTranslated) {
+        setTranslatedSummary(call.transcriptSummaryTranslated);
+        return;
+      }
+      setIsTranslating(true);
+      try {
+        const result = await translationService.translateToSpanish(call.transcriptSummary);
+        setTranslatedSummary(result.translatedText);
+      } catch (error) {
+        console.error('Error al traducir resumen:', error);
+        setTranslatedSummary(call.transcriptSummary); // Fallback to original if translation fails
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+
+    translateSummary();
+  }, [call.transcriptSummary, call.transcriptSummaryTranslated]);
 
   if (!isOpen) return null;
 
@@ -127,22 +167,18 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
         {/* Tabs minimalistas */}
         <div className="flex-1 flex flex-col">
           <Tabs defaultValue="resumen" className="flex-1 flex flex-col">
-            <div className="px-6 pt-4 border-b">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="resumen" className="text-xs">
-                  <Brain className="h-3 w-3 mr-1" />
+            <div className="px-6 pt-6 pb-4 border-b">
+              <TabsList className="grid w-full grid-cols-3 h-10">
+                <TabsTrigger value="resumen" className="text-sm font-medium">
+                  <Brain className="h-4 w-4 mr-2" />
                   Resumen
                 </TabsTrigger>
-                <TabsTrigger value="transcripcion" className="text-xs">
-                  <MessageSquare className="h-3 w-3 mr-1" />
+                <TabsTrigger value="transcripcion" className="text-sm font-medium">
+                  <MessageSquare className="h-4 w-4 mr-2" />
                   Transcripción
                 </TabsTrigger>
-                <TabsTrigger value="analisis" className="text-xs">
-                  <Brain className="h-3 w-3 mr-1" />
-                  Análisis
-                </TabsTrigger>
-                <TabsTrigger value="actions" className="text-xs">
-                  <Activity className="h-3 w-3 mr-1" />
+                <TabsTrigger value="actions" className="text-sm font-medium">
+                  <Activity className="h-4 w-4 mr-2" />
                   Acciones
                 </TabsTrigger>
               </TabsList>
@@ -217,7 +253,17 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
                         </CardHeader>
                         <CardContent>
                           <p className="text-sm leading-relaxed text-muted-foreground">
-                            {call.transcriptSummaryTranslated || call.transcriptSummary}
+                            {isTranslating ? (
+                              <span className="flex items-center">
+                                <svg className="animate-spin h-4 w-4 text-blue-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Traduciendo...
+                              </span>
+                            ) : (
+                              translatedSummary
+                            )}
                           </p>
                         </CardContent>
                       </Card>
@@ -316,52 +362,11 @@ export const CallDetailsSidebar: React.FC<CallDetailsSidebarProps> = ({
               <TabsContent value="transcripcion" className="m-0 h-full overflow-hidden">
                 <ScrollArea className="h-full max-h-[calc(100vh-200px)]">
                   <div className="p-6 pb-8">
-                    <Card>
-                      <CardContent className="p-6">
-                                                 <div className="space-y-4">
-                           {call.chatMessages && call.chatMessages.length > 0 ? (
-                             call.chatMessages.map((message, index) => (
-                               <div key={index} className="flex gap-3">
-                                 <Avatar className="h-6 w-6">
-                                   <AvatarFallback className="text-xs">
-                                     {message.speaker === 'agent' ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                                   </AvatarFallback>
-                                 </Avatar>
-                                 <div className="flex-1">
-                                   <div className="flex items-center gap-2 mb-1">
-                                     <Badge variant={message.speaker === 'agent' ? 'default' : 'secondary'} className="text-xs">
-                                       {message.speaker === 'agent' ? 'Agente' : 'Usuario'}
-                                     </Badge>
-                                   </div>
-                                   <p className="text-sm leading-relaxed">{message.text}</p>
-                                 </div>
-                               </div>
-                             ))
-                          ) : (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p>No hay transcripción disponible</p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              {/* ANÁLISIS */}
-              <TabsContent value="analisis" className="m-0 h-full overflow-hidden">
-                <ScrollArea className="h-full max-h-[calc(100vh-200px)]">
-                  <div className="p-6 pb-8">
-                    <Card>
-                      <CardContent className="p-6">
-                        <div className="text-center py-8 text-muted-foreground">
-                          <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>Análisis profundo en desarrollo</p>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <CallTranscriptionChat 
+                      messages={call.chatMessages || []}
+                      callDuration={call.durationSeconds || 0}
+                      conversationId={call.id || call.conversationId || 'N/A'}
+                    />
                   </div>
                 </ScrollArea>
               </TabsContent>

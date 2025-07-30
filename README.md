@@ -1,69 +1,117 @@
-# Welcome to your Lovable project
+# InsightCall Portal
 
-## Project info
+Portal de análisis y gestión de llamadas telefónicas con integración de IA para transcripción, análisis automático y generación de tickets.
 
-**URL**: https://lovable.dev/projects/1065a372-b2e2-4245-ac9b-d9e4a04af177
+## 🏗️ Estructura del Proyecto
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/1065a372-b2e2-4245-ac9b-d9e4a04af177) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+insightcall-portal/
+├── src/                     # Frontend (React + TypeScript)
+│   ├── components/          # Componentes reutilizables
+│   ├── pages/              # Páginas de la aplicación
+│   ├── services/           # Servicios y API calls
+│   └── types/              # Definiciones de tipos
+├── server/                  # Backend (Node.js + TypeScript)
+│   ├── src/                # Código fuente del servidor
+│   └── tests/              # Scripts de testing y desarrollo
+├── docs/                   # Documentación del proyecto
+│   ├── api/                # Especificaciones de API
+│   ├── implementation/     # Documentación de implementación
+│   └── migrations/         # Documentación de migraciones
+├── scripts/                # Scripts de desarrollo y testing
+└── shared/                 # Tipos y utilidades compartidas
 ```
 
-**Edit a file directly in GitHub**
+## 🚀 Inicio Rápido
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Prerrequisitos
+- Node.js 18+ 
+- npm o pnpm
+- Acceso a las APIs de Segurneo y Nogal
 
-**Use GitHub Codespaces**
+### Instalación
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. **Clonar el repositorio**
+   ```bash
+   git clone <repository-url>
+   cd insightcall-portal
+   ```
 
-## What technologies are used for this project?
+2. **Instalar dependencias del frontend**
+   ```bash
+   npm install
+   ```
 
-This project is built with .
+3. **Instalar dependencias del backend**
+   ```bash
+   cd server
+   npm install
+   ```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+4. **Configurar variables de entorno**
+   ```bash
+   cp .env.example .env
+   # Editar .env con las configuraciones necesarias
+   ```
 
-## How can I deploy this project?
+### Desarrollo
 
-Simply open [Lovable](https://lovable.dev/projects/1065a372-b2e2-4245-ac9b-d9e4a04af177) and click on Share -> Publish.
+1. **Iniciar el frontend**
+   ```bash
+   npm run dev
+   ```
 
-## I want to use a custom domain - is that possible?
+2. **Iniciar el backend**
+   ```bash
+   cd server
+   npm run dev
+   ```
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+## 🔧 Tecnologías
+
+### Frontend
+- **React 18** - Framework de UI
+- **TypeScript** - Tipado estático
+- **Vite** - Build tool
+- **Tailwind CSS** - Estilos
+- **Shadcn/ui** - Componentes de UI
+- **React Query** - Gestión de estado del servidor
+
+### Backend
+- **Node.js** - Runtime
+- **TypeScript** - Tipado estático
+- **Express** - Framework web
+- **Supabase** - Base de datos y autenticación
+
+### Integraciones
+- **Segurneo Voice API** - Transcripción de llamadas
+- **Nogal API** - Gestión de tickets de seguros
+- **Gemini AI** - Análisis de contenido con IA
+
+## 📚 Documentación
+
+- [API Documentation](./docs/api/) - Especificaciones de las APIs
+- [Implementation Guide](./docs/implementation/) - Guías de implementación
+- [Migration Notes](./docs/migrations/) - Notas de migración de datos
+
+## 🧪 Testing
+
+Los scripts de testing se encuentran en:
+- `./scripts/` - Scripts de testing del frontend
+- `./server/tests/` - Scripts de testing del backend
+
+## 🚦 Estados del Proyecto
+
+- ✅ **Transcripción de llamadas** - Completado
+- ✅ **Análisis con IA** - Completado  
+- ✅ **Generación de tickets** - Completado
+- ✅ **Portal de gestión** - Completado
+- 🔄 **Optimizaciones** - En progreso
+
+## 📄 Licencia
+
+Este proyecto es privado y confidencial.
+
+---
+
+Para más información, consulta la documentación en la carpeta `docs/` o contacta al equipo de desarrollo.

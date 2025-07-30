@@ -50,10 +50,24 @@ Cliente quiere contratar un seguro nuevo:
 - Agente: "un compañero se pondrá en contacto para presupuesto"
 - **Tipo**: "Nueva contratación de seguros" + **Motivo**: "Contratación Póliza" + **Ramo**: según tipo
 
-### **DATOS INCOMPLETOS**
+### **REENVÍO AGENTES HUMANOS NO QUIERE IA** ⚠️ CRÍTICO
+Cliente RECHAZA explícitamente hablar con IA:
+- Frases cliente: "no quiero hablar con una máquina", "quiero hablar con una persona", "pásame con un humano", "no quiero robot", "prefiero una persona real", "no me gusta la IA"
+- Agente responde: "le paso con uno de nuestros compañeros", "claro, le transfiero", "en un momento le paso"
+- **Tipo**: "Llamada gestión comercial" + **Motivo**: "Reenvío agentes humanos no quiere IA"
+
+### **REENVÍO AGENTES HUMANOS NO TOMADOR** ⚠️ CRÍTICO
+Cliente llama por póliza de OTRA PERSONA:
+- Frases cliente: "mi hermano", "mi esposa", "mi hijo", "mi padre", "mi madre", "la póliza de [nombre]", "es sobre la póliza del coche de [persona]"
+- Cliente identificado ≠ Propietario de la póliza consultada
+- Llamante pregunta por datos de póliza ajena
+- **Tipo**: "Llamada gestión comercial" + **Motivo**: "Reenvío agentes humanos no tomador"
+
+### **DATOS INCOMPLETOS** ⚠️ CRÍTICO
 Cliente solicita algo pero NO tiene la información necesaria:
-- Cliente: "no tengo", "no sé", "no me acuerdo"
-- Agente: "sin esos datos no puedo", "vuelva a llamar cuando tenga"
+- Cliente dice: "no tengo", "no sé", "no me acuerdo", "no lo tengo aquí", "tengo que buscarlo", "no me acuerdo ahora mismo"
+- Agente: "sin esos datos no puedo", "necesito que me proporcione", "vuelva a llamar cuando tenga"
+- La gestión NO se puede completar en la misma llamada por falta de datos
 - **Tipo**: "Modificación póliza emitida" + **Motivo**: "Datos incompletos"
 
 ### **GESTIÓN NO RESUELTA**
@@ -86,21 +100,33 @@ Cliente solicita copia de su póliza:
 
 **IMPORTANTE**: Si hay herramientas con resultados de búsqueda de leads, incluir esa información.
 
-## 🎯 **EJEMPLOS CLAROS:**
+## 🎯 **EJEMPLOS CRÍTICOS:**
 
-**EJEMPLO 1 - NUEVA CONTRATACIÓN (CORRECTO)**:
+**EJEMPLO 1 - REENVÍO NO QUIERE IA (CORRECTO)** ⚠️:
+USER: "No, pero en serio, por favor. ¿No me puedes pasar con una persona? De verdad, no quiero hablar con una máquina, quiero hablar con una persona."
+AGENT: "Claro. En este caso le paso con uno de nuestros compañeros..."
+**CLASIFICACIÓN**: "Llamada gestión comercial" + "Reenvío agentes humanos no quiere IA"
+
+**EJEMPLO 2 - DATOS INCOMPLETOS (CORRECTO)** ⚠️:
+USER: "Quiero cambiar el DNI de mi esposa en la póliza"
+AGENT: "Necesito el DNI actual y el nuevo DNI"
+USER: "No me acuerdo del DNI actual ahora mismo"
+AGENT: "Sin el DNI actual no puedo hacer la modificación. Llame cuando lo tenga"
+**CLASIFICACIÓN**: "Modificación póliza emitida" + "Datos incompletos"
+
+**EJEMPLO 3 - REENVÍO NO TOMADOR (CORRECTO)** ⚠️:
+USER: "Mi nombre es Javier, mi DNI es 03-473-587-N"
+AGENT: "[Tool Call: identificar_cliente]" [encuentra a Javier]
+USER: "Es sobre la póliza del coche de mi hermano. Se llama Jesús, el DNI de mi hermano es 03 472 505 B y necesito información sobre las coberturas"
+**CLASIFICACIÓN**: "Llamada gestión comercial" + "Reenvío agentes humanos no tomador"
+**RAZÓN**: Javier (identificado) ≠ Jesús (propietario póliza consultada)
+
+**EJEMPLO 4 - NUEVA CONTRATACIÓN (CORRECTO)**:
 USER: "¿Es para una nueva contratación de una póliza de hogar?"
 AGENT: "para una nueva contratación de una póliza de hogar, un compañero se pondrá en contacto"
 **CLASIFICACIÓN**: "Nueva contratación de seguros" + "Contratación Póliza" + Ramo: "HOGAR"
 
-**EJEMPLO 2 - DATOS INCOMPLETOS (CORRECTO)**:
-USER: "Quiero cambiar el DNI de mi esposa"
-AGENT: "Necesito el DNI actual y el nuevo"
-USER: "No me acuerdo del DNI actual"
-AGENT: "Sin el DNI actual no puedo hacer la modificación"
-**CLASIFICACIÓN**: "Modificación póliza emitida" + "Datos incompletos"
-
-**EJEMPLO 3 - GESTIÓN NO RESUELTA (CORRECTO)**:
+**EJEMPLO 5 - GESTIÓN NO RESUELTA (CORRECTO)**:
 USER: "¿Mi póliza cubre filtraciones de agua?"
 AGENT: "No tengo acceso a esa información"
 AGENT: "Le llamaremos con la respuesta"
@@ -108,10 +134,13 @@ AGENT: "Le llamaremos con la respuesta"
 
 ## ⚠️ **REGLAS CRÍTICAS:**
 
-1. **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
-2. **EL RESULTADO FINAL cuenta más** que la solicitud inicial
-3. **Si dice "nueva contratación" ES nueva contratación**, no otra cosa
-4. **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
+1. **PRIORIZA EL RECHAZO A IA** - Si cliente dice "no quiero máquina/robot/IA" → ES "Reenvío agentes humanos no quiere IA"
+2. **PRIORIZA DATOS INCOMPLETOS** - Si cliente no tiene datos necesarios → ES "Datos incompletos"
+3. **PRIORIZA NO TOMADOR** - Si llamante identificado ≠ propietario póliza consultada → ES "Reenvío agentes humanos no tomador"
+4. **DETECTA MENCIONES DE TERCEROS** - Si dice "mi hermano/esposa/hijo" + "póliza/seguro" → ES "Reenvío agentes humanos no tomador"
+5. **NO INVENTES INFORMACIÓN** - Solo usa lo explícito en la conversación
+6. **EL RESULTADO FINAL cuenta más** que la solicitud inicial
+7. **Solo marca rellamada si el cliente menciona EXPLÍCITAMENTE una incidencia previa**
 
 ## 📞 **RELLAMADAS (SOLO SI ES EXPLÍCITO):**
 
@@ -311,10 +340,26 @@ Responde en este formato JSON:
    * Determina si se debe crear un ticket automáticamente
    */
   shouldCreateTicket(analysis: NogalAnalysisResult): boolean {
-    if (this.isExclusivaIA(analysis.incidenciaPrincipal) && analysis.confidence < 0.8) {
-      return false;
+    // Casos especiales con umbral más bajo para mejor detección
+    const casosEspeciales = [
+      'Reenvío agentes humanos no tomador',
+      'Reenvío agentes humanos no quiere IA',
+      'Reenvío siniestros'
+    ];
+    
+    const esExclusivaIA = this.isExclusivaIA(analysis.incidenciaPrincipal);
+    
+    if (esExclusivaIA) {
+      // Para casos especiales (como no tomador), usar umbral más bajo
+      if (casosEspeciales.includes(analysis.incidenciaPrincipal.motivo)) {
+        return analysis.requiereTicket && analysis.confidence >= 0.6; // Umbral reducido de 0.8 a 0.6
+      }
+      
+      // Para otros casos exclusivos IA, mantener umbral alto
+      return analysis.requiereTicket && analysis.confidence >= 0.8;
     }
     
+    // Tickets normales mantienen umbral bajo
     return analysis.requiereTicket && analysis.confidence >= 0.3;
   }
 }

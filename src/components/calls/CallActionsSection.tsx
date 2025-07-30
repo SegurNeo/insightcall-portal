@@ -108,7 +108,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg font-semibold">Sistema Autónomo</CardTitle>
+              <CardTitle className="text-lg font-semibold">Sistema autónomo</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">Procesamiento automático completado</p>
             </div>
             <Badge variant="secondary" className="px-3 py-1">
@@ -123,7 +123,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
                 <Ticket className="h-6 w-6 text-foreground" />
               </div>
               <p className="text-2xl font-bold mb-1">{tickets.length}</p>
-              <p className="text-xs text-muted-foreground font-medium">Tickets Creados</p>
+              <p className="text-xs text-muted-foreground font-medium">Tickets creados</p>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/30">
               <div className="flex items-center justify-center h-12 w-12 rounded-full bg-background border-2 mx-auto mb-3">
@@ -137,7 +137,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
                 <User className="h-6 w-6 text-foreground" />
               </div>
               <p className="text-2xl font-bold mb-1">{clientes.length}</p>
-              <p className="text-xs text-muted-foreground font-medium">Clientes Nuevos</p>
+              <p className="text-xs text-muted-foreground font-medium">Clientes nuevos</p>
             </div>
           </div>
         </CardContent>
@@ -155,7 +155,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
                   <Ticket className="h-5 w-5 text-foreground" />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-base">Tickets Creados</p>
+                  <p className="font-semibold text-base">Tickets creados</p>
                   <p className="text-sm text-muted-foreground">{tickets.length} ticket(s) enviado(s) a Nogal</p>
                 </div>
               </div>
@@ -201,7 +201,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
                         <div className="bg-background border-2 border-foreground/10 rounded-lg p-4">
                           <div className="flex items-center space-x-3 mb-3">
                             <Shield className="h-5 w-5 text-foreground" />
-                            <span className="font-semibold">Póliza Afectada</span>
+                            <span className="font-semibold">Póliza afectada</span>
                           </div>
                           <p className="font-mono text-xl font-bold text-foreground">#{datosCliente.numeroPoliza}</p>
                         </div>
@@ -211,7 +211,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
                       <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-3">
                           <div>
-                            <p className="text-muted-foreground text-sm font-medium mb-2">Tipo de Incidencia</p>
+                            <p className="text-muted-foreground text-sm font-medium mb-2">Tipo de incidencia</p>
                             <div className="bg-background border rounded-md p-3">
                               <p className="text-sm font-medium">{ticket.tipo_incidencia}</p>
                             </div>
@@ -228,7 +228,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
                       {/* DATOS DEL CLIENTE */}
                       {datosCliente && (
                         <div className="border-t pt-6">
-                          <p className="text-muted-foreground text-sm font-medium mb-4">Datos del Cliente</p>
+                          <p className="text-muted-foreground text-sm font-medium mb-4">Datos del cliente</p>
                           <div className="grid grid-cols-1 gap-3">
                             {datosCliente.nombreCompleto && (
                               <div className="flex justify-between items-center p-3 bg-background border rounded-md">
@@ -257,7 +257,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
                         <div className="border-t pt-6">
                           <div className="flex items-center space-x-3 mb-4">
                             <FileText className="h-5 w-5 text-foreground" />
-                            <p className="font-semibold">Análisis Detallado de la Llamada</p>
+                            <p className="font-semibold">Análisis detallado de la llamada</p>
                           </div>
                           <div className="bg-background border-2 rounded-lg p-5">
                             <p className="text-sm leading-relaxed">{resumenAnalisis}</p>
@@ -267,7 +267,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
 
                       {ticket.error && (
                         <div className="border-t border-destructive/20 pt-6">
-                          <p className="text-destructive text-sm font-medium mb-2">Error Detectado</p>
+                          <p className="text-destructive text-sm font-medium mb-2">Error detectado</p>
                           <div className="bg-destructive/5 border border-destructive/20 rounded-md p-3">
                             <p className="text-destructive text-sm">{ticket.error}</p>
                           </div>
@@ -398,7 +398,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
                   <FileText className="h-5 w-5 text-foreground" />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-base">Análisis de la Llamada</p>
+                  <p className="font-semibold text-base">Análisis de la llamada</p>
                   <p className="text-sm text-muted-foreground">Resumen procesado por IA</p>
                 </div>
               </div>
@@ -421,7 +421,7 @@ const CallActionsSection: React.FC<CallActionsSectionProps> = ({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-3">
               <Activity className="h-5 w-5" />
-              Resumen del Procesamiento
+              Resumen del procesamiento
             </CardTitle>
           </CardHeader>
           <CardContent>

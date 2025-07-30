@@ -237,11 +237,62 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 }
 \`\`\`
 
+## 🚨 **EJEMPLOS CRÍTICOS DE CASOS ESPECIALES:**
+
+### **EJEMPLO: NO QUIERE IA**
+\`\`\`json
+{
+  "incidentAnalysis": {
+    "primaryIncident": {
+      "type": "Llamada gestión comercial",
+      "reason": "Reenvío agentes humanos no quiere IA",
+      "description": "Cliente rechaza explícitamente hablar con IA y solicita agente humano",
+      "confidence": 0.9
+    }
+  }
+}
+\`\`\`
+
+### **EJEMPLO: DATOS INCOMPLETOS**
+\`\`\`json
+{
+  "incidentAnalysis": {
+    "primaryIncident": {
+      "type": "Modificación póliza emitida",
+      "reason": "Datos incompletos",
+      "description": "Cliente solicita modificación pero no dispone de los datos necesarios",
+      "confidence": 0.85
+    }
+  }
+}
+\`\`\`
+
+### **EJEMPLO: NO TOMADOR**
+\`\`\`json
+{
+  "incidentAnalysis": {
+    "primaryIncident": {
+      "type": "Llamada gestión comercial",
+      "reason": "Reenvío agentes humanos no tomador",
+      "description": "Llamante consulta sobre póliza de otra persona",
+      "confidence": 0.9
+    }
+  }
+}
+\`\`\`
+
 ## 🚨 ERRORES A EVITAR:
 
 ❌ **NO usar IDs fallback si encontraste cliente real**
 ❌ **NO poner "No especificado" si el ramo se menciona claramente**  
 ❌ **NO crear cliente nuevo si ya existe en tool_results**
+
+## ⚠️ **REGLAS PRIORITARIAS CRÍTICAS:**
+
+1. **DETECTA PRIMERO EL RECHAZO A IA**: Si cliente dice "no quiero máquina/robot/IA/hablar con máquina" → SIEMPRE es "Reenvío agentes humanos no quiere IA"
+2. **DETECTA DATOS INCOMPLETOS**: Si cliente no tiene datos necesarios para completar gestión → SIEMPRE es "Datos incompletos"  
+3. **DETECTA NO TOMADOR**: Si llamante identificado ≠ tomador de póliza consultada → SIEMPRE es "Reenvío agentes humanos no tomador"
+4. **PRIORIDAD SOBRE OTRAS CLASIFICACIONES**: Estos 3 casos PREVALECEN sobre cualquier otra clasificación posible
 
 ## 🎯 REGLAS DE EXTRACCIÓN:
 
@@ -276,8 +327,29 @@ USER: "quería ver si me podían pasar un presupuesto para un seguro de hogar"
 - **Cambio forma de pago**: Desde anual a fraccionado
 - **Reenvío siniestros**: Cuando se transfiere a cola siniestros
 - **Reenvío agentes humanos**: Transferir a humanos (general)
-- **Reenvío agentes humanos no quiere IA**: Cliente rechaza IA
+- **Reenvío agentes humanos no quiere IA**: Cliente rechaza IA explícitamente
 - **Reenvío agentes humanos no tomador**: Llamante no es el tomador
+
+## 🚨 **DETECCIÓN CRÍTICA DE CASOS ESPECIALES:**
+
+### ⚠️ **"REENVÍO AGENTES HUMANOS NO QUIERE IA"**
+**DETECTAR SI cliente rechaza explícitamente la IA:**
+- Frases cliente: "no quiero hablar con una máquina", "quiero hablar con una persona", "pásame con un humano", "no quiero robot", "no me gusta la IA"
+- Agente responde: "le paso con uno de nuestros compañeros", "claro, le transfiero"
+- **RESULTADO**: type: "Llamada gestión comercial", reason: "Reenvío agentes humanos no quiere IA"
+
+### ⚠️ **"DATOS INCOMPLETOS"**
+**DETECTAR SI cliente no tiene datos necesarios para completar gestión:**
+- Cliente dice: "no tengo", "no sé", "no me acuerdo", "no lo tengo aquí", "tengo que buscarlo"
+- Agente: "sin esos datos no puedo", "necesito que me proporcione", "llame cuando lo tenga"
+- La gestión NO se completa en esa llamada por falta de información
+- **RESULTADO**: type: "Modificación póliza emitida", reason: "Datos incompletos"
+
+### ⚠️ **"REENVÍO AGENTES HUMANOS NO TOMADOR"** 
+**DETECTAR SI llamante pregunta por póliza ajena:**
+- Cliente menciona: "mi hermano", "mi esposa", "mi hijo", "la póliza de [otra persona]"
+- Llamante identificado ≠ Tomador de la póliza consultada
+- **RESULTADO**: type: "Llamada gestión comercial", reason: "Reenvío agentes humanos no tomador"
 
 ### 📄 **SOLICITUD DUPLICADO PÓLIZA**:
 - **Correo ordinario**: Envío por correo postal

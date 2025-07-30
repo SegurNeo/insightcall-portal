@@ -29,22 +29,10 @@ export const CallTranscriptionChat: React.FC<CallTranscriptionChatProps> = ({
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const getConfidenceColor = (confidence: number): string => {
-    if (confidence >= 0.95) return 'text-green-600';
-    if (confidence >= 0.90) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getConfidenceLabel = (confidence: number): string => {
-    if (confidence >= 0.95) return 'Alta';
-    if (confidence >= 0.90) return 'Media';
-    return 'Baja';
-  };
-
   if (!messages || messages.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-center text-gray-500">
+        <div className="text-center text-muted-foreground">
           <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="text-lg font-medium">No hay transcripción disponible</p>
           <p className="text-sm">La transcripción de esta llamada no está disponible</p>
@@ -54,20 +42,20 @@ export const CallTranscriptionChat: React.FC<CallTranscriptionChatProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-gray-50 to-white">
+    <div className="h-full flex flex-col bg-background">
       {/* Header del Chat */}
-      <div className="p-4 bg-white border-b border-gray-200 shadow-sm">
+      <div className="p-4 bg-background border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-full">
-              <Phone className="w-5 h-5 text-blue-600" />
+            <div className="p-2 bg-muted rounded-full">
+              <Phone className="w-5 h-5 text-foreground" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Transcripción de la Llamada</h3>
-              <p className="text-sm text-gray-500">ID: {conversationId.slice(-8)}</p>
+              <h3 className="font-semibold text-foreground">Transcripción de la llamada</h3>
+              <p className="text-sm text-muted-foreground">ID: {conversationId.slice(-8)}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4" />
             <span>{formatDuration(callDuration)}</span>
           </div>
@@ -76,14 +64,14 @@ export const CallTranscriptionChat: React.FC<CallTranscriptionChatProps> = ({
         {/* Estadísticas del Chat */}
         <div className="mt-3 flex items-center space-x-6 text-sm">
           <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-            <span className="text-gray-600">
+            <div className="w-3 h-3 bg-foreground rounded-full"></div>
+            <span className="text-muted-foreground">
               Agente: {messages.filter(m => m.speaker === 'agent').length} mensajes
             </span>
           </div>
           <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <span className="text-gray-600">
+            <div className="w-3 h-3 bg-muted-foreground rounded-full"></div>
+            <span className="text-muted-foreground">
               Cliente: {messages.filter(m => m.speaker === 'user').length} mensajes
             </span>
           </div>
@@ -100,23 +88,23 @@ export const CallTranscriptionChat: React.FC<CallTranscriptionChatProps> = ({
             <div
               className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm ${
                 message.speaker === 'agent'
-                  ? 'bg-white border border-gray-200 text-gray-900'
-                  : 'bg-blue-600 text-white'
+                  ? 'bg-background border border-border text-foreground'
+                  : 'bg-foreground text-background'
               }`}
             >
               {/* Contenido del mensaje */}
               <div className="space-y-2">
-                {/* Avatar y timestamp en la misma línea */}
-                <div className={`flex items-center justify-between ${
-                  message.speaker === 'agent' ? 'flex-row' : 'flex-row-reverse'
+                {/* Avatar y label */}
+                <div className={`flex items-center ${
+                  message.speaker === 'user' ? 'justify-end' : 'justify-start'
                 }`}>
                   <div className={`flex items-center space-x-2 ${
                     message.speaker === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                   }`}>
                     <div className={`p-1.5 rounded-full ${
                       message.speaker === 'agent' 
-                        ? 'bg-blue-100 text-blue-600' 
-                        : 'bg-blue-500 text-white'
+                        ? 'bg-muted text-foreground' 
+                        : 'bg-background text-foreground'
                     }`}>
                       {message.speaker === 'agent' ? (
                         <Volume2 className="w-3 h-3" />
@@ -125,38 +113,19 @@ export const CallTranscriptionChat: React.FC<CallTranscriptionChatProps> = ({
                       )}
                     </div>
                     <span className={`text-xs font-medium ${
-                      message.speaker === 'agent' ? 'text-gray-700' : 'text-blue-100'
+                      message.speaker === 'agent' ? 'text-muted-foreground' : 'text-muted'
                     }`}>
                       {message.speaker === 'agent' ? 'Agente' : 'Cliente'}
                     </span>
                   </div>
-                  <span className={`text-xs ${
-                    message.speaker === 'agent' ? 'text-gray-500' : 'text-blue-100'
-                  }`}>
-                    {message.formattedTime}
-                  </span>
                 </div>
 
                 {/* Texto del mensaje */}
                 <p className={`text-sm leading-relaxed ${
-                  message.speaker === 'agent' ? 'text-gray-800' : 'text-white'
+                  message.speaker === 'agent' ? 'text-foreground' : 'text-background'
                 }`}>
                   {message.text}
                 </p>
-
-                {/* Metadatos técnicos */}
-                <div className={`flex items-center justify-between text-xs ${
-                  message.speaker === 'agent' ? 'text-gray-400' : 'text-blue-100'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <span>
-                      {formatDuration(message.duration)}
-                    </span>
-                    <span className={`font-medium ${getConfidenceColor(message.confidence)}`}>
-                      Precisión: {getConfidenceLabel(message.confidence)} ({Math.round(message.confidence * 100)}%)
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -165,19 +134,19 @@ export const CallTranscriptionChat: React.FC<CallTranscriptionChatProps> = ({
       </div>
 
       {/* Footer con resumen */}
-      <div className="p-3 bg-gray-50 border-t border-gray-200">
-        <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="p-3 bg-muted border-t border-border">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center space-x-4">
             <span className="font-medium">
               Total: {messages.length} mensajes
             </span>
             <span>
-              Duración promedio: {formatDuration(callDuration / messages.length)}
+              Duración: {formatDuration(callDuration)}
             </span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-green-600 font-medium">Transcripción completada</span>
+            <div className="w-2 h-2 bg-foreground rounded-full"></div>
+            <span className="text-foreground font-medium">Transcripción completada</span>
           </div>
         </div>
       </div>
