@@ -87,7 +87,7 @@ export class NogalTicketService {
       const { data: existingTickets, error } = await supabase
         .from('tickets')
         .select('metadata')
-        .like('metadata->>ticket_id', `${todayPrefix}%`) // Usar ->> para extraer como texto
+        .like('metadata->>nogal_ticket_id', `${todayPrefix}%`) // Usar ->> para extraer como texto
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -103,7 +103,7 @@ export class NogalTicketService {
       
       if (existingTickets && existingTickets.length > 0) {
         const lastTicket = existingTickets[0];
-        const lastTicketId = lastTicket.metadata?.ticket_id;
+        const lastTicketId = lastTicket.metadata?.nogal_ticket_id;
         
         if (lastTicketId && typeof lastTicketId === 'string') {
           const match = lastTicketId.match(/-(\d{3})$/);
