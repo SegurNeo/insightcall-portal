@@ -75,10 +75,11 @@ Agente NO puede resolver en la misma llamada:
 - Agente: "no tengo acceso", "tengo que consultar", "le llamaremos"
 - **Tipo**: "Llamada gestión comercial" + **Motivo**: "LLam gestión comerc"
 
-### **CONSULTA RESUELTA**
-Agente SÍ responde completamente:
-- Se proporciona toda la información solicitada
-- **Tipo**: "Llamada gestión comercial" + **Motivo**: "Consulta cliente"
+        ### **CONSULTA RESUELTA**
+        Agente SÍ responde completamente:
+        - Se proporciona toda la información solicitada
+        - **Tipo**: "Llamada gestión comercial" + **Motivo**: "Consulta cliente"
+        - **IMPORTANTE**: Aunque la consulta se resuelva en la llamada, SÍ se debe crear ticket para registro y seguimiento
 
 ### **DUPLICADO DE PÓLIZA**
 Cliente solicita copia de su póliza:
