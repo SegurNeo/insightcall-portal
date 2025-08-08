@@ -653,7 +653,51 @@ EJEMPLO:
     if (decision.incidentAnalysis?.secondaryIncidents) {
       normalized.incidentAnalysis.secondaryIncidents = decision.incidentAnalysis.secondaryIncidents;
     }
-    
+
+    // === Enriquecimiento adicional para robustez de creación de tickets ===
+    const extracted = (normalized.clientInfo?.extractedData || {}) as any;
+
+    // 1) Derivar clientId desde múltiples fuentes si no vino en existingClientInfo
+    const candidateClientIds: Array<string | undefined> = [
+      (normalized.clientInfo as any)?.existingClientInfo?.clientId,
+      extracted.codigoCliente,
+      extracted.codigo_cliente,
+      extracted.clientId,
+      extracted.codigo
+    ].filter((v: any) => typeof v === 'string' && v.trim().length > 0);
+
+    const derivedClientId: string | null = candidateClientIds.length > 0 ? String(candidateClientIds[0]) : null;
+
+    if (!(normalized.clientInfo as any).existingClientInfo && derivedClientId) {
+      (normalized.clientInfo as any).existingClientInfo = { clientId: derivedClientId };
+    }
+
+    // 2) Derivar número de póliza si aplica (existente en conversación)
+    const derivedNumeroPoliza: string | undefined =
+      (normalized.incidentAnalysis.primaryIncident as any).numeroPolizaAfectada ||
+      extracted.numeroPoliza ||
+      extracted.numero_poliza;
+
+    // 3) Si no hay ticketsInfo, crear uno por defecto usando datos derivados
+    if (!normalized.decisions.ticketDecision.ticketsInfo || normalized.decisions.ticketDecision.ticketsInfo.length === 0) {
+      normalized.decisions.ticketDecision.ticketsInfo = [{
+        type: 'primary',
+        incident: normalized.incidentAnalysis.primaryIncident,
+        useClientId: derivedClientId || '',
+        numeroPoliza: typeof derivedNumeroPoliza === 'string' ? derivedNumeroPoliza : undefined
+      } as any];
+    }
+
+    // 4) Asegurar creación de ticket para "Llamada gestión comercial - Consulta cliente"
+    if (
+      normalized.incidentAnalysis.primaryIncident.type === 'Llamada gestión comercial' &&
+      normalized.incidentAnalysis.primaryIncident.reason === 'Consulta cliente'
+    ) {
+      normalized.decisions.ticketDecision.shouldCreateTickets = true;
+      // Prioridad baja por defecto si no viene definida
+      normalized.decisions.priority = normalized.decisions.priority || 'low';
+    }
+
     return normalized;
   }
   
