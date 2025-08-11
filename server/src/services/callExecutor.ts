@@ -444,9 +444,38 @@ export class CallExecutor {
     
     let notes = `${incident.description}\n\n`;
     
-    // Agregar datos extraídos relevantes
-    if (extractedData.direccion) {
-      notes += `Dirección: ${extractedData.direccion}\n`;
+    // Agregar datos específicos según el tipo de incidencia
+    const tipoIncidencia = incident.type?.toLowerCase() || '';
+    const motivoIncidencia = incident.reason?.toLowerCase() || '';
+    
+    // Para solicitudes de duplicado por email: incluir email de destino
+    if (tipoIncidencia.includes('duplicado') && (motivoIncidencia.includes('email') || motivoIncidencia.includes('correo'))) {
+      if (extractedData.email) {
+        notes += `📧 Email destino: ${extractedData.email}\n`;
+      }
+    }
+    
+    // Para modificaciones de póliza: incluir datos relevantes
+    if (tipoIncidencia.includes('modificacion') || tipoIncidencia.includes('cambio')) {
+      if (extractedData.direccion) {
+        notes += `🏠 Nueva dirección: ${extractedData.direccion}\n`;
+      }
+      if (extractedData.telefono && extractedData.telefono !== call.caller_id) {
+        notes += `📞 Nuevo teléfono: ${extractedData.telefono}\n`;
+      }
+      if (extractedData.email) {
+        notes += `📧 Nuevo email: ${extractedData.email}\n`;
+      }
+    }
+    
+    // Para otros casos: incluir dirección si está disponible
+    if (extractedData.direccion && !tipoIncidencia.includes('modificacion') && !tipoIncidencia.includes('cambio')) {
+      notes += `🏠 Dirección: ${extractedData.direccion}\n`;
+    }
+    
+    // Información adicional relevante
+    if (extractedData.numeroPoliza && incident.numeroPolizaAfectada !== extractedData.numeroPoliza) {
+      notes += `📋 Póliza mencionada: ${extractedData.numeroPoliza}\n`;
     }
     
     // Agregar contexto de rellamada si aplica
